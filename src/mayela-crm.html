@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAYELA CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#0D1F17;
+    --panel:#16302B;
+    --panel-2:#1D3B33;
+    --gold:#D9A441;
+    --clay:#C1502E;
+    --sage:#9CAB9F;
+    --text:#F3EDE0;
+    --success:#4C9A6B;
+    --line:rgba(243,237,224,0.10);
+    --radius:16px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: radial-gradient(ellipse at top, #14251c 0%, #060d09 70%);
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Work Sans', sans-serif;
+    color:var(--text);
+    padding:32px 16px;
+  }
+  .stage{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .brand-row{ display:flex; align-items:center; gap:10px; color:var(--sage); font-size:13px; letter-spacing:.04em;}
+  .brand-row b{ color:var(--gold); font-family:'Sora',sans-serif; font-weight:700; }
+
+  .phone{
+    width:390px; height:830px;
+    background:var(--ink);
+    border-radius:44px;
+    border:1px solid rgba(217,164,65,0.25);
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.03);
+    position:relative;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .notch{ position:absolute; top:0; left:50%; transform:translateX(-50%); width:140px; height:26px; background:#000; border-radius:0 0 18px 18px; z-index:50; }
+
+  .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; }
+  .screen.active{ display:flex; }
+  .screen::-webkit-scrollbar{ display:none; }
+
+  .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
+  .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
+  .pill{ display:flex; align-items:center; gap:6px; font-size:10.5px; padding:5px 10px; border-radius:20px; background:rgba(193,80,46,0.18); color:#E8926F; border:1px solid rgba(193,80,46,0.35); font-family:'IBM Plex Mono',monospace; }
+  .pill.online{ background:rgba(76,154,107,0.16); color:#7BC79A; border-color:rgba(76,154,107,0.35); }
+  .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* ---- Centered auth/lock screens ---- */
+  .center-screen{ align-items:center; justify-content:center; text-align:center; padding:40px 30px; gap:16px; }
+  .badge64{ width:64px; height:64px; border-radius:20px; background:var(--panel); display:flex; align-items:center; justify-content:center; margin:0 auto 6px; border:1px solid var(--line); font-size:26px; }
+  .stitle{ font-family:'Sora',sans-serif; font-weight:700; font-size:19px; }
+  .ssub{ color:var(--sage); font-size:12.5px; line-height:1.5; max-width:260px; margin:0 auto; }
+  .field{ width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Work Sans'; }
+  .field::placeholder{ color:var(--sage); }
+  .btn{ width:100%; background:var(--gold); color:#1a1305; border:none; border-radius:12px; padding:13px; font-size:13.5px; font-weight:700; font-family:'Sora'; cursor:pointer; }
+  .btn:disabled{ opacity:.5; }
+  .btn-ghost{ width:100%; background:transparent; border:1px solid var(--line); color:var(--text); border-radius:12px; padding:11px; font-size:12.5px; font-family:'Work Sans'; cursor:pointer; }
+  .err-msg{ color:var(--clay); font-size:11.5px; min-height:14px; }
+  .ok-msg{ color:#7BC79A; font-size:11.5px; min-height:14px; }
+  .pin-dots{ display:flex; gap:14px; margin:10px 0; }
+  .pin-dots span{ width:12px; height:12px; border-radius:50%; border:1.5px solid var(--sage); }
+  .pin-dots span.filled{ background:var(--gold); border-color:var(--gold); }
+  .keypad{ display:grid; grid-template-columns:repeat(3,64px); gap:14px; }
+  .key{ width:64px; height:64px; border-radius:50%; background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:20px; font-family:'IBM Plex Mono',monospace; }
+  .key:active{ background:var(--panel-2); }
+  .key.ghost{ background:transparent; border:none; }
+  .link-sm{ color:var(--gold); font-size:11.5px; text-decoration:none; cursor:pointer; }
+
+  .kpi-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:0 20px; }
+  .kpi{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; }
+  .kpi .num{ font-family:'IBM Plex Mono',monospace; font-size:20px; color:var(--gold); }
+  .kpi .lbl{ font-size:11px; color:var(--sage); margin-top:4px; }
+  .section-title{ padding:22px 20px 10px; font-family:'Sora',sans-serif; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:var(--sage); display:flex; justify-content:space-between; align-items:center;}
+  .section-title a{ color:var(--gold); font-size:11px; text-decoration:none; cursor:pointer; }
+
+  .card-list{ padding:0 20px; display:flex; flex-direction:column; gap:8px; }
+  .relance-card{ background:var(--panel); border-left:3px solid var(--clay); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .relance-card .name{ font-weight:600; font-size:13.5px; }
+  .relance-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; }
+
+  .search{ margin:14px 20px 6px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; font-size:13px; color:var(--text); width:calc(100% - 40px); }
+  .search::placeholder{ color:var(--sage); }
+  .stage-tabs{ display:flex; gap:6px; padding:10px 20px; overflow-x:auto; }
+  .stage-chip{ flex-shrink:0; font-size:11px; padding:6px 12px; border-radius:20px; border:1px solid var(--line); color:var(--sage); background:transparent; font-family:'Work Sans'; cursor:pointer; }
+  .stage-chip.active{ background:var(--gold); color:#1a1305; border-color:var(--gold); font-weight:600; }
+  .client-row{ display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .avatar{ width:38px; height:38px; border-radius:11px; background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:'Sora'; font-weight:700; font-size:13px; color:var(--gold); flex-shrink:0;}
+  .client-row .name{ font-size:13.5px; font-weight:600; }
+  .client-row .sub{ font-size:11px; color:var(--sage); margin-top:2px; }
+  .stage-tag{ margin-left:auto; font-size:9.5px; padding:4px 8px; border-radius:8px; font-family:'IBM Plex Mono'; white-space:nowrap; }
+  .fab{ position:absolute; right:18px; bottom:96px; width:50px; height:50px; border-radius:16px; background:var(--gold); color:#1a1305; font-size:24px; border:none; box-shadow:0 10px 20px -6px rgba(217,164,65,.6); cursor:pointer; }
+  .empty{ padding:30px 20px; color:var(--sage); font-size:12.5px; text-align:center; }
+
+  .back{ display:flex; align-items:center; gap:8px; padding:44px 20px 6px; color:var(--sage); font-size:12px; cursor:pointer; }
+  .fiche-head{ padding:10px 20px 16px; display:flex; gap:14px; align-items:center; }
+  .fiche-head .avatar{ width:54px; height:54px; font-size:17px; border-radius:16px; }
+  .fiche-head h2{ font-family:'Sora'; font-size:17px; }
+  .fiche-head .sub{ color:var(--sage); font-size:12px; margin-top:3px; }
+  .actions-row{ display:flex; gap:8px; padding:0 20px 16px; }
+  .action-btn{ flex:1; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 6px; font-size:10.5px; color:var(--text); text-align:center; text-decoration:none; }
+  .info-block{ margin:0 20px 12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; }
+  .info-row{ display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .info-row:last-child{ border-bottom:none; }
+  .info-row span:first-child{ color:var(--sage); }
+  .tab-row{ display:flex; gap:6px; padding:0 20px 10px; }
+  .tab-btn{ flex:1; font-size:10.5px; padding:8px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--sage); cursor:pointer; font-family:'Work Sans';}
+  .tab-btn.active{ background:var(--panel-2); color:var(--text); border-color:var(--gold); }
+  .tab-panel{ display:none; padding:0 20px 8px; }
+  .tab-panel.active{ display:block; }
+  .mini-row{ display:flex; justify-content:space-between; font-size:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .mini-row .t1{ font-weight:600; }
+  .mini-row .t2{ color:var(--sage); font-size:10.5px; margin-top:2px; }
+  .add-inline{ display:flex; gap:6px; margin-top:10px; }
+  .add-inline select, .add-inline input{ flex:1; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11.5px; color:var(--text); min-width:0; }
+  .add-inline button{ background:var(--gold); color:#1a1305; border:none; border-radius:8px; padding:8px 12px; font-size:11.5px; font-weight:700; cursor:pointer; }
+
+  .set-block{ margin:0 20px 14px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+  .set-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid var(--line); font-size:13px;}
+  .set-row:last-child{ border-bottom:none; }
+  .set-row .lbl{ display:flex; flex-direction:column; }
+  .set-row .lbl small{ color:var(--sage); font-size:10.5px; margin-top:2px; }
+  .set-row .val{ color:var(--gold); font-family:'IBM Plex Mono'; font-size:12px; }
+
+  .navbar{ display:flex; border-top:1px solid var(--line); background:rgba(13,31,23,0.9); backdrop-filter:blur(6px); padding:8px 6px 14px; }
+  .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--sage); font-size:9.5px; font-family:'Work Sans'; cursor:pointer;}
+  .nav-btn.active{ color:var(--gold); }
+  .nav-btn .ic{ font-size:18px; }
+  .hidden{ display:none !important; }
+  .toast{ position:absolute; bottom:100px; left:16px; right:16px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px; padding:10px 14px; font-size:12px; z-index:99; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="brand-row"><b>MAYELA CRM</b> — le chemin de chaque client, jamais perdu</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- AUTH: EMAIL -->
+    <div class="screen active center-screen" id="authEmail">
+      <div class="badge64">📇</div>
+      <div class="stitle">Connexion à MAYELA CRM</div>
+      <div class="ssub">Entrez votre e-mail. Aucun mot de passe — un code de connexion vous sera envoyé.</div>
+      <input class="field" type="email" id="emailInput" placeholder="vous@entreprise.cg">
+      <button class="btn" id="sendOtpBtn">Recevoir le code</button>
+      <div class="err-msg" id="authEmailErr"></div>
+    </div>
+
+    <!-- AUTH: OTP CODE -->
+    <div class="screen center-screen" id="authOtp">
+      <div class="badge64">✉️</div>
+      <div class="stitle">Code reçu par e-mail</div>
+      <div class="ssub" id="otpSentTo">Entrez le code à 6 chiffres envoyé.</div>
+      <input class="field" type="text" inputmode="numeric" id="otpInput" placeholder="123456" maxlength="6" style="text-align:center; letter-spacing:6px; font-family:'IBM Plex Mono';">
+      <button class="btn" id="verifyOtpBtn">Valider</button>
+      <div class="err-msg" id="authOtpErr"></div>
+      <span class="link-sm" id="backToEmail">← changer d'e-mail</span>
+    </div>
+
+    <!-- SET PIN (first login) -->
+    <div class="screen center-screen" id="setPin">
+      <div class="badge64">🔐</div>
+      <div class="stitle">Créez votre code PIN</div>
+      <div class="ssub">Ce code verrouille l'app localement sur cet appareil. 4 chiffres.</div>
+      <div class="pin-dots" id="setPinDots"><span></span><span></span><span></span><span></span></div>
+      <div class="err-msg" id="setPinErr"></div>
+      <div class="keypad" id="setPinKeypad"></div>
+    </div>
+
+    <!-- LOCK / VERIFY PIN -->
+    <div class="screen center-screen" id="lock">
+      <div class="badge64">🔒</div>
+      <div class="stitle">MAYELA CRM</div>
+      <div class="ssub">Entrez votre code PIN.</div>
+      <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
+      <div class="err-msg" id="pinError"></div>
+      <div class="keypad" id="keypad"></div>
+    </div>
+
+    <!-- ONBOARDING: ORG -->
+    <div class="screen center-screen" id="onboard">
+      <div class="badge64">🏢</div>
+      <div class="stitle">Votre espace de travail</div>
+      <div class="ssub">Créez l'espace de votre entreprise, ou rejoignez-en un avec un code.</div>
+      <input class="field" type="text" id="orgNameInput" placeholder="Nom de l'entreprise">
+      <button class="btn" id="createOrgBtn">Créer mon espace</button>
+      <div style="color:var(--sage); font-size:11px;">— ou —</div>
+      <input class="field" type="text" id="orgCodeInput" placeholder="Code d'invitation">
+      <button class="btn-ghost" id="joinOrgBtn">Rejoindre avec ce code</button>
+      <div class="err-msg" id="onboardErr"></div>
+    </div>
+
+    <!-- APP SHELL -->
+    <div id="appShell" class="hidden" style="display:flex; flex-direction:column; height:100%;">
+
+      <!-- DASHBOARD -->
+      <div class="screen active" id="dashboard">
+        <div class="topbar">
+          <h1 id="hello">Bonjour</h1>
+          <div class="pill online"><span class="dot"></span><span>En ligne</span></div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="num" id="kpiClients">–</div><div class="lbl">Clients actifs</div></div>
+          <div class="kpi"><div class="num" id="kpiOverdue" style="color:#E8926F">–</div><div class="lbl">Tâches en retard</div></div>
+          <div class="kpi"><div class="num" id="kpiDevis">–</div><div class="lbl">Devis (30j)</div></div>
+          <div class="kpi"><div class="num" id="kpiCA">–</div><div class="lbl">Achats (30j, FCFA)</div></div>
+        </div>
+        <div class="section-title">À relancer <a data-nav="ia">Voir le conseiller →</a></div>
+        <div class="card-list" id="relanceList"></div>
+        <div style="height:14px;"></div>
+      </div>
+
+      <!-- CLIENTS LIST -->
+      <div class="screen" id="clients">
+        <div class="topbar"><h1>Clients</h1><div class="pill online"><span class="dot"></span><span id="clientCount">0</span></div></div>
+        <input class="search" placeholder="Rechercher un client, un quartier…" id="searchInput">
+        <div class="stage-tabs" id="stageTabs">
+          <button class="stage-chip active" data-stage="Tous">Tous</button>
+          <button class="stage-chip" data-stage="Prospect">Prospect</button>
+          <button class="stage-chip" data-stage="Contacté">Contacté</button>
+          <button class="stage-chip" data-stage="Négociation">Négociation</button>
+          <button class="stage-chip" data-stage="Client">Client</button>
+          <button class="stage-chip" data-stage="Fidèle">Fidèle</button>
+        </div>
+        <div id="clientListWrap"></div>
+        <button class="fab" data-nav="addclient">+</button>
+      </div>
+
+      <!-- ADD CLIENT -->
+      <div class="screen" id="addclient">
+        <div class="back" data-nav="clients">← Clients</div>
+        <div class="section-title">Nouveau client</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <input class="field" id="newName" placeholder="Nom complet">
+          <input class="field" id="newZone" placeholder="Quartier / ville (ex: Bacongo, PNR)">
+          <input class="field" id="newPhone" placeholder="Téléphone / WhatsApp">
+          <select class="field" id="newStage">
+            <option>Prospect</option><option>Contacté</option><option>Négociation</option><option>Client</option><option>Fidèle</option>
+          </select>
+        </div>
+        <div style="padding:14px 20px;">
+          <button class="btn" id="saveClientBtn">Enregistrer</button>
+          <div class="err-msg" id="addClientErr"></div>
+        </div>
+      </div>
+
+      <!-- FICHE CLIENT -->
+      <div class="screen" id="fiche">
+        <div class="back" data-nav="clients">← Clients</div>
+        <div class="fiche-head">
+          <div class="avatar" id="ficheAvatar">–</div>
+          <div><h2 id="ficheName">–</h2><div class="sub" id="ficheSub">–</div></div>
+        </div>
+        <div class="actions-row">
+          <a class="action-btn" id="ficheCall" href="#">📞<br>Appeler</a>
+          <a class="action-btn" id="ficheWhats" href="#" target="_blank">💬<br>WhatsApp</a>
+          <div class="action-btn" id="ficheStageChip">🏷️<br><span id="ficheStageLbl">–</span></div>
+        </div>
+        <div class="tab-row">
+          <button class="tab-btn active" data-tab="tabInteractions">Interactions</button>
+          <button class="tab-btn" data-tab="tabAchats">Achats</button>
+          <button class="tab-btn" data-tab="tabTasks">Tâches</button>
+          <button class="tab-btn" data-tab="tabDevis">Devis</button>
+        </div>
+        <div class="tab-panel active" id="tabInteractions">
+          <div id="interactionsList"></div>
+          <div class="add-inline">
+            <select id="newIntType"><option value="appel">Appel</option><option value="whatsapp">WhatsApp</option><option value="visite">Visite</option><option value="autre">Autre</option></select>
+            <input id="newIntNote" placeholder="Note rapide…">
+            <button id="addIntBtn">+</button>
+          </div>
+        </div>
+        <div class="tab-panel" id="tabAchats">
+          <div id="achatsList"></div>
+          <div class="add-inline">
+            <input id="newAchatMontant" type="number" placeholder="Montant FCFA">
+            <button id="addAchatBtn">+</button>
+          </div>
+        </div>
+        <div class="tab-panel" id="tabTasks">
+          <div id="tasksList"></div>
+          <div class="add-inline">
+            <input id="newTaskDate" type="date">
+            <button id="addTaskBtn">+</button>
+          </div>
+        </div>
+        <div class="tab-panel" id="tabDevis">
+          <div id="devisList"></div>
+          <div class="add-inline">
+            <input id="newDevisMontant" type="number" placeholder="Montant FCFA">
+            <button id="addDevisBtn">+</button>
+          </div>
+        </div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- CONSEILS -->
+      <div class="screen" id="ia">
+        <div class="topbar"><h1>Conseils</h1></div>
+        <div class="info-block" style="background:rgba(217,164,65,0.08); border-color:rgba(217,164,65,0.25); color:var(--gold); font-size:11px; line-height:1.5;">
+          Version 1 : recommandations basées uniquement sur vos données saisies (contacts, achats, délais).
+        </div>
+        <div id="iaCards" class="card-list"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="screen" id="settings">
+        <div class="topbar"><h1>Réglages</h1></div>
+        <div class="set-block">
+          <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
+          <div class="set-row"><div class="lbl">Code d'invitation<small>À partager avec votre équipe</small></div><span class="val" id="setOrgCode">–</span></div>
+        </div>
+        <div class="section-title">Compte</div>
+        <div class="set-block">
+          <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
+          <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl">Changer le code PIN</div><span class="val">→</span></div>
+          <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter</div><span class="val">→</span></div>
+        </div>
+      </div>
+
+      <div class="navbar">
+        <button class="nav-btn active" data-nav="dashboard"><div class="ic">🏠</div>Accueil</button>
+        <button class="nav-btn" data-nav="clients"><div class="ic">👥</div>Clients</button>
+        <button class="nav-btn" data-nav="ia"><div class="ic">💡</div>Conseils</button>
+        <button class="nav-btn" data-nav="settings"><div class="ic">⚙️</div>Réglages</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================== CONFIG ==================
+const SUPABASE_URL = 'https://ymqdmfsqtkmlmwffqskt.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltcWRtZnNxdGttbG13ZmZxc2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyNTIxOTgsImV4cCI6MjA5ODgyODE5OH0.GK1KnJnx12HU1NJTM1PwLNm5jEuvUV49htgJjf70mr0';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const STAGE_COLORS = {Prospect:"#9CAB9F", "Contacté":"#D9A441", "Négociation":"#E8926F", Client:"#7BC79A", "Fidèle":"#4C9A6B"};
+
+// ================== STATE ==================
+let pendingEmail = "";
+let profile = null;
+let clientsCache = [];
+let currentStage = "Tous";
+let currentClientId = null;
+let pinBuffer = "";
+let pinMode = "verify"; // 'verify' | 'set'
+
+// ================== UTIL ==================
+function showScreen(id){
+  document.querySelectorAll('.stage > .phone > .screen, #appShell > .screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.borderColor = isErr ? 'var(--clay)' : 'var(--gold)';
+  t.classList.remove('hidden');
+  setTimeout(()=>t.classList.add('hidden'), 3200);
+}
+function initials(n){ return (n||"?").split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function fmtFCFA(n){ return new Intl.NumberFormat('fr-FR').format(n||0) + ' FCFA'; }
+function daysAgo(dateStr){ if(!dateStr) return null; const d=(new Date()-new Date(dateStr))/86400000; return Math.floor(d); }
+function fmtDate(d){ if(!d) return '–'; return new Date(d).toLocaleDateString('fr-FR'); }
+
+// ================== BOOT ==================
+async function boot(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){ await afterLogin(); } else { showScreen('authEmail'); }
+}
+boot();
+
+// ================== AUTH: EMAIL / OTP ==================
+document.getElementById('sendOtpBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('emailInput').value.trim();
+  const errEl = document.getElementById('authEmailErr');
+  errEl.textContent = "";
+  if(!email || !email.includes('@')){ errEl.textContent = "Entrez un e-mail valide."; return; }
+  const btn = document.getElementById('sendOtpBtn'); btn.disabled = true; btn.textContent = "Envoi…";
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
+  btn.disabled = false; btn.textContent = "Recevoir le code";
+  if(error){ errEl.textContent = error.message; return; }
+  pendingEmail = email;
+  document.getElementById('otpSentTo').textContent = "Code envoyé à " + email;
+  showScreen('authOtp');
+});
+document.getElementById('backToEmail').addEventListener('click', ()=> showScreen('authEmail'));
+document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
+  const token = document.getElementById('otpInput').value.trim();
+  const errEl = document.getElementById('authOtpErr');
+  errEl.textContent = "";
+  if(token.length !== 6){ errEl.textContent = "Code à 6 chiffres."; return; }
+  const btn = document.getElementById('verifyOtpBtn'); btn.disabled = true; btn.textContent = "Vérification…";
+  const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type:'email' });
+  btn.disabled = false; btn.textContent = "Valider";
+  if(error){ errEl.textContent = "Code incorrect ou expiré."; return; }
+  await afterLogin();
+});
+
+// ================== AFTER LOGIN ==================
+async function afterLogin(){
+  const { data:{ user } } = await sb.auth.getUser();
+  let { data: prof, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(!prof){
+    // filet de sécurité si le trigger de création de profil n'a pas tourné
+    const ins = await sb.from('profiles').insert({ id:user.id }).select().single();
+    prof = ins.data;
+  }
+  profile = prof;
+  if(!profile.pin_hash){ pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); showScreen('setPin'); return; }
+  buildKeypad('keypad', onVerifyPinDigit);
+  showScreen('lock');
+}
+
+// ================== PIN ==================
+function buildKeypad(containerId, handler){
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  keys.forEach(k=>{
+    const b = document.createElement('button');
+    b.className = 'key' + (k===''?' ghost':'');
+    b.textContent = k;
+    if(k!=='') b.addEventListener('click', ()=>handler(k));
+    el.appendChild(b);
+  });
+}
+function renderPinDots(dotsId, len){
+  [...document.getElementById(dotsId).children].forEach((d,i)=> d.classList.toggle('filled', i<len));
+}
+function onSetPinDigit(k){
+  const errEl = document.getElementById('setPinErr');
+  if(k==='⌫'){ pinBuffer = pinBuffer.slice(0,-1); renderPinDots('setPinDots', pinBuffer.length); return; }
+  if(pinBuffer.length<4){ pinBuffer += k; renderPinDots('setPinDots', pinBuffer.length); }
+  if(pinBuffer.length===4){
+    setTimeout(async ()=>{
+      const { error } = await sb.rpc('set_pin', { new_pin: pinBuffer });
+      pinBuffer = "";
+      if(error){ errEl.textContent = "Erreur, réessayez."; renderPinDots('setPinDots',0); return; }
+      await afterPinOk();
+    }, 150);
+  }
+}
+function onVerifyPinDigit(k){
+  const errEl = document.getElementById('pinError');
+  if(k==='⌫'){ pinBuffer = pinBuffer.slice(0,-1); renderPinDots('pinDots', pinBuffer.length); return; }
+  if(pinBuffer.length<4){ pinBuffer += k; renderPinDots('pinDots', pinBuffer.length); }
+  if(pinBuffer.length===4){
+    setTimeout(async ()=>{
+      const { data, error } = await sb.rpc('verify_pin', { candidate_pin: pinBuffer });
+      pinBuffer = "";
+      if(error){
+        errEl.textContent = error.message.includes('PIN_LOCKED') ? "Trop d'essais. Réessayez dans 30 min." : "Erreur, réessayez.";
+        renderPinDots('pinDots',0); return;
+      }
+      if(!data){ errEl.textContent = "Code incorrect."; renderPinDots('pinDots',0); return; }
+      await afterPinOk();
+    }, 150);
+  }
+}
+async function afterPinOk(){
+  if(!profile.org_id){ showScreen('onboard'); return; }
+  document.getElementById('appShell').classList.remove('hidden');
+  showScreen('dashboard');
+  await loadEverything();
+}
+
+// ================== ONBOARDING ==================
+document.getElementById('createOrgBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('orgNameInput').value.trim();
+  const errEl = document.getElementById('onboardErr');
+  if(!name){ errEl.textContent = "Entrez un nom d'entreprise."; return; }
+  const { data, error } = await sb.rpc('create_organization', { org_name: name });
+  if(error){ errEl.textContent = error.message; return; }
+  await refreshProfile();
+  document.getElementById('appShell').classList.remove('hidden');
+  showScreen('dashboard');
+  await loadEverything();
+});
+document.getElementById('joinOrgBtn').addEventListener('click', async ()=>{
+  const code = document.getElementById('orgCodeInput').value.trim();
+  const errEl = document.getElementById('onboardErr');
+  if(!code){ errEl.textContent = "Entrez un code d'invitation."; return; }
+  const { data, error } = await sb.rpc('join_organization', { code });
+  if(error){ errEl.textContent = error.message; return; }
+  await refreshProfile();
+  document.getElementById('appShell').classList.remove('hidden');
+  showScreen('dashboard');
+  await loadEverything();
+});
+async function refreshProfile(){
+  const { data } = await sb.from('profiles').select('*').eq('id', profile.id).single();
+  profile = data;
+}
+
+// ================== NAV ==================
+document.body.addEventListener('click', (e)=>{
+  const nav = e.target.closest('[data-nav]'); if(!nav) return;
+  const target = nav.dataset.nav;
+  document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id===target));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
+});
+
+// ================== LOAD EVERYTHING ==================
+async function loadEverything(){
+  document.getElementById('hello').textContent = 'Bonjour, ' + (profile.full_name || 'vous');
+  const { data: clients } = await sb.from('clients').select('*').order('created_at', { ascending:false });
+  clientsCache = clients || [];
+  document.getElementById('clientCount').textContent = clientsCache.length;
+  await renderDashboardKpis();
+  renderRelances();
+  renderClients();
+  renderIA();
+  document.getElementById('setEmail').textContent = (await sb.auth.getUser()).data.user.email;
+  document.getElementById('setOrgName').textContent = 'Chargement…';
+  const { data: org } = await sb.from('organizations').select('*').eq('id', profile.org_id).maybeSingle();
+  if(org){ document.getElementById('setOrgName').textContent = org.name; document.getElementById('setOrgCode').textContent = org.join_code; }
+  else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
+}
+
+async function renderDashboardKpis(){
+  document.getElementById('kpiClients').textContent = clientsCache.length;
+  const { count: overdueCount } = await sb.from('tasks').select('*', { count:'exact', head:true }).eq('status','a_faire').lt('due_date', new Date().toISOString().slice(0,10));
+  document.getElementById('kpiOverdue').textContent = overdueCount ?? 0;
+  const since = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+  const { count: devisCount } = await sb.from('devis').select('*', { count:'exact', head:true }).gte('devis_date', since);
+  document.getElementById('kpiDevis').textContent = devisCount ?? 0;
+  const { data: achats30 } = await sb.from('achats').select('montant').gte('achat_date', since);
+  const total = (achats30||[]).reduce((s,a)=>s+Number(a.montant||0),0);
+  document.getElementById('kpiCA').textContent = new Intl.NumberFormat('fr-FR',{notation:'compact'}).format(total);
+}
+
+function relanceCandidates(){
+  return clientsCache
+    .map(c=>({...c, _idle: c.updated_at ? daysAgo(c.updated_at) : 999}))
+    .filter(c=>c._idle>=15)
+    .sort((a,b)=>b._idle-a._idle)
+    .slice(0,8);
+}
+function renderRelances(){
+  const list = relanceCandidates();
+  const el = document.getElementById('relanceList');
+  el.innerHTML = list.length ? list.map(c=>`
+    <div class="relance-card">
+      <div><div class="name">${c.name}</div><div class="meta">${c.zone||'—'} · sans mise à jour depuis ${c._idle} j</div></div>
+    </div>`).join('') : `<div class="empty">Rien à relancer pour le moment — bon travail.</div>`;
+}
+
+function renderClients(){
+  const q = (document.getElementById('searchInput').value||"").toLowerCase();
+  const filtered = clientsCache.filter(c=>
+    (currentStage==="Tous" || (c.stage_override||'Prospect')===currentStage) &&
+    ((c.name||'').toLowerCase().includes(q) || (c.zone||'').toLowerCase().includes(q))
+  );
+  document.getElementById('clientListWrap').innerHTML = filtered.length ? filtered.map(c=>{
+    const stage = c.stage_override || 'Prospect';
+    const col = STAGE_COLORS[stage] || '#9CAB9F';
+    return `<div class="client-row" data-open="${c.id}">
+      <div class="avatar">${initials(c.name)}</div>
+      <div><div class="name">${c.name}</div><div class="sub">${c.zone||'—'}</div></div>
+      <div class="stage-tag" style="background:${col}22; color:${col}">${stage}</div>
+    </div>`;
+  }).join('') : `<div class="empty">Aucun client trouvé.</div>`;
+}
+document.getElementById('searchInput').addEventListener('input', renderClients);
+document.getElementById('stageTabs').addEventListener('click', (e)=>{
+  const chip = e.target.closest('.stage-chip'); if(!chip) return;
+  currentStage = chip.dataset.stage;
+  document.querySelectorAll('.stage-chip').forEach(c=>c.classList.toggle('active', c===chip));
+  renderClients();
+});
+document.body.addEventListener('click', (e)=>{
+  const row = e.target.closest('[data-open]'); if(!row) return;
+  openFiche(row.dataset.open);
+});
+
+// ================== ADD CLIENT ==================
+document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('newName').value.trim();
+  const zone = document.getElementById('newZone').value.trim();
+  const phone = document.getElementById('newPhone').value.trim();
+  const stage = document.getElementById('newStage').value;
+  const errEl = document.getElementById('addClientErr');
+  if(!name){ errEl.textContent = "Le nom est obligatoire."; return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  const { error } = await sb.from('clients').insert({
+    name, zone: zone||null, phone: phone||null, stage_override: stage,
+    owner_user_id: user.id, org_id: profile.org_id
+  });
+  if(error){ errEl.textContent = error.message; return; }
+  document.getElementById('newName').value=''; document.getElementById('newZone').value=''; document.getElementById('newPhone').value='';
+  const { data: clients } = await sb.from('clients').select('*').order('created_at', { ascending:false });
+  clientsCache = clients || [];
+  document.getElementById('clientCount').textContent = clientsCache.length;
+  renderClients();
+  toast('Client enregistré.');
+  document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='clients'));
+});
+
+// ================== FICHE CLIENT ==================
+async function openFiche(id){
+  currentClientId = id;
+  const c = clientsCache.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('ficheAvatar').textContent = initials(c.name);
+  document.getElementById('ficheName').textContent = c.name;
+  document.getElementById('ficheSub').textContent = (c.zone||'—') + ' · ' + (c.phone||'—');
+  document.getElementById('ficheStageLbl').textContent = c.stage_override || 'Prospect';
+  document.getElementById('ficheCall').href = c.phone ? 'tel:'+c.phone.replace(/\s/g,'') : '#';
+  document.getElementById('ficheWhats').href = c.phone ? 'https://wa.me/'+c.phone.replace(/\D/g,'') : '#';
+
+  document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='fiche'));
+
+  const [{data:interactions}, {data:achats}, {data:tasks}, {data:devis}] = await Promise.all([
+    sb.from('interactions').select('*').eq('client_id', id).order('occurred_at', { ascending:false }),
+    sb.from('achats').select('*').eq('client_id', id).order('achat_date', { ascending:false }),
+    sb.from('tasks').select('*').eq('client_id', id).order('due_date', { ascending:true }),
+    sb.from('devis').select('*').eq('client_id', id).order('devis_date', { ascending:false }),
+  ]);
+
+  document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>`
+    <div class="mini-row"><div><div class="t1">${i.type}</div><div class="t2">${i.note||''}</div></div><div class="t2">${fmtDate(i.occurred_at)}</div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
+
+  document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>`
+    <div class="mini-row"><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${fmtDate(a.achat_date)}</div></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
+
+  document.getElementById('tasksList').innerHTML = (tasks&&tasks.length) ? tasks.map(t=>`
+    <div class="mini-row"><div><div class="t1" style="${t.status==='fait'?'opacity:.4; text-decoration:line-through;':''}">Échéance ${fmtDate(t.due_date)}</div></div>
+    <span class="link-sm" data-toggle-task="${t.id}" data-status="${t.status}">${t.status==='fait'?'Fait ✓':'Marquer fait'}</span></div>`).join('') : `<div class="empty">Aucune tâche.</div>`;
+
+  document.getElementById('devisList').innerHTML = (devis&&devis.length) ? devis.map(d=>`
+    <div class="mini-row"><div class="t1">${fmtFCFA(d.montant)}</div><div class="t2">${fmtDate(d.devis_date)}</div></div>`).join('') : `<div class="empty">Aucun devis.</div>`;
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id===btn.dataset.tab));
+  });
+});
+
+document.getElementById('addIntBtn').addEventListener('click', async ()=>{
+  const type = document.getElementById('newIntType').value;
+  const note = document.getElementById('newIntNote').value.trim();
+  const { data:{ user } } = await sb.auth.getUser();
+  const { error } = await sb.from('interactions').insert({ client_id: currentClientId, user_id: user.id, type, note: note||null });
+  if(error){ toast(error.message, true); return; }
+  document.getElementById('newIntNote').value = '';
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
+  openFiche(currentClientId);
+});
+document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
+  const montant = document.getElementById('newAchatMontant').value;
+  if(!montant){ return; }
+  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant) });
+  if(error){ toast(error.message, true); return; }
+  document.getElementById('newAchatMontant').value = '';
+  openFiche(currentClientId);
+});
+document.getElementById('addTaskBtn').addEventListener('click', async ()=>{
+  const due = document.getElementById('newTaskDate').value;
+  if(!due){ return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  const { error } = await sb.from('tasks').insert({ client_id: currentClientId, due_date: due, created_by: user.id });
+  if(error){ toast(error.message, true); return; }
+  document.getElementById('newTaskDate').value = '';
+  openFiche(currentClientId);
+});
+document.getElementById('addDevisBtn').addEventListener('click', async ()=>{
+  const montant = document.getElementById('newDevisMontant').value;
+  if(!montant){ return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  const { error } = await sb.from('devis').insert({ client_id: currentClientId, montant: Number(montant), created_by: user.id });
+  if(error){ toast(error.message, true); return; }
+  document.getElementById('newDevisMontant').value = '';
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const t = e.target.closest('[data-toggle-task]'); if(!t) return;
+  const newStatus = t.dataset.status === 'fait' ? 'a_faire' : 'fait';
+  await sb.from('tasks').update({ status:newStatus }).eq('id', t.dataset.toggleTask);
+  openFiche(currentClientId);
+});
+
+// ================== CONSEILS (heuristiques v1, données réelles) ==================
+function renderIA(){
+  const cards = [];
+  const atRisk = clientsCache.filter(c=>['Client','Fidèle'].includes(c.stage_override) && daysAgo(c.updated_at) >= 21);
+  atRisk.forEach(c=>cards.push({
+    warn:true, badge:'Risque de décrochage',
+    title: c.name + " n'a pas eu d'activité depuis " + daysAgo(c.updated_at) + " jours",
+    body: "C'est un client " + (c.stage_override||'').toLowerCase() + ", habituellement plus actif. Une relance directe est recommandée."
+  }));
+  const stalled = clientsCache.filter(c=>c.stage_override==='Négociation' && daysAgo(c.updated_at) >= 15);
+  if(stalled.length){
+    cards.push({ warn:false, badge:'Priorité de relance',
+      title: stalled.length + " négociation(s) sans nouvelles depuis 15+ jours",
+      body: "Priorisez : " + stalled.map(c=>c.name).join(', ') + "." });
+  }
+  cards.push({ warn:false, badge:'v2 à venir',
+    title:'Tendances de marché externes : pas encore disponibles',
+    body:"Cette version s'appuie uniquement sur vos données internes, pour rester fiable et vérifiable." });
+  document.getElementById('iaCards').innerHTML = cards.map(c=>`
+    <div class="relance-card" style="border-left-color:${c.warn?'var(--clay)':'var(--gold)'}; flex-direction:column; align-items:flex-start; gap:4px;">
+      <div style="font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:${c.warn?'#E8926F':'#7BC79A'}">${c.badge}</div>
+      <div class="name">${c.title}</div>
+      <div class="meta">${c.body}</div>
+    </div>`).join('') || `<div class="empty">Rien à signaler.</div>`;
+}
+
+// ================== SETTINGS ==================
+document.getElementById('logoutRow').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  profile = null; clientsCache = []; currentClientId = null;
+  document.getElementById('appShell').classList.add('hidden');
+  document.getElementById('emailInput').value=''; document.getElementById('otpInput').value='';
+  showScreen('authEmail');
+});
+document.getElementById('changePinRow').addEventListener('click', ()=>{
+  pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); renderPinDots('setPinDots',0);
+  document.getElementById('appShell').classList.add('hidden');
+  showScreen('setPin');
+});
+</script>
+</body>
+</html>
