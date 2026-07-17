@@ -146,11 +146,15 @@
     <div class="notch"></div>
     <div id="toast" class="toast hidden"></div>
 
-    <!-- AUTH: EMAIL -->
-    <div class="screen active center-screen" id="authEmail">
+    <!-- AUTH: INSCRIPTION -->
+    <div class="screen active center-screen" id="authEmail" style="justify-content:flex-start; padding-top:52px;">
       <div class="badge64">📇</div>
       <div class="stitle">Connexion à MAYELA CRM</div>
-      <div class="ssub">Entrez votre e-mail. Aucun mot de passe — un code de connexion vous sera envoyé.</div>
+      <div class="ssub">Aucun mot de passe — un code de connexion vous sera envoyé par e-mail.</div>
+      <input class="field" type="text" id="fullNameInput" placeholder="Nom complet">
+      <input class="field" type="text" id="jobTitleInput" placeholder="Fonction (ex: Gérant, Commercial)">
+      <input class="field" type="text" id="companyInput" placeholder="Entreprise">
+      <input class="field" type="tel" id="phoneRegInput" placeholder="Numéro de téléphone">
       <input class="field" type="email" id="emailInput" placeholder="vous@entreprise.cg">
       <button class="btn" id="sendOtpBtn">Recevoir le code</button>
       <div class="err-msg" id="authEmailErr"></div>
@@ -348,6 +352,7 @@ const STAGE_COLORS = {Prospect:"#9CAB9F", "Contacté":"#D9A441", "Négociation":
 
 // ================== STATE ==================
 let pendingEmail = "";
+let pendingProfile = {};
 let profile = null;
 let clientsCache = [];
 let currentStage = "Tous";
@@ -378,19 +383,41 @@ async function boot(){
 }
 boot();
 
-// ================== AUTH: EMAIL / OTP ==================
-document.getElementById('sendOtpBtn').addEventListener('click', async ()=>{
+// ================== AUTH: INSCRIPTION / OTP ==================
+document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
+  const fullName = document.getElementById('fullNameInput').value.trim();
+  const jobTitle = document.getElementById('jobTitleInput').value.trim();
+  const company = document.getElementById('companyInput').value.trim();
+  const phone = document.getElementById('phoneRegInput').value.trim();
   const email = document.getElementById('emailInput').value.trim();
   const errEl = document.getElementById('authEmailErr');
   errEl.textContent = "";
+
+  if(!fullName){ errEl.textContent = "Entrez votre nom complet."; return; }
+  if(!jobTitle){ errEl.textContent = "Entrez votre fonction."; return; }
+  if(!company){ errEl.textContent = "Entrez votre entreprise."; return; }
+  if(!phone){ errEl.textContent = "Entrez votre numéro de téléphone."; return; }
   if(!email || !email.includes('@')){ errEl.textContent = "Entrez un e-mail valide."; return; }
-  const btn = document.getElementById('sendOtpBtn'); btn.disabled = true; btn.textContent = "Envoi…";
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
-  btn.disabled = false; btn.textContent = "Recevoir le code";
-  if(error){ errEl.textContent = error.message; return; }
+
   pendingEmail = email;
-  document.getElementById('otpSentTo').textContent = "Code envoyé à " + email;
+  pendingProfile = { full_name: fullName, job_title: jobTitle, company, phone };
+
+  // Transition immédiate vers l'écran du code : on n'attend pas la réponse réseau
+  // pour changer d'écran, seulement pour confirmer/infirmer l'envoi une fois affiché.
+  document.getElementById('otpSentTo').textContent = "Envoi du code à " + email + "…";
+  document.getElementById('otpInput').value = "";
+  document.getElementById('authOtpErr').textContent = "";
   showScreen('authOtp');
+
+  sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } }).then(({ error })=>{
+    if(error){
+      // Échec réel de l'envoi : on revient en arrière avec le message d'erreur
+      showScreen('authEmail');
+      errEl.textContent = error.message;
+      return;
+    }
+    document.getElementById('otpSentTo').textContent = "Code envoyé à " + email;
+  });
 });
 document.getElementById('backToEmail').addEventListener('click', ()=> showScreen('authEmail'));
 document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
@@ -413,6 +440,14 @@ async function afterLogin(){
     // filet de sécurité si le trigger de création de profil n'a pas tourné
     const ins = await sb.from('profiles').insert({ id:user.id }).select().single();
     prof = ins.data;
+  }
+  // Enregistre les infos saisies à l'écran d'inscription (nom, fonction, entreprise, téléphone)
+  if(pendingProfile.full_name){
+    const { data: updated } = await sb.from('profiles')
+      .update({ full_name: pendingProfile.full_name, job_title: pendingProfile.job_title, company: pendingProfile.company, phone: pendingProfile.phone })
+      .eq('id', user.id).select().single();
+    if(updated) prof = updated;
+    pendingProfile = {};
   }
   profile = prof;
   if(!profile.pin_hash){ pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); showScreen('setPin'); return; }
@@ -719,9 +754,11 @@ function renderIA(){
 // ================== SETTINGS ==================
 document.getElementById('logoutRow').addEventListener('click', async ()=>{
   await sb.auth.signOut();
-  profile = null; clientsCache = []; currentClientId = null;
+  profile = null; clientsCache = []; currentClientId = null; pendingProfile = {}; pendingEmail = "";
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('emailInput').value=''; document.getElementById('otpInput').value='';
+  document.getElementById('fullNameInput').value=''; document.getElementById('jobTitleInput').value='';
+  document.getElementById('companyInput').value=''; document.getElementById('phoneRegInput').value='';
   showScreen('authEmail');
 });
 document.getElementById('changePinRow').addEventListener('click', ()=>{
