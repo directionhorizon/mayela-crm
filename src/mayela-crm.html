@@ -185,7 +185,7 @@
     <div class="screen center-screen" id="authOtp">
       <div class="badge64">✉️</div>
       <div class="stitle">Code reçu par e-mail</div>
-      <div class="ssub" id="otpSentTo">Entrez le code à 6 chiffres envoyé.</div>
+      <div class="ssub" id="otpSentTo">Cliquez le lien reçu par e-mail, ou entrez le code s'il y en a un.</div>
       <input class="field" type="text" inputmode="numeric" id="otpInput" placeholder="123456" maxlength="6" style="text-align:center; letter-spacing:6px; font-family:'IBM Plex Mono';">
       <button class="btn" id="verifyOtpBtn">Valider</button>
       <div class="err-msg" id="authOtpErr"></div>
@@ -398,11 +398,24 @@ function daysAgo(dateStr){ if(!dateStr) return null; const d=(new Date()-new Dat
 function fmtDate(d){ if(!d) return '–'; return new Date(d).toLocaleDateString('fr-FR'); }
 
 // ================== BOOT ==================
+let sessionHandled = false;
+
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
-  if(session){ await afterLogin(); } else { showScreen('authEmail'); }
+  if(session){ sessionHandled = true; await afterLogin(); } else { showScreen('authEmail'); }
 }
 boot();
+
+// Détecte la connexion qu'elle vienne du lien magique reçu par e-mail (mail_type: magic_link
+// côté Supabase) OU de la saisie manuelle du code à 6 chiffres. Sans ceci, un clic sur le lien
+// magique ne redirige jamais vers l'app : rien n'écoutait cet événement.
+sb.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_IN' && session && !sessionHandled){
+    sessionHandled = true;
+    afterLogin();
+  }
+  if(event === 'SIGNED_OUT'){ sessionHandled = false; }
+});
 
 // ================== EMAIL DROPDOWN (Google / Outlook) ==================
 const emailWrap = document.getElementById('emailWrap');
@@ -480,7 +493,8 @@ document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
   const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type:'email' });
   btn.disabled = false; btn.textContent = "Valider";
   if(error){ errEl.textContent = "Code incorrect ou expiré."; return; }
-  await afterLogin();
+  // Filet de sécurité : normalement onAuthStateChange (SIGNED_IN) prend déjà le relais.
+  if(!sessionHandled){ sessionHandled = true; await afterLogin(); }
 });
 
 // ================== AFTER LOGIN ==================
