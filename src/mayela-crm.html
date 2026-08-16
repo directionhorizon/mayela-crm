@@ -208,8 +208,8 @@
     <div class="screen center-screen" id="authOtp">
       <div class="badge64">✉️</div>
       <div class="stitle">Code reçu par e-mail</div>
-      <div class="ssub" id="otpSentTo">Entrez le code à 6 chiffres reçu par e-mail.</div>
-      <input class="field" type="text" inputmode="numeric" id="otpInput" placeholder="123456" maxlength="6" style="text-align:center; letter-spacing:6px; font-family:'IBM Plex Mono';">
+      <div class="ssub" id="otpSentTo">Entrez le code reçu par e-mail.</div>
+      <input class="field" type="text" inputmode="numeric" id="otpInput" placeholder="Code reçu par e-mail" maxlength="10" style="text-align:center; letter-spacing:4px; font-family:'IBM Plex Mono';">
       <button class="btn" id="verifyOtpBtn">Valider</button>
       <div class="err-msg" id="authOtpErr"></div>
       <span class="link-sm" id="backToEmail">← changer d'e-mail</span>
@@ -511,7 +511,7 @@ document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
   const token = document.getElementById('otpInput').value.trim();
   const errEl = document.getElementById('authOtpErr');
   errEl.textContent = "";
-  if(token.length !== 6){ errEl.textContent = "Code à 6 chiffres."; return; }
+  if(token.length < 6){ errEl.textContent = "Code trop court."; return; }
   const btn = document.getElementById('verifyOtpBtn'); btn.disabled = true; btn.textContent = "Vérification…";
   const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type:'email' });
   btn.disabled = false; btn.textContent = "Valider";
