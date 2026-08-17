@@ -371,7 +371,7 @@
         <div class="section-title">Compte</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
-          <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl">Changer le code PIN</div><span class="val">→</span></div>
+          <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
           <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter</div><span class="val">→</span></div>
         </div>
       </div>
@@ -545,9 +545,13 @@ async function afterLogin(){
     }
   }
   profile = prof;
-  if(!profile.pin_hash){ pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); showScreen('setPin'); return; }
-  buildKeypad('keypad', onVerifyPinDigit);
-  showScreen('lock');
+  if(profile.pin_hash){
+    buildKeypad('keypad', onVerifyPinDigit);
+    showScreen('lock');
+    return;
+  }
+  // Pas de PIN configuré : accès direct à l'app. Le PIN reste disponible en option dans Réglages.
+  await afterPinOk();
 }
 
 // ================== PIN ==================
@@ -642,6 +646,7 @@ document.body.addEventListener('click', (e)=>{
 // ================== LOAD EVERYTHING ==================
 async function loadEverything(){
   document.getElementById('hello').textContent = 'Bonjour, ' + (profile.full_name || 'vous');
+  document.getElementById('pinRowLbl').textContent = profile.pin_hash ? 'Changer le code PIN' : 'Activer un code PIN (optionnel)';
   const { data: clients } = await sb.from('clients').select('*').order('created_at', { ascending:false });
   clientsCache = clients || [];
   document.getElementById('clientCount').textContent = clientsCache.length;
