@@ -218,6 +218,7 @@
 
     <!-- SET PIN (first login) -->
     <div class="screen center-screen" id="setPin">
+      <div class="back" id="backFromSetPin" style="position:absolute; top:0; left:0;">← Retour</div>
       <div class="badge64">🔐</div>
       <div class="stitle">Créez votre code PIN</div>
       <div class="ssub">Ce code verrouille l'app localement sur cet appareil. 4 chiffres.</div>
@@ -1119,6 +1120,11 @@ document.getElementById('changePinRow').addEventListener('click', ()=>{
   pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); renderPinDots('setPinDots',0);
   document.getElementById('appShell').classList.add('hidden');
   showScreen('setPin');
+});
+document.getElementById('backFromSetPin').addEventListener('click', ()=>{
+  document.getElementById('appShell').classList.remove('hidden');
+  document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='settings'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav==='settings'));
 });
 </script>
 </body>
