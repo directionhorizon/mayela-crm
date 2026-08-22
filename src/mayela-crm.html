@@ -145,8 +145,9 @@
   .info-row{ display:flex; justify-content:space-between; font-size:12.5px; padding:6px 0; border-bottom:1px solid var(--line); }
   .info-row:last-child{ border-bottom:none; }
   .info-row span:first-child{ color:var(--sage); }
-  .tab-row{ display:flex; gap:6px; padding:0 20px 10px; }
-  .tab-btn{ flex:1; font-size:10.5px; padding:8px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--sage); cursor:pointer; font-family:'Work Sans';}
+  .tab-row{ display:flex; gap:6px; padding:0 20px 10px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tab-row::-webkit-scrollbar{ display:none; }
+  .tab-btn{ flex-shrink:0; white-space:nowrap; font-size:11px; padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--sage); cursor:pointer; font-family:'Work Sans';}
   .tab-btn.active{ background:var(--panel-2); color:var(--text); border-color:var(--gold); }
   .tab-panel{ display:none; padding:0 20px 8px; }
   .tab-panel.active{ display:block; }
@@ -265,6 +266,7 @@
         </div>
         <div class="section-title">À relancer <a data-nav="ia">Voir le conseiller →</a></div>
         <div class="card-list" id="relanceList"></div>
+        <div class="section-title" style="padding-top:6px;">Catalogue <a data-nav="produits">Produits & services →</a></div>
         <div style="height:14px;"></div>
       </div>
 
@@ -302,6 +304,20 @@
         </div>
       </div>
 
+      <!-- PRODUITS & SERVICES -->
+      <div class="screen" id="produits">
+        <div class="back" data-nav="dashboard">← Accueil</div>
+        <div class="section-title">Produits & services</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <input class="field" id="newProduitNom" placeholder="Nom du produit ou service">
+          <input class="field" id="newProduitPrix" type="number" placeholder="Prix par défaut (FCFA, optionnel)">
+          <button class="btn" id="addProduitBtn">Ajouter au catalogue</button>
+          <div class="err-msg" id="produitErr"></div>
+        </div>
+        <div id="produitsListWrap" class="card-list" style="padding-top:10px;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
       <!-- FICHE CLIENT -->
       <div class="screen" id="fiche">
         <div class="back" data-nav="clients">← Clients</div>
@@ -317,13 +333,14 @@
         <div class="tab-row">
           <button class="tab-btn active" data-tab="tabInteractions">Interactions</button>
           <button class="tab-btn" data-tab="tabAchats">Achats</button>
+          <button class="tab-btn" data-tab="tabCreances">Créance</button>
           <button class="tab-btn" data-tab="tabTasks">Tâches</button>
           <button class="tab-btn" data-tab="tabDevis">Devis</button>
         </div>
         <div class="tab-panel active" id="tabInteractions">
           <div id="interactionsList"></div>
           <div class="add-inline">
-            <select id="newIntType"><option value="appel">Appel</option><option value="whatsapp">WhatsApp</option><option value="visite">Visite</option><option value="autre">Autre</option></select>
+            <select id="newIntType"><option value="appel">Appel</option><option value="whatsapp">WhatsApp</option><option value="visite">Visite</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option><option value="autre">Autre</option></select>
             <input id="newIntNote" placeholder="Note rapide…">
             <button id="addIntBtn">+</button>
           </div>
@@ -331,19 +348,38 @@
         <div class="tab-panel" id="tabAchats">
           <div id="achatsList"></div>
           <div class="add-inline">
+            <select id="achatProduitSelect"><option value="">Produit/service…</option></select>
+          </div>
+          <div class="add-inline">
             <input id="newAchatMontant" type="number" placeholder="Montant FCFA">
             <button id="addAchatBtn">+</button>
+          </div>
+        </div>
+        <div class="tab-panel" id="tabCreances">
+          <div id="creancesList"></div>
+          <div class="add-inline">
+            <select id="creanceProduitSelect"><option value="">Produit/service…</option></select>
+          </div>
+          <div class="add-inline">
+            <input id="newCreanceMontant" type="number" placeholder="Montant dû (FCFA)">
+            <button id="addCreanceBtn">+</button>
           </div>
         </div>
         <div class="tab-panel" id="tabTasks">
           <div id="tasksList"></div>
           <div class="add-inline">
-            <input id="newTaskDate" type="date">
+            <input id="newTaskLabel" placeholder="Tâche (ex: Relancer pour le devis)">
+          </div>
+          <div class="add-inline">
+            <input id="newTaskDate" type="date" onfocus="this.showPicker && this.showPicker()">
             <button id="addTaskBtn">+</button>
           </div>
         </div>
         <div class="tab-panel" id="tabDevis">
           <div id="devisList"></div>
+          <div class="add-inline">
+            <select id="devisProduitSelect"><option value="">Produit/service…</option></select>
+          </div>
           <div class="add-inline">
             <input id="newDevisMontant" type="number" placeholder="Montant FCFA">
             <button id="addDevisBtn">+</button>
@@ -359,6 +395,20 @@
           Version 1 : recommandations basées uniquement sur vos données saisies (contacts, achats, délais).
         </div>
         <div id="iaCards" class="card-list"></div>
+        <div class="section-title">Conseiller MAYELA</div>
+        <div style="display:flex; justify-content:center; padding:6px 0 4px;">
+          <div style="width:84px; height:84px; border-radius:50%; background:linear-gradient(160deg, #3a2a1a, #1D3B33); display:flex; align-items:center; justify-content:center; font-size:36px; border:2px solid var(--gold);">🧑🏾‍💼</div>
+        </div>
+        <div id="iaChatLog" style="padding:6px 20px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
+        <div style="padding:10px 20px 4px;">
+          <input type="file" id="iaFileInput" accept=".txt,.csv,.pdf,.md" class="hidden">
+          <div class="add-inline">
+            <button type="button" id="iaAttachBtn" style="background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer;">📎</button>
+            <input id="iaMsgInput" placeholder="Posez votre question au conseiller…">
+            <button id="iaSendBtn">Envoyer</button>
+          </div>
+          <div class="err-msg" id="iaFileName"></div>
+        </div>
       </div>
 
       <!-- SETTINGS -->
@@ -366,13 +416,15 @@
         <div class="topbar"><h1>Réglages</h1></div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
+          <div class="set-row" id="renameOrgRow" style="cursor:pointer;"><div class="lbl">Renommer l'espace</div><span class="val">→</span></div>
+          <div class="set-row hidden" id="allowTeamRenameRow" style="cursor:pointer;"><div class="lbl">Autoriser l'équipe à renommer<small>Sinon, seul vous pouvez le faire</small></div><span class="val" id="allowTeamRenameVal">→</span></div>
           <div class="set-row"><div class="lbl">Code d'invitation<small>À partager avec votre équipe</small></div><span class="val" id="setOrgCode">–</span></div>
         </div>
         <div class="section-title">Compte</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
           <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
-          <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter</div><span class="val">→</span></div>
+          <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
         </div>
       </div>
 
@@ -401,6 +453,8 @@ let profile = null;
 let clientsCache = [];
 let currentStage = "Tous";
 let currentClientId = null;
+let produitsCache = [];
+let currentOrg = null;
 let pinBuffer = "";
 let pinMode = "verify"; // 'verify' | 'set'
 
@@ -641,6 +695,31 @@ document.body.addEventListener('click', (e)=>{
   const target = nav.dataset.nav;
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id===target));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
+  if(target === 'produits') loadProduits();
+  if(target === 'ia') loadIaHistory();
+});
+async function loadProduits(){
+  const { data } = await sb.from('produits_services').select('*').order('created_at', { ascending:false });
+  const list = data || [];
+  document.getElementById('produitsListWrap').innerHTML = list.length ? list.map(p=>`
+    <div class="relance-card"><div><div class="name">${p.nom}</div><div class="meta">${p.prix_defaut ? fmtFCFA(p.prix_defaut) : 'Prix variable'}</div></div><span class="link-sm" data-del-produit="${p.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun produit/service enregistré.</div>`;
+}
+document.getElementById('addProduitBtn').addEventListener('click', async ()=>{
+  const nom = document.getElementById('newProduitNom').value.trim();
+  const prix = document.getElementById('newProduitPrix').value;
+  const errEl = document.getElementById('produitErr');
+  errEl.textContent = '';
+  if(!nom){ errEl.textContent = "Entrez un nom."; return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  const { error } = await sb.from('produits_services').insert({ nom, prix_defaut: prix||null, owner_user_id:user.id, org_id: profile.org_id });
+  if(error){ errEl.textContent = error.message; return; }
+  document.getElementById('newProduitNom').value = ''; document.getElementById('newProduitPrix').value = '';
+  loadProduits();
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-produit]'); if(!del) return;
+  await sb.from('produits_services').delete().eq('id', del.dataset.delProduit);
+  loadProduits();
 });
 
 // ================== LOAD EVERYTHING ==================
@@ -657,7 +736,14 @@ async function loadEverything(){
   document.getElementById('setEmail').textContent = (await sb.auth.getUser()).data.user.email;
   document.getElementById('setOrgName').textContent = 'Chargement…';
   const { data: org } = await sb.from('organizations').select('*').eq('id', profile.org_id).maybeSingle();
-  if(org){ document.getElementById('setOrgName').textContent = org.name; document.getElementById('setOrgCode').textContent = org.join_code; }
+  currentOrg = org || null;
+  if(org){
+    document.getElementById('setOrgName').textContent = org.name; document.getElementById('setOrgCode').textContent = org.join_code;
+    const { data:{ user } } = await sb.auth.getUser();
+    const isCreator = org.created_by === user.id;
+    document.getElementById('allowTeamRenameRow').classList.toggle('hidden', !isCreator);
+    document.getElementById('allowTeamRenameVal').textContent = org.members_can_rename ? 'Activé' : 'Désactivé';
+  }
   else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
 }
 
@@ -754,25 +840,49 @@ async function openFiche(id){
 
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='fiche'));
 
-  const [{data:interactions}, {data:achats}, {data:tasks}, {data:devis}] = await Promise.all([
+  const [{data:interactions}, {data:achats}, {data:tasks}, {data:devis}, {data:creances}, {data:produits}] = await Promise.all([
     sb.from('interactions').select('*').eq('client_id', id).order('occurred_at', { ascending:false }),
     sb.from('achats').select('*').eq('client_id', id).order('achat_date', { ascending:false }),
     sb.from('tasks').select('*').eq('client_id', id).order('due_date', { ascending:true }),
     sb.from('devis').select('*').eq('client_id', id).order('devis_date', { ascending:false }),
+    sb.from('creances').select('*').eq('client_id', id).order('created_at', { ascending:false }),
+    sb.from('produits_services').select('*').eq('actif', true).order('nom'),
   ]);
 
+  produitsCache = produits || [];
+  const optsHtml = '<option value="">Produit/service…</option>' + produitsCache.map(p=>`<option value="${p.id}" data-prix="${p.prix_defaut||''}">${p.nom}</option>`).join('');
+  ['achatProduitSelect','devisProduitSelect','creanceProduitSelect'].forEach(selId=>{
+    document.getElementById(selId).innerHTML = optsHtml;
+  });
+  const produitNom = (pid)=> produitsCache.find(p=>p.id===pid)?.nom || null;
+
   document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>`
-    <div class="mini-row"><div><div class="t1">${i.type}</div><div class="t2">${i.note||''}</div></div><div class="t2">${fmtDate(i.occurred_at)}</div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
+    <div class="mini-row"><div><div class="t1">${i.type}</div><div class="t2">${i.note||''}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
 
   document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>`
-    <div class="mini-row"><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${fmtDate(a.achat_date)}</div></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${produitNom(a.produit_id) || 'Sans produit précisé'} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
 
-  document.getElementById('tasksList').innerHTML = (tasks&&tasks.length) ? tasks.map(t=>`
-    <div class="mini-row"><div><div class="t1" style="${t.status==='fait'?'opacity:.4; text-decoration:line-through;':''}">Échéance ${fmtDate(t.due_date)}</div></div>
-    <span class="link-sm" data-toggle-task="${t.id}" data-status="${t.status}">${t.status==='fait'?'Fait ✓':'Marquer fait'}</span></div>`).join('') : `<div class="empty">Aucune tâche.</div>`;
+  document.getElementById('creancesList').innerHTML = (creances&&creances.length) ? creances.map(cr=>`
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(cr.montant)}</div><div class="t2">${produitNom(cr.produit_id) || 'Sans produit précisé'} · ${cr.statut==='payee'?'Payée':'Due'} · ${fmtDate(cr.created_at)}</div></div><div style="display:flex; gap:8px; align-items:center;">${cr.statut!=='payee'?`<span class="link-sm" data-pay-creance="${cr.id}">Marquer payée</span>`:''}<span class="link-sm" data-del-creance="${cr.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune créance.</div>`;
+
+  document.getElementById('tasksList').innerHTML = (tasks&&tasks.length) ? tasks.map(t=>{
+    const isFait = t.status === 'fait';
+    const isReporte = t.status === 'reporte';
+    return `<div class="mini-row" style="flex-direction:column; align-items:stretch; gap:6px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div><div class="t1" style="${isFait?'opacity:.4; text-decoration:line-through;':''}">${t.libelle || 'Tâche'}</div><div class="t2">${isReporte?'Reporté au ':'Échéance '}${fmtDate(t.due_date)}</div></div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${!isFait ? `<span class="link-sm" data-toggle-task="${t.id}" data-status="${t.status}">Marquer fait</span>` : `<span class="t2">Fait ✓</span>`}
+          ${!isFait ? `<span class="link-sm" data-reporter-task="${t.id}">Reporter</span>` : ''}
+          <span class="link-sm" data-del-task="${t.id}" title="Supprimer">✕</span>
+        </div>
+      </div>
+      <input type="date" class="hidden" id="reportDate-${t.id}" data-report-input="${t.id}" style="background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:6px; font-size:11px; color:var(--text);">
+    </div>`;
+  }).join('') : `<div class="empty">Aucune tâche.</div>`;
 
   document.getElementById('devisList').innerHTML = (devis&&devis.length) ? devis.map(d=>`
-    <div class="mini-row"><div class="t1">${fmtFCFA(d.montant)}</div><div class="t2">${fmtDate(d.devis_date)}</div></div>`).join('') : `<div class="empty">Aucun devis.</div>`;
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(d.montant)}</div><div class="t2">${produitNom(d.produit_id) || 'Sans produit précisé'} · ${fmtDate(d.devis_date)}</div></div><span class="link-sm" data-del-devis="${d.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun devis.</div>`;
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -792,30 +902,101 @@ document.getElementById('addIntBtn').addEventListener('click', async ()=>{
   await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   openFiche(currentClientId);
 });
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-int]'); if(!del) return;
+  await sb.from('interactions').delete().eq('id', del.dataset.delInt);
+  openFiche(currentClientId);
+});
+document.getElementById('achatProduitSelect').addEventListener('change', (e)=>{
+  const prix = e.target.selectedOptions[0]?.dataset.prix;
+  if(prix){ document.getElementById('newAchatMontant').value = prix; }
+});
 document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
   const montant = document.getElementById('newAchatMontant').value;
+  const produitId = document.getElementById('achatProduitSelect').value || null;
   if(!montant){ return; }
-  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant) });
+  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId });
   if(error){ toast(error.message, true); return; }
   document.getElementById('newAchatMontant').value = '';
+  document.getElementById('achatProduitSelect').value = '';
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-achat]'); if(!del) return;
+  await sb.from('achats').delete().eq('id', del.dataset.delAchat);
+  openFiche(currentClientId);
+});
+
+document.getElementById('creanceProduitSelect').addEventListener('change', (e)=>{
+  const prix = e.target.selectedOptions[0]?.dataset.prix;
+  if(prix){ document.getElementById('newCreanceMontant').value = prix; }
+});
+document.getElementById('addCreanceBtn').addEventListener('click', async ()=>{
+  const montant = document.getElementById('newCreanceMontant').value;
+  const produitId = document.getElementById('creanceProduitSelect').value || null;
+  if(!montant){ return; }
+  const { error } = await sb.from('creances').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, statut:'due' });
+  if(error){ toast(error.message, true); return; }
+  document.getElementById('newCreanceMontant').value = '';
+  document.getElementById('creanceProduitSelect').value = '';
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const pay = e.target.closest('[data-pay-creance]'); if(!pay) return;
+  await sb.from('creances').update({ statut:'payee' }).eq('id', pay.dataset.payCreance);
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-creance]'); if(!del) return;
+  await sb.from('creances').delete().eq('id', del.dataset.delCreance);
   openFiche(currentClientId);
 });
 document.getElementById('addTaskBtn').addEventListener('click', async ()=>{
   const due = document.getElementById('newTaskDate').value;
+  const libelle = document.getElementById('newTaskLabel').value.trim();
   if(!due){ return; }
   const { data:{ user } } = await sb.auth.getUser();
-  const { error } = await sb.from('tasks').insert({ client_id: currentClientId, due_date: due, created_by: user.id });
+  const { error } = await sb.from('tasks').insert({ client_id: currentClientId, due_date: due, libelle: libelle||null, created_by: user.id });
   if(error){ toast(error.message, true); return; }
   document.getElementById('newTaskDate').value = '';
+  document.getElementById('newTaskLabel').value = '';
   openFiche(currentClientId);
+});
+document.body.addEventListener('click', (e)=>{
+  const rep = e.target.closest('[data-reporter-task]'); if(!rep) return;
+  const input = document.querySelector(`[data-report-input="${rep.dataset.reporterTask}"]`);
+  input.classList.remove('hidden');
+  if(input.showPicker){ input.showPicker(); } else { input.focus(); }
+});
+document.body.addEventListener('change', async (e)=>{
+  const input = e.target.closest('[data-report-input]'); if(!input) return;
+  if(!input.value) return;
+  await sb.from('tasks').update({ status:'reporte', due_date: input.value }).eq('id', input.dataset.reportInput);
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-task]'); if(!del) return;
+  await sb.from('tasks').delete().eq('id', del.dataset.delTask);
+  openFiche(currentClientId);
+});
+document.getElementById('devisProduitSelect').addEventListener('change', (e)=>{
+  const prix = e.target.selectedOptions[0]?.dataset.prix;
+  if(prix){ document.getElementById('newDevisMontant').value = prix; }
 });
 document.getElementById('addDevisBtn').addEventListener('click', async ()=>{
   const montant = document.getElementById('newDevisMontant').value;
+  const produitId = document.getElementById('devisProduitSelect').value || null;
   if(!montant){ return; }
   const { data:{ user } } = await sb.auth.getUser();
-  const { error } = await sb.from('devis').insert({ client_id: currentClientId, montant: Number(montant), created_by: user.id });
+  const { error } = await sb.from('devis').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, created_by: user.id });
   if(error){ toast(error.message, true); return; }
   document.getElementById('newDevisMontant').value = '';
+  document.getElementById('devisProduitSelect').value = '';
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-devis]'); if(!del) return;
+  await sb.from('devis').delete().eq('id', del.dataset.delDevis);
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
@@ -840,9 +1021,6 @@ function renderIA(){
       title: stalled.length + " négociation(s) sans nouvelles depuis 15+ jours",
       body: "Priorisez : " + stalled.map(c=>c.name).join(', ') + "." });
   }
-  cards.push({ warn:false, badge:'v2 à venir',
-    title:'Tendances de marché externes : pas encore disponibles',
-    body:"Cette version s'appuie uniquement sur vos données internes, pour rester fiable et vérifiable." });
   document.getElementById('iaCards').innerHTML = cards.map(c=>`
     <div class="relance-card" style="border-left-color:${c.warn?'var(--clay)':'var(--gold)'}; flex-direction:column; align-items:flex-start; gap:4px;">
       <div style="font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:${c.warn?'#E8926F':'#7BC79A'}">${c.badge}</div>
@@ -850,6 +1028,60 @@ function renderIA(){
       <div class="meta">${c.body}</div>
     </div>`).join('') || `<div class="empty">Rien à signaler.</div>`;
 }
+
+// ================== CONSEILLER IA (chat) ==================
+let iaPendingFile = null;
+
+function iaAppendBubble(role, text){
+  const log = document.getElementById('iaChatLog');
+  const bubble = document.createElement('div');
+  bubble.style.cssText = `align-self:${role==='user'?'flex-end':'flex-start'}; max-width:85%; background:${role==='user'?'var(--gold)':'var(--panel)'}; color:${role==='user'?'#1a1305':'var(--text)'}; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:12px; line-height:1.4;`;
+  bubble.textContent = text;
+  log.appendChild(bubble);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function loadIaHistory(){
+  const { data } = await sb.from('ia_messages').select('role, content').order('created_at', { ascending:true }).limit(30);
+  document.getElementById('iaChatLog').innerHTML = '';
+  (data||[]).forEach(m=> iaAppendBubble(m.role, m.content));
+}
+
+document.getElementById('iaAttachBtn').addEventListener('click', ()=> document.getElementById('iaFileInput').click());
+document.getElementById('iaFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 300000){ document.getElementById('iaFileName').textContent = "Fichier trop volumineux (max ~300 Ko)."; return; }
+  iaPendingFile = await file.text().catch(()=>null);
+  document.getElementById('iaFileName').textContent = iaPendingFile ? `Joint : ${file.name}` : "Impossible de lire ce fichier.";
+});
+
+async function sendIaMessage(){
+  const input = document.getElementById('iaMsgInput');
+  const msg = input.value.trim();
+  if(!msg) return;
+  iaAppendBubble('user', msg);
+  input.value = '';
+  const btn = document.getElementById('iaSendBtn'); btn.disabled = true; btn.textContent = '…';
+  try{
+    const { data: sessionData } = await sb.auth.getSession();
+    const res = await fetch(SUPABASE_URL + '/functions/v1/ia-conseiller', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + sessionData.session.access_token },
+      body: JSON.stringify({ message: msg, fileText: iaPendingFile })
+    });
+    const out = await res.json();
+    iaAppendBubble('assistant', out.reply || "Erreur de réponse.");
+  }catch(err){
+    iaAppendBubble('assistant', "Impossible de joindre le conseiller pour le moment.");
+  }
+  iaPendingFile = null;
+  document.getElementById('iaFileName').textContent = '';
+  document.getElementById('iaFileInput').value = '';
+  btn.disabled = false; btn.textContent = 'Envoyer';
+}
+document.getElementById('iaSendBtn').addEventListener('click', sendIaMessage);
+document.getElementById('iaMsgInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendIaMessage(); });
 
 // ================== SETTINGS ==================
 document.getElementById('logoutRow').addEventListener('click', async ()=>{
@@ -860,6 +1092,28 @@ document.getElementById('logoutRow').addEventListener('click', async ()=>{
   document.getElementById('fullNameInput').value=''; document.getElementById('jobTitleInput').value='';
   document.getElementById('companyInput').value=''; document.getElementById('phoneRegInput').value='';
   showScreen('authEmail');
+});
+document.getElementById('renameOrgRow').addEventListener('click', async ()=>{
+  if(!currentOrg){ toast("Aucun espace à renommer.", true); return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  const canRename = currentOrg.created_by === user.id || currentOrg.members_can_rename;
+  if(!canRename){ toast("Seul le créateur de l'espace peut le renommer.", true); return; }
+  const newName = window.prompt("Nouveau nom de l'espace :", currentOrg.name);
+  if(!newName || !newName.trim()) return;
+  const { error } = await sb.from('organizations').update({ name: newName.trim() }).eq('id', currentOrg.id);
+  if(error){ toast(error.message, true); return; }
+  currentOrg.name = newName.trim();
+  document.getElementById('setOrgName').textContent = newName.trim();
+  toast('Espace renommé.');
+});
+document.getElementById('allowTeamRenameRow').addEventListener('click', async ()=>{
+  if(!currentOrg) return;
+  const newVal = !currentOrg.members_can_rename;
+  const { error } = await sb.from('organizations').update({ members_can_rename: newVal }).eq('id', currentOrg.id);
+  if(error){ toast(error.message, true); return; }
+  currentOrg.members_can_rename = newVal;
+  document.getElementById('allowTeamRenameVal').textContent = newVal ? 'Activé' : 'Désactivé';
+  toast(newVal ? "Équipe autorisée à renommer l'espace." : "Autorisation retirée.");
 });
 document.getElementById('changePinRow').addEventListener('click', ()=>{
   pinMode='set'; buildKeypad('setPinKeypad', onSetPinDigit); renderPinDots('setPinDots',0);
