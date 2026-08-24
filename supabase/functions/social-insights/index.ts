@@ -1,7 +1,9 @@
 // Edge Function "social-insights" — MAYELA CRM
-// Analyse d'audience de la Page Facebook connectée (Graph API Insights).
+// Analyse d'audience : Page Facebook connectée (Graph API Insights) + stats de base du compte TikTok.
 // Appel : GET /functions/v1/social-insights (Authorization: Bearer <access_token>)
-// Retour : abonnés, portée/impressions/engagements 28 j, villes, âge+genre.
+// Retour : Facebook → abonnés, portée/impressions/engagements 28 j, villes, âge+genre.
+//          TikTok   → bloc "tiktok" { display_name, follower_count, likes_count, video_count }.
+//          Les deux sont indépendants : l'absence de l'un n'empêche jamais l'autre.
 //
 // Le token Page est lu depuis social_accounts.config côté serveur :
 // il ne transite JAMAIS vers le navigateur. Aucun changement de schéma requis :
@@ -22,6 +24,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
+const TIKTOK_API = "https://open.tiktokapis.com/v2";
 
 async function graph(path: string, token: string): Promise<Record<string, unknown>> {
   const sep = path.includes("?") ? "&" : "?";
@@ -129,8 +132,93 @@ Deno.serve(async (req: Request) => {
     warnings.push(`Tranches d'âge indisponibles : ${e.message}`);
   }
 
+  // ---- TikTok : stats de base du compte connecté (jamais bloquant pour Facebook) ----
+  let tiktok: {
+    display_name: string;
+    follower_count: number | null;
+    following_count: number | null;
+    likes_count: number | null;
+    video_count: number | null;
+  } | null = null;
+
+  const { data: ttAcc } = await sb.from("social_accounts")
+    .select("id, config, display_name")
+    .eq("platform", "tiktok")
+    .maybeSingle();
+
+  if (ttAcc) {
+    const ttCfg = (ttAcc.config ?? {}) as Record<string, unknown>;
+    const ttKey = ttCfg?.client_key as string | undefined;
+    const ttSecret = ttCfg?.client_secret as string | undefined;
+    let token = ttCfg?.access_token as string | undefined;
+
+    if (ttKey && ttSecret && token) {
+      // Renouvellement silencieux si le token est expiré (access_token ~24 h)
+      if (typeof ttCfg?.expires_at === "number" && Date.now() > ttCfg.expires_at) {
+        try {
+          const tr = await fetch(`${TIKTOK_API}/oauth/token/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_key: ttKey,
+              client_secret: ttSecret,
+              grant_type: "refresh_token",
+              refresh_token: String(ttCfg.refresh_token ?? ""),
+            }),
+          });
+          const tj = await tr.json().catch(() => null);
+          if (tj?.access_token) {
+            token = String(tj.access_token);
+            await sb.from("social_accounts").update({
+              config: {
+                ...ttCfg,
+                access_token: token,
+                refresh_token: String(tj.refresh_token ?? ttCfg.refresh_token ?? ""),
+                expires_at: Date.now() + Number(tj.expires_in ?? 86400) * 1000 - 60_000,
+              },
+            }).eq("id", ttAcc.id);
+          } else {
+            warnings.push("Session TikTok expirée : reconnectez le compte (carte TikTok).");
+            token = undefined;
+          }
+        } catch (_e) {
+          warnings.push("Session TikTok expirée : reconnectez le compte (carte TikTok).");
+          token = undefined;
+        }
+      }
+
+      if (token) {
+        try {
+          // Scope user.info.basic, déjà demandé lors de la connexion TikTok.
+          const ur = await fetch(
+            `${TIKTOK_API}/user/info/?fields=follower_count,following_count,likes_count,video_count`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          const uj = await ur.json().catch(() => null);
+          const u = uj?.data?.user as Record<string, unknown> | undefined;
+          if (u) {
+            const num = (v: unknown) => (typeof v === "number" ? v : null);
+            tiktok = {
+              display_name: String(ttAcc.display_name || u.display_name || "Compte TikTok"),
+              follower_count: num(u.follower_count),
+              following_count: num(u.following_count),
+              likes_count: num(u.likes_count),
+              video_count: num(u.video_count),
+            };
+          } else if (uj?.error?.code === "access_token_invalid") {
+            warnings.push("Session TikTok invalide : reconnectez le compte (carte TikTok).");
+          } else {
+            warnings.push(`Stats TikTok indisponibles : ${uj?.error?.message ?? "réponse inattendue"}`);
+          }
+        } catch (e) {
+          warnings.push(`Stats TikTok indisponibles : ${(e as Error).message}`);
+        }
+      }
+    }
+  }
+
   const allFailed =
-    followers === null && impressions_28d === null && cities.length === 0 && Object.keys(age_gender).length === 0;
+    followers === null && impressions_28d === null && cities.length === 0 && Object.keys(age_gender).length === 0 && !tiktok;
   if (allFailed) return json({ error: warnings[0] ?? "graph_unreachable" }, 502);
 
   return json({
@@ -141,6 +229,7 @@ Deno.serve(async (req: Request) => {
     engagements_28d,
     cities,
     age_gender,
+    tiktok,
     warnings,
   });
 });

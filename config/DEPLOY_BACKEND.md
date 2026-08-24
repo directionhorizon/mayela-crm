@@ -29,22 +29,25 @@ Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 
 ---
 
-## Étape 3 — Déployer les 3 Edge Functions
+## Étape 3 — Déployer les 4 Edge Functions
 
 Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
-`supabase/functions/social-publish/index.ts` et
+`supabase/functions/social-publish/index.ts`,
+`supabase/functions/social-tiktok/index.ts` et
 `supabase/functions/social-insights/index.ts`.
 
 ### Option A — Dashboard (sans CLI)
 1. Dashboard Supabase → **Edge Functions** → **Create a new function** / **Create function**
 2. Nom : `ia-conseiller` → coller le contenu de `supabase/functions/ia-conseiller/index.ts` → **Deploy**
 3. Refaire : nom `social-publish` → contenu de `supabase/functions/social-publish/index.ts` → **Deploy**
-4. Refaire : nom `social-insights` → contenu de `supabase/functions/social-insights/index.ts` → **Deploy**
+4. Refaire : nom `social-tiktok` → contenu de `supabase/functions/social-tiktok/index.ts` → **Deploy**
+5. Refaire : nom `social-insights` → contenu de `supabase/functions/social-insights/index.ts` → **Deploy**
 
 ### Option B — CLI (si installé)
 ```bash
 supabase functions deploy ia-conseiller --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-publish --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy social-tiktok --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-insights --project-ref ymqdmfsqtkmlmwffqskt
 ```
 
@@ -74,14 +77,68 @@ Pensez à le renouveler tous les ~60 jours.
 Le même token alimente l'**analyse d'audience** (onglet Réseaux → « Analyse d'audience » : abonnés,
 portée/impressions/engagements 28 jours, villes, âge et genre) via la fonction `social-insights`.
 La permission `pages_read_engagement` déjà demandée ci-dessus suffit.
+Si un compte TikTok est aussi connecté, la même analyse affiche en plus ses stats de base
+(abonnés, j'aime cumulés, publications) — les deux sources sont indépendantes.
 
 > Mode dev : les publications fonctionnent immédiatement sur VOTRE Page sans revue Meta.
 > La revue (`pages_manage_posts`) n'est nécessaire que si d'autres personnes doivent utiliser l'app avec leurs propres Pages.
 
-## WhatsApp & TikTok
+## Connecter TikTok (publication d'offres)
+
+À faire une seule fois, avec le compte TikTok de l'entreprise :
+
+1. https://developers.tiktok.com → créez une app (mode **Sandbox** : pas besoin de domaine vérifié ni de revue pour tester).
+2. Dans l'app → **Add products** :
+   - **Login Kit** → dans sa configuration, ajoutez le **Redirect URI** exact affiché par l'app MAYELA au moment de la connexion.
+     - Contraintes TikTok : URI **https**, statique, sans paramètres. Pinokio sert l'app aussi en HTTPS : utilisez `https://<PORT>.localhost/src/mayela-crm.html` (le même port que l'URL http locale). Si l'app est hébergée en ligne, utilisez son URL https complète.
+   - **Content Posting API** → activez **Direct Post**.
+3. Copiez la **Client Key** et le **Client Secret** de l'app.
+4. Dans l'app MAYELA → onglet **Réseaux** → carte **TikTok Business** → **Connecter** :
+   - confirmez le Redirect URI affiché,
+   - collez la Client Key, puis le Client Secret → redirection vers TikTok → autorisez l'accès.
+
+Le flux OAuth échange automatiquement le code contre les tokens (fonction `social-tiktok`),
+les stocke côté serveur (`social_accounts.config`) et les rafraîchit tout seul avant chaque publication
+(access_token ~24 h, refresh_token ~1 an).
+
+Le compte connecté alimente aussi l'**analyse d'audience** : `social-insights` renvoie ses stats de base
+via le scope `user.info.basic` déjà demandé à la connexion (abonnés, j'aime cumulés, nombre de publications).
+Les statistiques par publication précise ne sont pas exposées par l'API TikTok publique.
+
+### Limites actuelles de TikTok (à connaître)
+
+| Situation | Effet |
+|---|---|
+| App non auditée (Sandbox/dev) | Les publications sont **privées** (visibles seulement par le compte connecté) et limitées à quelques posts/24 h. L'API retente automatiquement en privé. |
+| Images via URL | TikTok exige un **domaine vérifié** dans le portail développeur pour récupérer les photos produit (`url_ownership_unverified`). Sans domaine vérifié, la publication photo est refusée — l'erreur exacte s'affiche dans l'app. |
+| Publication publique | Nécessite la **revue/audit** de l'app TikTok (Content Posting API) puis, pour les images, un domaine vérifié pointant vers vos visuels. |
+
+En pratique : la connexion fonctionne immédiatement ; la publication devient pleinement
+opérationnelle dès qu'un domaine possédé est vérifié dans le portail TikTok (ou après l'audit).
+
+## Activer « Continuer avec Google » (connexion en 1 clic)
+
+Le bouton existe déjà dans l'app ; il ne reste qu'à déclarer l'app chez Google puis Supabase.
+~10 minutes, à faire une seule fois :
+
+1. https://console.cloud.google.com → créez un projet (ou réutilisez-en un).
+2. Menu **API et services → Écran de consentement OAuth** :
+   - Type **Externe**, nom de l'app + e-mail de support → Enregistrer.
+   - Pendant les tests, ajoutez votre adresse dans **Utilisateurs test**.
+3. **API et services → Identifiants → Créer des identifiants → ID client OAuth** :
+   - Type : **Application Web**
+   - **URI de redirection autorisée** : `https://ymqdmfsqtkmlmwffqskt.supabase.co/auth/v1/callback`
+   - Notez le **Client ID** (finissant par `apps.googleusercontent.com`) et le **Client Secret**.
+4. Dashboard Supabase → **Authentication → Sign In / Providers → Google** :
+   - Activez le fournisseur, collez Client ID + Client Secret → **Save**.
+
+C'est tout. Dans l'app, « Continuer avec Google » crée automatiquement le compte et le profil
+(nom repris de Google, sans formulaire). Les utilisateurs sans Google gardent le parcours
+e-mail + code à 6 chiffres.
+
+## WhatsApp
 
 - **WhatsApp** : les boutons WhatsApp des fiches clients restent le canal quotidien. L'envoi automatisé exige WhatsApp Cloud API (numéro dédié + vérification Meta). Carte affichée « à configurer » dans l'app.
-- **TikTok** : la publication automatique exige l'approbation TikTok Content Posting API (revue séparée, plusieurs semaines). La carte est prête ; il suffira de compléter `social-publish` quand l'accès sera accordé.
 
 ---
 
@@ -93,4 +150,9 @@ La permission `pages_read_engagement` déjà demandée ci-dessus suffit.
 | Upload photo produit échoue | Migration non exécutée (bucket/policy manquants), ou espace org non créé |
 | Publication échoue « compte non connecté » | Carte Facebook non connectée |
 | Publication échoue avec message Graph API | Token expiré (~60 jours) ou permissions manquantes → regénérer |
+| TikTok : erreur à l'autorisation (redirect_uri) | Le Redirect URI collé dans le portail TikTok ne correspond pas exactement à celui affiché par l'app (https obligatoire, sans paramètres) |
+| TikTok : « Session expirée, reconnectez » | Refresh_token révoqué ou app TikTok recréée → Déconnecter puis Connecter à nouveau |
+| TikTok : publication refusée `url_ownership_unverified` / privée uniquement | Voir section « Limites actuelles de TikTok » ci-dessus |
 | Analyse d'audience vide ou en erreur | Fonction `social-insights` non déployée ; ou token sans `pages_read_engagement` / expiré → regénérer le token (étape « Connecter la Page Facebook ») |
+| Analyse d'audience : chiffres TikTok absents | Compte TikTok non connecté, ou fonction `social-insights` déployée avant sa mise à jour TikTok → redéployer |
+| Le bouton « Continuer avec Google » échoue | Fournisseur Google non activé dans Supabase (Authentication → Providers), ou URI de redirection absente chez Google |

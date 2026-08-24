@@ -434,17 +434,18 @@
       <div class="screen" id="social">
         <div class="topbar"><h1>Réseaux sociaux</h1></div>
         <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
         <div class="section-title">Publier une offre</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <textarea class="field" id="offerText" rows="3" placeholder="Texte de l'offre (promo, nouveauté…)" style="resize:none;"></textarea>
           <select class="field" id="offerProduit"></select>
           <img id="offerPreview" alt="" class="hidden" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px;">
-          <button class="btn" id="publishOfferBtn">Publier sur Facebook</button>
+          <button class="btn" id="publishOfferBtn">Publier l'offre</button>
           <div class="err-msg" id="offerErr"></div>
         </div>
         <div class="section-title">Analyse d'audience</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div></div>
+          <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div></div>
           <button class="btn-ghost" id="refreshInsightsBtn">📊 Analyser mon audience</button>
           <div class="err-msg" id="insightsErr"></div>
         </div>
@@ -814,7 +815,7 @@ document.body.addEventListener('click', async (e)=>{
 const PLATFORM_META = {
   facebook: { icon:'📘', label:'Page Facebook', hint:"Publication directe d'offres sur votre Page." },
   whatsapp: { icon:'💬', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
-  tiktok:   { icon:'🎵', label:'TikTok Business', hint:"Publication disponible après approbation TikTok Content Posting API." }
+  tiktok:   { icon:'🎵', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
 };
 let socialCache = [];
 async function loadSocial(){
@@ -827,7 +828,11 @@ async function loadSocial(){
   document.getElementById('socialAccounts').innerHTML = ['facebook','whatsapp','tiktok'].map(pl=>{
     const meta = PLATFORM_META[pl];
     const acc = socialCache.find(a=>a.platform===pl);
-    return `<div class="relance-card"><div><div class="name">${meta.icon} ${meta.label}${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}</div><div class="meta">${esc(meta.hint)}</div></div>${acc ? `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>` : `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`}</div>`;
+    let action;
+    if(acc && acc.config && acc.config.access_token) action = `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>`;
+    else if(acc) action = `<span class="link-sm" data-auth-social="${pl}">Autoriser</span>`;
+    else action = `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`;
+    return `<div class="relance-card"><div><div class="name">${meta.icon} ${meta.label}${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}</div><div class="meta">${esc(meta.hint)}</div></div>${action}</div>`;
   }).join('');
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${p.id}" data-img="${p.image_url||''}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
@@ -851,6 +856,16 @@ function renderInsights(d){
     [d.engagements_28d ?? '—', 'Engagements 28 j']
   ].map(k=>`<div class="kpi"><div class="num">${esc(String(k[0]))}</div><div class="lbl">${k[1]}</div></div>`).join('');
   let html = `<div class="kpi-grid" style="padding:0;">${kpis}</div>`;
+  if(d.tiktok){
+    const t = d.tiktok;
+    const tkpis = [
+      [t.follower_count ?? '—', 'Abonnés'],
+      [t.likes_count ?? '—', "J'aime cumulés"],
+      [t.video_count ?? '—', 'Publications']
+    ].map(k=>`<div class="kpi"><div class="num">${esc(String(k[0]))}</div><div class="lbl">${k[1]}</div></div>`).join('');
+    html += `<div style="color:var(--sage);font-size:11px;margin-top:6px;">TikTok${t.display_name ? ' · ' + esc(t.display_name) : ''}</div>`;
+    html += `<div class="kpi-grid" style="padding:0;">${tkpis}</div>`;
+  }
   const cities = d.cities || [];
   if(cities.length){
     const max = Math.max(...cities.map(c=>c.count||0),1);
@@ -884,8 +899,8 @@ async function loadSocialInsights(force){
   const errEl = document.getElementById('insightsErr');
   const btn = document.getElementById('refreshInsightsBtn');
   errEl.textContent = '';
-  if(!socialCache.some(a=>a.platform==='facebook')){
-    body.innerHTML = '<div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div>';
+  if(!socialCache.some(a=>a.platform==='facebook') && !socialCache.some(a=>a.platform==='tiktok')){
+    body.innerHTML = '<div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div>';
     return;
   }
   if(!force && insightsData){ body.innerHTML = renderInsights(insightsData); return; }
@@ -933,10 +948,82 @@ async function loadSocialTopClients(){
     el.innerHTML = '<div class="empty">Impossible de charger les statistiques.</div>';
   }
 }
+// ---- Connexion TikTok (OAuth Login Kit) ----
+function tiktokRedirectUri(){
+  return /mayela-crm\.html$/.test(location.pathname)
+    ? location.origin + location.pathname
+    : location.origin + location.pathname.replace(/\/$/,'') + '/src/mayela-crm.html';
+}
+async function startTikTokAuth(){
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  if(!acc || !acc.config || !acc.config.client_key){ toast("Enregistrez d'abord la Client Key de votre app TikTok.", true); return; }
+  const redirectUri = tiktokRedirectUri();
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('tt_state', state);
+  sessionStorage.setItem('tt_redirect', redirectUri);
+  const qs = new URLSearchParams({
+    client_key: acc.config.client_key,
+    scope: 'user.info.basic,video.publish',
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    state
+  });
+  location.href = 'https://www.tiktok.com/v2/auth/authorize/?' + qs.toString();
+}
+async function completeTikTokAuth(code){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const redirectUri = sessionStorage.getItem('tt_redirect') || tiktokRedirectUri();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-tiktok', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'exchange', code, redirect_uri:redirectUri })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Échec de la connexion TikTok.");
+    toast('Compte TikTok connecté' + (out.display_name ? ' : ' + out.display_name : ''));
+  }catch(ex){ toast(ex.message, true); }
+  insightsData = null;
+  loadSocial();
+}
+// Retour d'autorisation TikTok (?code=...&state=...) : détecté au chargement de la page
+(function(){
+  const q = new URLSearchParams(location.search);
+  const state = q.get('state');
+  if(!state || sessionStorage.getItem('tt_state') !== state) return;
+  sessionStorage.removeItem('tt_state');
+  history.replaceState(null,'', sessionStorage.getItem('tt_redirect') || tiktokRedirectUri());
+  const code = q.get('code'), err = q.get('error');
+  if(err || !code){ toast('Connexion TikTok annulée : ' + (q.get('error_description')||err), true); return; }
+  setTimeout(()=>completeTikTokAuth(code), 300);
+})();
 document.body.addEventListener('click', async (e)=>{
+  const authBtn = e.target.closest('[data-auth-social]');
+  if(authBtn){
+    if(authBtn.dataset.authSocial === 'tiktok') startTikTokAuth();
+    return;
+  }
   const conn = e.target.closest('[data-conn-social]');
   if(conn){
     const pl = conn.dataset.connSocial;
+    if(pl === 'whatsapp'){ toast(PLATFORM_META.whatsapp.hint); return; }
+    if(pl === 'tiktok'){
+      const redirectUri = tiktokRedirectUri();
+      if(!confirm("Étape 1/3 — Sur developers.tiktok.com → votre app → Login Kit, ajoutez ce Redirect URI exact :\n\n" + redirectUri + "\n\nC'est fait ?")) return;
+      const clientKey = prompt("Étape 2/3 — Client Key de votre app TikTok :");
+      if(!clientKey) return;
+      const clientSecret = prompt("Étape 3/3 — Client Secret de votre app TikTok :");
+      if(!clientSecret) return;
+      const { data:{ user } } = await sb.auth.getUser();
+      const cfg = { client_key:clientKey.trim(), client_secret:clientSecret.trim() };
+      const { data: existing } = await sb.from('social_accounts').select('id').eq('platform','tiktok').maybeSingle();
+      const { error } = existing
+        ? await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id)
+        : await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
+      if(error){ toast(error.message, true); loadSocial(); return; }
+      await startTikTokAuth();
+      return;
+    }
     if(pl !== 'facebook'){ toast(PLATFORM_META[pl].hint); return; }
     const pageId = prompt("ID de votre Page Facebook (série de chiffres — Paramètres de la Page → Infos) :");
     if(!pageId) return;
@@ -969,7 +1056,11 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   errEl.textContent = '';
   const text = document.getElementById('offerText').value.trim();
   if(!text){ errEl.textContent = "Écrivez le texte de l'offre."; return; }
-  if(!socialCache.some(a=>a.platform==='facebook')){ errEl.textContent = "Connectez d'abord votre Page Facebook."; return; }
+  const targets = ['facebook','tiktok'].filter(pl=>{
+    const acc = socialCache.find(a=>a.platform===pl);
+    return pl === 'facebook' ? !!acc : !!(acc && acc.config && acc.config.access_token);
+  });
+  if(!targets.length){ errEl.textContent = "Connectez d'abord Facebook ou TikTok ci-dessus."; return; }
   const prodSel = document.getElementById('offerProduit');
   let full = text;
   let imgUrl = null;
@@ -980,28 +1071,34 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   }
   const btn = document.getElementById('publishOfferBtn');
   btn.disabled = true;
-  try{
-    const { data:{ session } } = await sb.auth.getSession();
-    const r = await fetch(SUPABASE_URL + '/functions/v1/social-publish', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-      body: JSON.stringify({ platform:'facebook', text:full, image_url:imgUrl })
-    });
-    const out = await r.json();
-    if(!r.ok) throw new Error(out.error || "Échec de la publication.");
-    await sb.from('social_posts').insert({ org_id:profile.org_id, platform:'facebook', content:full, image_url:imgUrl, status:'sent', external_post_id:out.external_post_id, posted_by:session.user.id });
+  const { data:{ session } } = await sb.auth.getSession();
+  const { data:{ user } } = await sb.auth.getUser();
+  const errors = [];
+  for(const pl of targets){
+    try{
+      const r = await fetch(SUPABASE_URL + '/functions/v1/social-publish', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+        body: JSON.stringify({ platform:pl, text:full, image_url:imgUrl })
+      });
+      const out = await r.json();
+      if(!r.ok) throw new Error(out.error || "Échec de la publication.");
+      await sb.from('social_posts').insert({ org_id:profile.org_id, platform:pl, content:full, image_url:imgUrl, status:'sent', external_post_id:String(out.external_post_id||''), posted_by:user.id });
+      toast('Offre publiée sur ' + PLATFORM_META[pl].label);
+    }catch(ex){
+      errors.push(PLATFORM_META[pl].label.replace(' Business','') + ' : ' + ex.message);
+      try{
+        await sb.from('social_posts').insert({ org_id:profile.org_id, platform:pl, content:text, image_url:imgUrl, status:'failed', error:String(ex.message), posted_by:user.id });
+      }catch(_e){}
+    }
+  }
+  if(errors.length) errEl.textContent = errors.join(' · ');
+  btn.disabled = false;
+  if(errors.length < targets.length){
     document.getElementById('offerText').value='';
     prodSel.value='';
     document.getElementById('offerPreview').classList.add('hidden');
-    toast('Offre publiée sur Facebook');
-  }catch(ex){
-    errEl.textContent = ex.message;
-    try{
-      const { data:{ user } } = await sb.auth.getUser();
-      await sb.from('social_posts').insert({ org_id:profile.org_id, platform:'facebook', content:text, image_url:imgUrl, status:'failed', error:String(ex.message), posted_by:user.id });
-    }catch(_e){}
   }
-  btn.disabled = false;
   loadSocial();
 });
 
