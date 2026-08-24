@@ -1,0 +1,7 @@
+{
+  "title": "MAYELA CRM",
+  "description": "CRM léger pour PME de Pointe-Noire — Supabase + HTML/JS autonome",
+  "plugin": {
+    "menu": []
+  }
+}
