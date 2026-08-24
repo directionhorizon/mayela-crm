@@ -1,0 +1,20 @@
+{
+  "name": "MAYELA CRM",
+  "short_name": "MAYELA",
+  "description": "CRM léger pour PME de Pointe-Noire",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./mayela-crm.html",
+  "scope": "./",
+  "id": "./mayela-crm.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060D09",
+  "theme_color": "#0D1F17",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

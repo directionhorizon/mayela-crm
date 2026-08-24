@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1F17">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://ymqdmfsqtkmlmwffqskt.supabase.co wss://ymqdmfsqtkmlmwffqskt.supabase.co; img-src 'self' data: https://ymqdmfsqtkmlmwffqskt.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
 <title>MAYELA CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -169,6 +174,13 @@
   .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--sage); font-size:9.5px; font-family:'Work Sans'; cursor:pointer;}
   .nav-btn.active{ color:var(--gold); }
   .nav-btn .ic{ font-size:18px; }
+  #ia::-webkit-scrollbar{ width:10px; }
+  #ia::-webkit-scrollbar-track{ background:transparent; }
+  #ia::-webkit-scrollbar-thumb{ background:#41604f; border-radius:8px; border:2px solid rgba(0,0,0,0); background-clip:padding-box; }
+  #ia{ scrollbar-color:#41604f transparent; }
+  #iaChatLog::-webkit-scrollbar{ width:8px; }
+  #iaChatLog::-webkit-scrollbar-track{ background:transparent; }
+  #iaChatLog::-webkit-scrollbar-thumb{ background:#41604f; border-radius:6px; border:2px solid rgba(0,0,0,0); background-clip:padding-box; }
   .hidden{ display:none !important; }
   .toast{ position:absolute; bottom:100px; left:16px; right:16px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px; padding:10px 14px; font-size:12px; z-index:99; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.4); }
 </style>
@@ -195,9 +207,6 @@
         <div class="email-dropdown" id="emailDropdown">
           <button type="button" class="email-dropdown-item" id="oauthGoogleBtn">
             <span class="oauth-ic">G</span> Se connecter avec Google
-          </button>
-          <button type="button" class="email-dropdown-item" id="oauthOutlookBtn">
-            <span class="oauth-ic">O</span> Se connecter avec Outlook
           </button>
         </div>
       </div>
@@ -311,6 +320,12 @@
         <div class="section-title">Produits & services</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <input class="field" id="newProduitNom" placeholder="Nom du produit ou service">
+          <textarea class="field" id="newProduitDesc" rows="2" placeholder="Description (matériaux, tailles, délais…)" style="resize:none;"></textarea>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button class="btn" id="pickProduitImageBtn" style="flex:0 0 auto; background:var(--panel-2); color:var(--text); border:1px solid var(--line);">📷 Photo</button>
+            <span style="font-size:11px; color:var(--sage);" id="produitImgName">Aucune image</span>
+          </div>
+          <input type="file" id="newProduitImage" accept="image/*" class="hidden">
           <input class="field" id="newProduitPrix" type="number" placeholder="Prix par défaut (FCFA, optionnel)">
           <button class="btn" id="addProduitBtn">Ajouter au catalogue</button>
           <div class="err-msg" id="produitErr"></div>
@@ -328,7 +343,7 @@
         </div>
         <div class="actions-row">
           <a class="action-btn" id="ficheCall" href="#">📞<br>Appeler</a>
-          <a class="action-btn" id="ficheWhats" href="#" target="_blank">💬<br>WhatsApp</a>
+          <a class="action-btn" id="ficheWhats" href="#" target="_blank" rel="noopener noreferrer">💬<br>WhatsApp</a>
           <div class="action-btn" id="ficheStageChip">🏷️<br><span id="ficheStageLbl">–</span></div>
         </div>
         <div class="tab-row">
@@ -396,13 +411,16 @@
           Version 1 : recommandations basées uniquement sur vos données saisies (contacts, achats, délais).
         </div>
         <div id="iaCards" class="card-list"></div>
-        <div class="section-title">Conseiller MAYELA</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px 0;">
+          <div class="section-title" style="margin:0;">Conseiller MAYELA</div>
+          <span class="link-sm" id="iaClearBtn" style="cursor:pointer;">🗑 Effacer</span>
+        </div>
         <div style="display:flex; justify-content:center; padding:6px 0 4px;">
           <div style="width:84px; height:84px; border-radius:50%; background:linear-gradient(160deg, #3a2a1a, #1D3B33); display:flex; align-items:center; justify-content:center; font-size:36px; border:2px solid var(--gold);">🧑🏾‍💼</div>
         </div>
         <div id="iaChatLog" style="padding:6px 20px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
         <div style="padding:10px 20px 4px;">
-          <input type="file" id="iaFileInput" accept=".txt,.csv,.pdf,.md" class="hidden">
+          <input type="file" id="iaFileInput" accept=".txt,.csv,.md" class="hidden">
           <div class="add-inline">
             <button type="button" id="iaAttachBtn" style="background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer;">📎</button>
             <input id="iaMsgInput" placeholder="Posez votre question au conseiller…">
@@ -410,6 +428,31 @@
           </div>
           <div class="err-msg" id="iaFileName"></div>
         </div>
+      </div>
+
+      <!-- RESEAUX SOCIAUX -->
+      <div class="screen" id="social">
+        <div class="topbar"><h1>Réseaux sociaux</h1></div>
+        <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div class="section-title">Publier une offre</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <textarea class="field" id="offerText" rows="3" placeholder="Texte de l'offre (promo, nouveauté…)" style="resize:none;"></textarea>
+          <select class="field" id="offerProduit"></select>
+          <img id="offerPreview" alt="" class="hidden" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px;">
+          <button class="btn" id="publishOfferBtn">Publier sur Facebook</button>
+          <div class="err-msg" id="offerErr"></div>
+        </div>
+        <div class="section-title">Analyse d'audience</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div></div>
+          <button class="btn-ghost" id="refreshInsightsBtn">📊 Analyser mon audience</button>
+          <div class="err-msg" id="insightsErr"></div>
+        </div>
+        <div class="section-title">Clients les plus actifs en ligne</div>
+        <div id="socialTopClients" class="card-list" style="padding-top:0;"></div>
+        <div class="section-title">Publications récentes</div>
+        <div id="socialPostsList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
       </div>
 
       <!-- SETTINGS -->
@@ -433,6 +476,7 @@
         <button class="nav-btn active" data-nav="dashboard"><div class="ic">🏠</div>Accueil</button>
         <button class="nav-btn" data-nav="clients"><div class="ic">👥</div>Clients</button>
         <button class="nav-btn" data-nav="ia"><div class="ic">💡</div>Conseils</button>
+        <button class="nav-btn" data-nav="social"><div class="ic">📣</div>Réseaux</button>
         <button class="nav-btn" data-nav="settings"><div class="ic">⚙️</div>Réglages</button>
       </div>
     </div>
@@ -460,6 +504,10 @@ let pinBuffer = "";
 let pinMode = "verify"; // 'verify' | 'set'
 
 // ================== UTIL ==================
+// Échappement HTML systématique pour toute donnée insérée dans un template innerHTML.
+// Les noms clients, zones, notes, produits… sont saisis par des humains : sans ceci,
+// une valeur comme <img src=x onerror=...> s'exécuterait chez tous les membres de l'org (XSS stocké).
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 function showScreen(id){
   document.querySelectorAll('.stage > .phone > .screen, #appShell > .screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -470,10 +518,11 @@ function toast(msg, isErr){
   t.classList.remove('hidden');
   setTimeout(()=>t.classList.add('hidden'), 3200);
 }
-function initials(n){ return (n||"?").split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function initials(n){ return (n||"?").trim().split(/\s+/).filter(Boolean).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 function fmtFCFA(n){ return new Intl.NumberFormat('fr-FR').format(n||0) + ' FCFA'; }
 function daysAgo(dateStr){ if(!dateStr) return null; const d=(new Date()-new Date(dateStr))/86400000; return Math.floor(d); }
 function fmtDate(d){ if(!d) return '–'; return new Date(d).toLocaleDateString('fr-FR'); }
+function localDateStr(d){ const x = d || new Date(); return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); }
 
 // ================== BOOT ==================
 let sessionHandled = false;
@@ -495,7 +544,7 @@ sb.auth.onAuthStateChange((event, session) => {
   if(event === 'SIGNED_OUT'){ sessionHandled = false; }
 });
 
-// ================== EMAIL DROPDOWN (Google / Outlook) ==================
+// ================== EMAIL DROPDOWN (Google) ==================
 const emailWrap = document.getElementById('emailWrap');
 const emailDropdown = document.getElementById('emailDropdown');
 const emailInputEl = document.getElementById('emailInput');
@@ -523,7 +572,6 @@ async function oauthSignIn(provider){
   // En cas de succès, le navigateur est redirigé vers le fournisseur — rien d'autre à faire ici.
 }
 document.getElementById('oauthGoogleBtn').addEventListener('click', ()=> oauthSignIn('google'));
-document.getElementById('oauthOutlookBtn').addEventListener('click', ()=> oauthSignIn('azure'));
 
 // ================== AUTH: INSCRIPTION / OTP ==================
 document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
@@ -592,7 +640,7 @@ async function afterLogin(){
     if(updated) prof = updated;
     pendingProfile = {};
   } else if(!prof.full_name){
-    // Connexion via Google/Outlook (formulaire sauté) : on reprend le nom fourni par le fournisseur
+    // Connexion via Google (formulaire sauté) : on reprend le nom fourni par le fournisseur
     const oauthName = user.user_metadata?.full_name || user.user_metadata?.name || null;
     if(oauthName){
       const { data: updated } = await sb.from('profiles').update({ full_name: oauthName }).eq('id', user.id).select().single();
@@ -698,29 +746,263 @@ document.body.addEventListener('click', (e)=>{
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
+  if(target === 'social') loadSocial();
 });
 async function loadProduits(){
   const { data } = await sb.from('produits_services').select('*').order('created_at', { ascending:false });
   const list = data || [];
   document.getElementById('produitsListWrap').innerHTML = list.length ? list.map(p=>`
-    <div class="relance-card"><div><div class="name">${p.nom}</div><div class="meta">${p.prix_defaut ? fmtFCFA(p.prix_defaut) : 'Prix variable'}</div></div><span class="link-sm" data-del-produit="${p.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun produit/service enregistré.</div>`;
+    <div class="relance-card"><div style="display:flex; gap:10px; align-items:center; min-width:0;">${p.image_url?`<img src="${esc(p.image_url)}" alt="" style="width:48px;height:48px;border-radius:10px;object-fit:cover;flex:0 0 auto;">`:`<div style="width:48px;height:48px;border-radius:10px;background:var(--panel-2);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 auto;">🛍️</div>`}<div style="min-width:0;"><div class="name">${esc(p.nom)}</div><div class="meta">${p.prix_defaut ? fmtFCFA(p.prix_defaut) : 'Prix variable'}${p.description ? ' · ' + esc(String(p.description).slice(0,70)) + (String(p.description).length>70?'…':'') : ''}</div></div></div><span class="link-sm" data-del-produit="${p.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun produit/service enregistré.</div>`;
 }
+function resizeImage(file, maxSide){
+  maxSide = maxSide || 1024;
+  return createImageBitmap(file).then(img=>{
+    const scale = Math.min(1, maxSide/Math.max(img.width,img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width*scale); c.height = Math.round(img.height*scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return new Promise(res=>c.toBlob(res,'image/jpeg',0.85));
+  });
+}
+document.getElementById('pickProduitImageBtn').addEventListener('click', ()=>{ document.getElementById('newProduitImage').click(); });
+document.getElementById('newProduitImage').addEventListener('change',(e)=>{
+  const f = e.target.files[0];
+  document.getElementById('produitImgName').textContent = f ? f.name : 'Aucune image';
+});
 document.getElementById('addProduitBtn').addEventListener('click', async ()=>{
   const nom = document.getElementById('newProduitNom').value.trim();
+  const desc = document.getElementById('newProduitDesc').value.trim() || null;
   const prix = document.getElementById('newProduitPrix').value;
+  const imgFile = document.getElementById('newProduitImage').files[0];
   const errEl = document.getElementById('produitErr');
   errEl.textContent = '';
   if(!nom){ errEl.textContent = "Entrez un nom."; return; }
-  const { data:{ user } } = await sb.auth.getUser();
-  const { error } = await sb.from('produits_services').insert({ nom, prix_defaut: prix||null, owner_user_id:user.id, org_id: profile.org_id });
-  if(error){ errEl.textContent = error.message; return; }
-  document.getElementById('newProduitNom').value = ''; document.getElementById('newProduitPrix').value = '';
-  loadProduits();
+  document.getElementById('addProduitBtn').disabled = true;
+  try{
+    let imageUrl = null;
+    if(imgFile){
+      if(!/^image\//.test(imgFile.type)) throw new Error("Le fichier doit être une image.");
+      const blob = await resizeImage(imgFile);
+      const path = profile.org_id + '/' + crypto.randomUUID() + '.jpg';
+      const { error: upErr } = await sb.storage.from('produits').upload(path, blob, { contentType:'image/jpeg' });
+      if(upErr) throw new Error("Image : " + upErr.message);
+      imageUrl = sb.storage.from('produits').getPublicUrl(path).data.publicUrl;
+    }
+    const { data:{ user } } = await sb.auth.getUser();
+    const { error } = await sb.from('produits_services').insert({ nom, description:desc, image_url:imageUrl, prix_defaut:prix||null, owner_user_id:user.id, org_id:profile.org_id });
+    if(error) throw new Error(error.message);
+    document.getElementById('newProduitNom').value=''; document.getElementById('newProduitDesc').value=''; document.getElementById('newProduitPrix').value='';
+    document.getElementById('newProduitImage').value=''; document.getElementById('produitImgName').textContent='Aucune image';
+    loadProduits();
+  }catch(ex){ errEl.textContent = ex.message; }
+  document.getElementById('addProduitBtn').disabled = false;
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-produit]'); if(!del) return;
-  await sb.from('produits_services').delete().eq('id', del.dataset.delProduit);
+  if(!confirm("Supprimer ce produit ?")) return;
+  const { data: prod } = await sb.from('produits_services').select('image_url').eq('id', del.dataset.delProduit).maybeSingle();
+  const { error } = await sb.from('produits_services').delete().eq('id', del.dataset.delProduit);
+  if(error){ toast(error.message, true); }
+  else if(prod && prod.image_url && prod.image_url.indexOf('/object/public/produits/') !== -1){
+    const path = prod.image_url.split('/object/public/produits/')[1].split('?')[0];
+    try{ await sb.storage.from('produits').remove([path]); }catch(_e){}
+  }
   loadProduits();
+});
+
+// ================== RÉSEAUX SOCIAUX ==================
+const PLATFORM_META = {
+  facebook: { icon:'📘', label:'Page Facebook', hint:"Publication directe d'offres sur votre Page." },
+  whatsapp: { icon:'💬', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
+  tiktok:   { icon:'🎵', label:'TikTok Business', hint:"Publication disponible après approbation TikTok Content Posting API." }
+};
+let socialCache = [];
+async function loadSocial(){
+  const [accRes, prodRes, postRes] = await Promise.all([
+    sb.from('social_accounts').select('*'),
+    sb.from('produits_services').select('id,nom,image_url,prix_defaut').order('nom'),
+    sb.from('social_posts').select('*').order('created_at', { ascending:false }).limit(20)
+  ]);
+  socialCache = accRes.data || [];
+  document.getElementById('socialAccounts').innerHTML = ['facebook','whatsapp','tiktok'].map(pl=>{
+    const meta = PLATFORM_META[pl];
+    const acc = socialCache.find(a=>a.platform===pl);
+    return `<div class="relance-card"><div><div class="name">${meta.icon} ${meta.label}${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}</div><div class="meta">${esc(meta.hint)}</div></div>${acc ? `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>` : `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`}</div>`;
+  }).join('');
+  document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${p.id}" data-img="${p.image_url||''}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
+  document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
+    <div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.icon || ''} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
+  loadSocialTopClients();
+  if(socialCache.some(a=>a.platform==='facebook')){
+    if(insightsData) document.getElementById('socialInsightsBody').innerHTML = renderInsights(insightsData);
+    else loadSocialInsights();
+  }
+}
+
+// ---- Analyse d'audience (Edge Function social-insights) ----
+let insightsData = null;
+let insightsLoading = false;
+function ageLabel(v){ return String(v).replace(/^M\./,'Hommes ').replace(/^F\./,'Femmes '); }
+function renderInsights(d){
+  const kpis = [
+    [d.followers ?? '—', 'Abonnés'],
+    [d.reach_28d ?? '—', 'Portée 28 j'],
+    [d.impressions_28d ?? '—', 'Impressions 28 j'],
+    [d.engagements_28d ?? '—', 'Engagements 28 j']
+  ].map(k=>`<div class="kpi"><div class="num">${esc(String(k[0]))}</div><div class="lbl">${k[1]}</div></div>`).join('');
+  let html = `<div class="kpi-grid" style="padding:0;">${kpis}</div>`;
+  const cities = d.cities || [];
+  if(cities.length){
+    const max = Math.max(...cities.map(c=>c.count||0),1);
+    html += `<div style="color:var(--sage);font-size:11px;">Où se trouve votre audience</div>`;
+    html += cities.map(c=>`
+      <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+        <span style="width:96px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(c.name)}</span>
+        <span style="flex:1;height:6px;border-radius:3px;background:var(--panel);overflow:hidden;display:block;"><span style="display:block;height:100%;width:${Math.round((c.count/max)*100)}%;background:var(--gold);"></span></span>
+        <span style="color:var(--sage);min-width:30px;text-align:right;">${c.count ?? '—'}</span>
+      </div>`).join('');
+  }
+  const ages = Object.entries(d.age_gender || {}).sort((a,b)=>String(a[0]).localeCompare(String(b[0]),undefined,{numeric:true}));
+  if(ages.length){
+    const maxA = Math.max(...ages.map(a=>a[1]||0),1);
+    html += `<div style="color:var(--sage);font-size:11px;">Âge et genre des abonnés</div>`;
+    html += ages.map(a=>`
+      <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;">
+        <span style="width:96px;color:var(--text);white-space:nowrap;">${esc(ageLabel(a[0]))}</span>
+        <span style="flex:1;height:6px;border-radius:3px;background:var(--panel);overflow:hidden;display:block;"><span style="display:block;height:100%;width:${Math.round((a[1]/maxA)*100)}%;background:${String(a[0]).startsWith('F')?'var(--clay)':'var(--gold)'};"></span></span>
+      </div>`).join('');
+  }
+  if(d.warnings && d.warnings.length){
+    html += `<div style="color:var(--sage);font-size:10.5px;line-height:1.5;">${d.warnings.map(w=>esc(w)).join('<br>')}</div>`;
+  } else {
+    html += `<div style="color:var(--sage);font-size:10.5px;line-height:1.5;">💡 Ciblez vos relances WhatsApp sur les villes et tranches d'âge les plus représentées.</div>`;
+  }
+  return html;
+}
+async function loadSocialInsights(force){
+  const body = document.getElementById('socialInsightsBody');
+  const errEl = document.getElementById('insightsErr');
+  const btn = document.getElementById('refreshInsightsBtn');
+  errEl.textContent = '';
+  if(!socialCache.some(a=>a.platform==='facebook')){
+    body.innerHTML = '<div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div>';
+    return;
+  }
+  if(!force && insightsData){ body.innerHTML = renderInsights(insightsData); return; }
+  if(insightsLoading) return;
+  insightsLoading = true; btn.disabled = true;
+  body.innerHTML = '<div class="empty">Chargement de l\'analyse…</div>';
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-insights', {
+      headers:{ Authorization:'Bearer ' + session.access_token }
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Analyse indisponible.");
+    insightsData = out;
+    body.innerHTML = renderInsights(out);
+  }catch(ex){
+    body.innerHTML = '';
+    errEl.textContent = ex.message;
+  }
+  insightsLoading = false; btn.disabled = false;
+}
+document.getElementById('refreshInsightsBtn').addEventListener('click', ()=>loadSocialInsights(true));
+
+// ---- Top clients par interactions en ligne (croisement interne) ----
+async function loadSocialTopClients(){
+  const el = document.getElementById('socialTopClients');
+  try{
+    const { data: inter } = await sb.from('interactions').select('client_id,type').in('type',['whatsapp','facebook','tiktok']);
+    const counts = {};
+    for(const it of inter||[]){ counts[it.client_id] = (counts[it.client_id]||0)+1; }
+    const ranked = Object.entries(counts)
+      .map(([id,n])=>({ c:clientsCache.find(x=>x.id===id), n }))
+      .filter(r=>r.c)
+      .sort((a,b)=>b.n-a.n)
+      .slice(0,5);
+    if(!ranked.length){
+      el.innerHTML = '<div class="empty">Aucune interaction réseaux enregistrée. Notez vos échanges WhatsApp/Facebook dans chaque fiche client.</div>';
+      return;
+    }
+    el.innerHTML = ranked.map(r=>{
+      const wa = r.c.phone ? 'https://wa.me/'+String(r.c.phone).replace(/\D/g,'') : null;
+      return `<div class="relance-card"><div style="min-width:0;"><div class="name">${esc(r.c.name)}</div><div class="meta">${r.n} interaction${r.n>1?'s':''} en ligne${r.c.stage_override ? ' · '+esc(r.c.stage_override) : ''}</div></div>${wa?`<a href="${wa}" target="_blank" rel="noopener" class="link-sm" style="flex-shrink:0;">💬 Relancer</a>`:''}</div>`;
+    }).join('');
+  }catch(_e){
+    el.innerHTML = '<div class="empty">Impossible de charger les statistiques.</div>';
+  }
+}
+document.body.addEventListener('click', async (e)=>{
+  const conn = e.target.closest('[data-conn-social]');
+  if(conn){
+    const pl = conn.dataset.connSocial;
+    if(pl !== 'facebook'){ toast(PLATFORM_META[pl].hint); return; }
+    const pageId = prompt("ID de votre Page Facebook (série de chiffres — Paramètres de la Page → Infos) :");
+    if(!pageId) return;
+    const token = prompt("Access Token de la Page (généré via developers.facebook.com — voir le guide MAYELA) :");
+    if(!token) return;
+    const { data:{ user } } = await sb.auth.getUser();
+    const { error } = await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'facebook', display_name:'Page Facebook', config:{ page_id:pageId.trim(), access_token:token.trim() }, connected_by:user.id });
+    if(error){ toast(error.message, true); } else { toast('Page Facebook connectée'); insightsData = null; }
+    loadSocial();
+    return;
+  }
+  const disc = e.target.closest('[data-disc-social]');
+  if(disc){
+    if(!confirm("Déconnecter ce compte ?")) return;
+    const acc = socialCache.find(a=>a.platform===disc.dataset.discSocial);
+    if(acc){ const { error } = await sb.from('social_accounts').delete().eq('id', acc.id); if(error){ toast(error.message, true); } }
+    insightsData = null;
+    document.getElementById('socialInsightsBody').innerHTML = '<div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div>';
+    loadSocial();
+  }
+});
+document.getElementById('offerProduit').addEventListener('change',(e)=>{
+  const opt = e.target.selectedOptions[0];
+  const img = document.getElementById('offerPreview');
+  if(opt && opt.dataset.img){ img.src = opt.dataset.img; img.classList.remove('hidden'); }
+  else { img.classList.add('hidden'); img.src=''; }
+});
+document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('offerErr');
+  errEl.textContent = '';
+  const text = document.getElementById('offerText').value.trim();
+  if(!text){ errEl.textContent = "Écrivez le texte de l'offre."; return; }
+  if(!socialCache.some(a=>a.platform==='facebook')){ errEl.textContent = "Connectez d'abord votre Page Facebook."; return; }
+  const prodSel = document.getElementById('offerProduit');
+  let full = text;
+  let imgUrl = null;
+  if(prodSel.value){
+    const opt = prodSel.selectedOptions[0];
+    imgUrl = opt.dataset.img || null;
+    full += '\n\n🛍️ ' + opt.dataset.nom + (opt.dataset.prix ? ' — ' + fmtFCFA(opt.dataset.prix) : '');
+  }
+  const btn = document.getElementById('publishOfferBtn');
+  btn.disabled = true;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-publish', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ platform:'facebook', text:full, image_url:imgUrl })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Échec de la publication.");
+    await sb.from('social_posts').insert({ org_id:profile.org_id, platform:'facebook', content:full, image_url:imgUrl, status:'sent', external_post_id:out.external_post_id, posted_by:session.user.id });
+    document.getElementById('offerText').value='';
+    prodSel.value='';
+    document.getElementById('offerPreview').classList.add('hidden');
+    toast('Offre publiée sur Facebook');
+  }catch(ex){
+    errEl.textContent = ex.message;
+    try{
+      const { data:{ user } } = await sb.auth.getUser();
+      await sb.from('social_posts').insert({ org_id:profile.org_id, platform:'facebook', content:text, image_url:imgUrl, status:'failed', error:String(ex.message), posted_by:user.id });
+    }catch(_e){}
+  }
+  btn.disabled = false;
+  loadSocial();
 });
 
 // ================== LOAD EVERYTHING ==================
@@ -750,9 +1032,9 @@ async function loadEverything(){
 
 async function renderDashboardKpis(){
   document.getElementById('kpiClients').textContent = clientsCache.length;
-  const { count: overdueCount } = await sb.from('tasks').select('*', { count:'exact', head:true }).eq('status','a_faire').lt('due_date', new Date().toISOString().slice(0,10));
+  const { count: overdueCount } = await sb.from('tasks').select('*', { count:'exact', head:true }).eq('status','a_faire').lt('due_date', localDateStr());
   document.getElementById('kpiOverdue').textContent = overdueCount ?? 0;
-  const since = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+  const since = localDateStr(new Date(Date.now() - 30*86400000));
   const { count: devisCount } = await sb.from('devis').select('*', { count:'exact', head:true }).gte('devis_date', since);
   document.getElementById('kpiDevis').textContent = devisCount ?? 0;
   const { data: achats30 } = await sb.from('achats').select('montant').gte('achat_date', since);
@@ -772,7 +1054,7 @@ function renderRelances(){
   const el = document.getElementById('relanceList');
   el.innerHTML = list.length ? list.map(c=>`
     <div class="relance-card">
-      <div><div class="name">${c.name}</div><div class="meta">${c.zone||'—'} · sans mise à jour depuis ${c._idle} j</div></div>
+      <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(c.zone||'—')} · sans mise à jour depuis ${c._idle} j</div></div>
     </div>`).join('') : `<div class="empty">Rien à relancer pour le moment — bon travail.</div>`;
 }
 
@@ -786,9 +1068,9 @@ function renderClients(){
     const stage = c.stage_override || 'Prospect';
     const col = STAGE_COLORS[stage] || '#9CAB9F';
     return `<div class="client-row" data-open="${c.id}">
-      <div class="avatar">${initials(c.name)}</div>
-      <div><div class="name">${c.name}</div><div class="sub">${c.zone||'—'}</div></div>
-      <div class="stage-tag" style="background:${col}22; color:${col}">${stage}</div>
+      <div class="avatar">${esc(initials(c.name))}</div>
+      <div><div class="name">${esc(c.name)}</div><div class="sub">${esc(c.zone||'—')}</div></div>
+      <div class="stage-tag" style="background:${col}22; color:${col}">${esc(stage)}</div>
     </div>`;
   }).join('') : `<div class="empty">Aucun client trouvé.</div>`;
 }
@@ -851,27 +1133,27 @@ async function openFiche(id){
   ]);
 
   produitsCache = produits || [];
-  const optsHtml = '<option value="">Produit/service…</option>' + produitsCache.map(p=>`<option value="${p.id}" data-prix="${p.prix_defaut||''}">${p.nom}</option>`).join('');
+  const optsHtml = '<option value="">Produit/service…</option>' + produitsCache.map(p=>`<option value="${p.id}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   ['achatProduitSelect','devisProduitSelect','creanceProduitSelect'].forEach(selId=>{
     document.getElementById(selId).innerHTML = optsHtml;
   });
   const produitNom = (pid)=> produitsCache.find(p=>p.id===pid)?.nom || null;
 
   document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>`
-    <div class="mini-row"><div><div class="t1">${i.type}</div><div class="t2">${i.note||''}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
+    <div class="mini-row"><div><div class="t1">${esc(i.type)}</div><div class="t2">${esc(i.note||'')}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
 
   document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>`
-    <div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${produitNom(a.produit_id) || 'Sans produit précisé'} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
 
   document.getElementById('creancesList').innerHTML = (creances&&creances.length) ? creances.map(cr=>`
-    <div class="mini-row"><div><div class="t1">${fmtFCFA(cr.montant)}</div><div class="t2">${produitNom(cr.produit_id) || 'Sans produit précisé'} · ${cr.statut==='payee'?'Payée':'Due'} · ${fmtDate(cr.created_at)}</div></div><div style="display:flex; gap:8px; align-items:center;">${cr.statut!=='payee'?`<span class="link-sm" data-pay-creance="${cr.id}">Marquer payée</span>`:''}<span class="link-sm" data-del-creance="${cr.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune créance.</div>`;
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(cr.montant)}</div><div class="t2">${esc(produitNom(cr.produit_id) || 'Sans produit précisé')} · ${cr.statut==='payee'?'Payée':'Due'} · ${fmtDate(cr.created_at)}</div></div><div style="display:flex; gap:8px; align-items:center;">${cr.statut!=='payee'?`<span class="link-sm" data-pay-creance="${cr.id}">Marquer payée</span>`:''}<span class="link-sm" data-del-creance="${cr.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune créance.</div>`;
 
   document.getElementById('tasksList').innerHTML = (tasks&&tasks.length) ? tasks.map(t=>{
     const isFait = t.status === 'fait';
     const isReporte = t.status === 'reporte';
     return `<div class="mini-row" style="flex-direction:column; align-items:stretch; gap:6px;">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div><div class="t1" style="${isFait?'opacity:.4; text-decoration:line-through;':''}">${t.libelle || 'Tâche'}</div><div class="t2">${isReporte?'Reporté au ':'Échéance '}${fmtDate(t.due_date)}</div></div>
+        <div><div class="t1" style="${isFait?'opacity:.4; text-decoration:line-through;':''}">${esc(t.libelle || 'Tâche')}</div><div class="t2">${isReporte?'Reporté au ':'Échéance '}${fmtDate(t.due_date)}</div></div>
         <div style="display:flex; gap:8px; align-items:center;">
           ${!isFait ? `<span class="link-sm" data-toggle-task="${t.id}" data-status="${t.status}">Marquer fait</span>` : `<span class="t2">Fait ✓</span>`}
           ${!isFait ? `<span class="link-sm" data-reporter-task="${t.id}">Reporter</span>` : ''}
@@ -883,7 +1165,7 @@ async function openFiche(id){
   }).join('') : `<div class="empty">Aucune tâche.</div>`;
 
   document.getElementById('devisList').innerHTML = (devis&&devis.length) ? devis.map(d=>`
-    <div class="mini-row"><div><div class="t1">${fmtFCFA(d.montant)}</div><div class="t2">${produitNom(d.produit_id) || 'Sans produit précisé'} · ${fmtDate(d.devis_date)}</div></div><span class="link-sm" data-del-devis="${d.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun devis.</div>`;
+    <div class="mini-row"><div><div class="t1">${fmtFCFA(d.montant)}</div><div class="t2">${esc(produitNom(d.produit_id) || 'Sans produit précisé')} · ${fmtDate(d.devis_date)}</div></div><span class="link-sm" data-del-devis="${d.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun devis.</div>`;
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -905,7 +1187,9 @@ document.getElementById('addIntBtn').addEventListener('click', async ()=>{
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-int]'); if(!del) return;
-  await sb.from('interactions').delete().eq('id', del.dataset.delInt);
+  if(!confirm("Supprimer cette interaction ?")) return;
+  const { error } = await sb.from('interactions').delete().eq('id', del.dataset.delInt);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.getElementById('achatProduitSelect').addEventListener('change', (e)=>{
@@ -924,7 +1208,9 @@ document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-achat]'); if(!del) return;
-  await sb.from('achats').delete().eq('id', del.dataset.delAchat);
+  if(!confirm("Supprimer cet achat ?")) return;
+  const { error } = await sb.from('achats').delete().eq('id', del.dataset.delAchat);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 
@@ -944,12 +1230,15 @@ document.getElementById('addCreanceBtn').addEventListener('click', async ()=>{
 });
 document.body.addEventListener('click', async (e)=>{
   const pay = e.target.closest('[data-pay-creance]'); if(!pay) return;
-  await sb.from('creances').update({ statut:'payee' }).eq('id', pay.dataset.payCreance);
+  const { error } = await sb.from('creances').update({ statut:'payee' }).eq('id', pay.dataset.payCreance);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-creance]'); if(!del) return;
-  await sb.from('creances').delete().eq('id', del.dataset.delCreance);
+  if(!confirm("Supprimer cette créance ?")) return;
+  const { error } = await sb.from('creances').delete().eq('id', del.dataset.delCreance);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.getElementById('addTaskBtn').addEventListener('click', async ()=>{
@@ -972,12 +1261,15 @@ document.body.addEventListener('click', (e)=>{
 document.body.addEventListener('change', async (e)=>{
   const input = e.target.closest('[data-report-input]'); if(!input) return;
   if(!input.value) return;
-  await sb.from('tasks').update({ status:'reporte', due_date: input.value }).eq('id', input.dataset.reportInput);
+  const { error } = await sb.from('tasks').update({ status:'reporte', due_date: input.value }).eq('id', input.dataset.reportInput);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-task]'); if(!del) return;
-  await sb.from('tasks').delete().eq('id', del.dataset.delTask);
+  if(!confirm("Supprimer cette tâche ?")) return;
+  const { error } = await sb.from('tasks').delete().eq('id', del.dataset.delTask);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.getElementById('devisProduitSelect').addEventListener('change', (e)=>{
@@ -997,13 +1289,16 @@ document.getElementById('addDevisBtn').addEventListener('click', async ()=>{
 });
 document.body.addEventListener('click', async (e)=>{
   const del = e.target.closest('[data-del-devis]'); if(!del) return;
-  await sb.from('devis').delete().eq('id', del.dataset.delDevis);
+  if(!confirm("Supprimer ce devis ?")) return;
+  const { error } = await sb.from('devis').delete().eq('id', del.dataset.delDevis);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
   const t = e.target.closest('[data-toggle-task]'); if(!t) return;
   const newStatus = t.dataset.status === 'fait' ? 'a_faire' : 'fait';
-  await sb.from('tasks').update({ status:newStatus }).eq('id', t.dataset.toggleTask);
+  const { error } = await sb.from('tasks').update({ status:newStatus }).eq('id', t.dataset.toggleTask);
+  if(error){ toast(error.message, true); }
   openFiche(currentClientId);
 });
 
@@ -1025,33 +1320,38 @@ function renderIA(){
   document.getElementById('iaCards').innerHTML = cards.map(c=>`
     <div class="relance-card" style="border-left-color:${c.warn?'var(--clay)':'var(--gold)'}; flex-direction:column; align-items:flex-start; gap:4px;">
       <div style="font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:${c.warn?'#E8926F':'#7BC79A'}">${c.badge}</div>
-      <div class="name">${c.title}</div>
-      <div class="meta">${c.body}</div>
+      <div class="name">${esc(c.title)}</div>
+      <div class="meta">${esc(c.body)}</div>
     </div>`).join('') || `<div class="empty">Rien à signaler.</div>`;
 }
 
 // ================== CONSEILLER IA (chat) ==================
 let iaPendingFile = null;
+let iaThread = [];
 
 function iaAppendBubble(role, text){
   const log = document.getElementById('iaChatLog');
   const bubble = document.createElement('div');
-  bubble.style.cssText = `align-self:${role==='user'?'flex-end':'flex-start'}; max-width:85%; background:${role==='user'?'var(--gold)':'var(--panel)'}; color:${role==='user'?'#1a1305':'var(--text)'}; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:12px; line-height:1.4;`;
+  bubble.style.cssText = `align-self:${role==='user'?'flex-end':'flex-start'}; max-width:85%; background:${role==='user'?'var(--gold)':'var(--panel)'}; color:${role==='user'?'#1a1305':'var(--text)'}; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:12px; line-height:1.4; white-space:pre-wrap;`;
   bubble.textContent = text;
   log.appendChild(bubble);
   log.scrollTop = log.scrollHeight;
 }
 
 async function loadIaHistory(){
-  const { data } = await sb.from('ia_messages').select('role, content').order('created_at', { ascending:true }).limit(30);
+  const { data, error } = await sb.from('ia_messages').select('role, content').order('created_at', { ascending:false }).limit(30);
   document.getElementById('iaChatLog').innerHTML = '';
-  (data||[]).forEach(m=> iaAppendBubble(m.role, m.content));
+  const msgs = [...(data||[])].reverse();
+  iaThread = msgs.map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', text: m.content }));
+  msgs.forEach(m=> iaAppendBubble(m.role, m.content));
+  if(error){ document.getElementById('iaFileName').textContent = 'Historique indisponible : ' + error.message; }
 }
 
 document.getElementById('iaAttachBtn').addEventListener('click', ()=> document.getElementById('iaFileInput').click());
 document.getElementById('iaFileInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
+  if(!/\.(txt|csv|md)$/i.test(file.name)){ document.getElementById('iaFileName').textContent = "Formats acceptés : txt, csv, md."; e.target.value=''; return; }
   if(file.size > 300000){ document.getElementById('iaFileName').textContent = "Fichier trop volumineux (max ~300 Ko)."; return; }
   iaPendingFile = await file.text().catch(()=>null);
   document.getElementById('iaFileName').textContent = iaPendingFile ? `Joint : ${file.name}` : "Impossible de lire ce fichier.";
@@ -1069,10 +1369,17 @@ async function sendIaMessage(){
     const res = await fetch(SUPABASE_URL + '/functions/v1/ia-conseiller', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + sessionData.session.access_token },
-      body: JSON.stringify({ message: msg, fileText: iaPendingFile })
+      body: JSON.stringify({ message: msg, fileText: iaPendingFile, history: iaThread.slice(-12) })
     });
     const out = await res.json();
-    iaAppendBubble('assistant', out.reply || "Erreur de réponse.");
+    const reply = out.reply || ("⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide du serveur"));
+    iaAppendBubble('assistant', reply);
+    iaThread.push({ role:'user', text:msg }, { role:'assistant', text:reply });
+    const saved = await sb.from('ia_messages').insert([
+      { role:'user', content:msg },
+      { role:'assistant', content:reply }
+    ]);
+    if(saved.error){ toast("Discussion non enregistrée : " + saved.error.message, true); }
   }catch(err){
     iaAppendBubble('assistant', "Impossible de joindre le conseiller pour le moment.");
   }
@@ -1082,6 +1389,14 @@ async function sendIaMessage(){
   btn.disabled = false; btn.textContent = 'Envoyer';
 }
 document.getElementById('iaSendBtn').addEventListener('click', sendIaMessage);
+document.getElementById('iaClearBtn').addEventListener('click', async ()=>{
+  if(!confirm("Effacer toute la discussion ? Cette action est définitive.")) return;
+  const { error } = await sb.from('ia_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if(error){ toast(error.message, true); return; }
+  iaThread = [];
+  document.getElementById('iaChatLog').innerHTML = '';
+  toast('Discussion effacée');
+});
 document.getElementById('iaMsgInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendIaMessage(); });
 
 // ================== SETTINGS ==================
@@ -1126,6 +1441,11 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='settings'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav==='settings'));
 });
+</script>
+<script>
+if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname))){
+  addEventListener('load', ()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
