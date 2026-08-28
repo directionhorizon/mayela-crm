@@ -75,7 +75,10 @@
 
   .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; }
   .screen.active{ display:flex; }
-  .screen::-webkit-scrollbar{ display:none; }
+  .screen::-webkit-scrollbar{ width:6px; }
+  .screen::-webkit-scrollbar-track{ background:transparent; }
+  .screen::-webkit-scrollbar-thumb{ background:#41604f; border-radius:4px; }
+  .screen{ scrollbar-width:thin; scrollbar-color:#41604f transparent; }
 
   .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
   .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
@@ -182,6 +185,8 @@
   #iaChatLog::-webkit-scrollbar-track{ background:transparent; }
   #iaChatLog::-webkit-scrollbar-thumb{ background:#41604f; border-radius:6px; border:2px solid rgba(0,0,0,0); background-clip:padding-box; }
   .hidden{ display:none !important; }
+  .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
+  .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
   .toast{ position:absolute; bottom:100px; left:16px; right:16px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px; padding:10px 14px; font-size:12px; z-index:99; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.4); }
 </style>
 </head>
@@ -434,14 +439,77 @@
       <div class="screen" id="social">
         <div class="topbar"><h1>Réseaux sociaux</h1></div>
         <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div id="tiktokSetupPanel" class="hidden" style="margin:0 20px;">
+          <div class="section-title">Configurer TikTok (Login Kit)</div>
+          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+            <div class="meta" style="color:var(--sage); line-height:1.5;">
+              Pour publier vos offres sur TikTok, créez d'abord une app sur
+              <b style="color:var(--text);">developers.tiktok.com</b>, puis remplissez
+              les 3 étapes ci-dessous dans l'ordre.
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>1 · Redirect URI (obligatoire)</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Sur <b>developers.tiktok.com</b> → menu <b>Manage apps</b> → votre app →
+                <b>Products</b> → <b>Login Kit</b> → activez <b>Configure for Web</b>,
+                puis collez cette URI exacte dans <b>Redirect URI</b> :
+              </div>
+              <div class="tt-uri" id="ttRedirectUriView"></div>
+              <button class="btn-ghost" id="ttCopyUriBtn">📋 Copier le Redirect URI</button>
+              <div class="err-msg" id="ttCopyUriErr"></div>
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>2 · Client Key</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Dans la page de votre app → section <b>App details → Credentials</b>,
+                copiez le champ <b>Client key</b> :
+              </div>
+              <input class="field" id="ttClientKey" placeholder="Client key (ex. awdio...)" autocomplete="off">
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>3 · Client Secret</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Toujours dans <b>App details → Credentials</b>, copiez le champ
+                <b>Client secret</b> :
+              </div>
+              <input class="field" id="ttClientSecret" placeholder="Client secret" type="password" autocomplete="off">
+            </div>
+
+            <button class="btn" id="ttConnectBtn">🎵 Se connecter à TikTok</button>
+            <button class="btn-ghost" id="ttCancelBtn">Annuler</button>
+            <div class="err-msg" id="ttSetupErr"></div>
+          </div>
+        </div>
         <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
         <div class="section-title">Publier une offre</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <textarea class="field" id="offerText" rows="3" placeholder="Texte de l'offre (promo, nouveauté…)" style="resize:none;"></textarea>
           <select class="field" id="offerProduit"></select>
+          <select class="field" id="offerTrackEvent">
+            <option value="">Événement TikTok envoyé (optionnel)</option>
+            <option value="SubmitForm">Nouveau lead (SubmitForm)</option>
+            <option value="CompleteRegistration">Inscription (CompleteRegistration)</option>
+            <option value="Contact">Demande de devis (Contact)</option>
+            <option value="Purchase">Vente (Purchase)</option>
+            <option value="Schedule">RDV pris (Schedule)</option>
+          </select>
           <img id="offerPreview" alt="" class="hidden" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px;">
           <button class="btn" id="publishOfferBtn">Publier l'offre</button>
           <div class="err-msg" id="offerErr"></div>
+        </div>
+        <div class="section-title">Configuration Tracking</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta">TikTok Events API (server-side) — laissez vide pour ne pas renvoyer d'événements.</div>
+          <input class="field" id="ttPixelId" placeholder="Pixel ID TikTok" autocomplete="off">
+          <input class="field" id="ttPixelToken" placeholder="Events API Access Token" type="password" autocomplete="off">
+          <div class="meta" style="color:var(--sage);">Adjust / Branch (MMP) — à renseigner après l'activation du compte pro.</div>
+          <input class="field" id="mmpAppToken" placeholder="Adjust App Token (optionnel)" autocomplete="off">
+          <input class="field" id="mmpS2SToken" placeholder="Adjust S2S Token (optionnel)" autocomplete="off">
+          <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
+          <div class="err-msg" id="trackingErr"></div>
         </div>
         <div class="section-title">Analyse d'audience</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
@@ -825,6 +893,12 @@ async function loadSocial(){
     sb.from('social_posts').select('*').order('created_at', { ascending:false }).limit(20)
   ]);
   socialCache = accRes.data || [];
+  const ttAcc = socialCache.find(a=>a.platform==='tiktok');
+  const ttCfg = (ttAcc && ttAcc.config) || {};
+  document.getElementById('ttPixelId').value = ttCfg.pixel_id || '';
+  document.getElementById('ttPixelToken').value = ttCfg.pixel_access_token || '';
+  document.getElementById('mmpAppToken').value = ttCfg.adjust_app_token || '';
+  document.getElementById('mmpS2SToken').value = ttCfg.adjust_s2s_token || '';
   document.getElementById('socialAccounts').innerHTML = ['facebook','whatsapp','tiktok'].map(pl=>{
     const meta = PLATFORM_META[pl];
     const acc = socialCache.find(a=>a.platform===pl);
@@ -986,6 +1060,48 @@ async function completeTikTokAuth(code){
   insightsData = null;
   loadSocial();
 }
+// ---- Panneau de configuration TikTok (Login Kit) ----
+const ttSetupPanel = document.getElementById('tiktokSetupPanel');
+function openTikTokSetup(){
+  document.getElementById('ttRedirectUriView').textContent = tiktokRedirectUri();
+  ttSetupPanel.classList.remove('hidden');
+  ttSetupPanel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function closeTikTokSetup(){
+  ttSetupPanel.classList.add('hidden');
+  document.getElementById('ttSetupErr').textContent = '';
+}
+async function connectTikTokFromSetup(){
+  const errEl = document.getElementById('ttSetupErr');
+  errEl.textContent = '';
+  const clientKey = document.getElementById('ttClientKey').value.trim();
+  const clientSecret = document.getElementById('ttClientSecret').value.trim();
+  if(!clientKey || !clientSecret){
+    errEl.textContent = "Renseignez la Client Key et le Client Secret.";
+    return;
+  }
+  const { data:{ user } } = await sb.auth.getUser();
+  const cfg = { client_key:clientKey, client_secret:clientSecret };
+  const { data: existing } = await sb.from('social_accounts').select('id').eq('platform','tiktok').maybeSingle();
+  const { error } = existing
+    ? await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id)
+    : await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
+  if(error){ errEl.textContent = error.message; return; }
+  closeTikTokSetup();
+  await startTikTokAuth();
+}
+document.getElementById('ttConnectBtn').addEventListener('click', connectTikTokFromSetup);
+document.getElementById('ttCancelBtn').addEventListener('click', ()=>{ closeTikTokSetup(); });
+document.getElementById('ttCopyUriBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('ttCopyUriErr');
+  errEl.textContent = '';
+  try{
+    await navigator.clipboard.writeText(tiktokRedirectUri());
+    toast('Redirect URI copié.');
+  }catch(_e){
+    errEl.textContent = "Impossible de copier automatiquement — sélectionnez le texte ci-dessus.";
+  }
+});
 // Retour d'autorisation TikTok (?code=...&state=...) : détecté au chargement de la page
 (function(){
   const q = new URLSearchParams(location.search);
@@ -1007,23 +1123,7 @@ document.body.addEventListener('click', async (e)=>{
   if(conn){
     const pl = conn.dataset.connSocial;
     if(pl === 'whatsapp'){ toast(PLATFORM_META.whatsapp.hint); return; }
-    if(pl === 'tiktok'){
-      const redirectUri = tiktokRedirectUri();
-      if(!confirm("Étape 1/3 — Sur developers.tiktok.com → votre app → Login Kit, ajoutez ce Redirect URI exact :\n\n" + redirectUri + "\n\nC'est fait ?")) return;
-      const clientKey = prompt("Étape 2/3 — Client Key de votre app TikTok :");
-      if(!clientKey) return;
-      const clientSecret = prompt("Étape 3/3 — Client Secret de votre app TikTok :");
-      if(!clientSecret) return;
-      const { data:{ user } } = await sb.auth.getUser();
-      const cfg = { client_key:clientKey.trim(), client_secret:clientSecret.trim() };
-      const { data: existing } = await sb.from('social_accounts').select('id').eq('platform','tiktok').maybeSingle();
-      const { error } = existing
-        ? await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id)
-        : await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
-      if(error){ toast(error.message, true); loadSocial(); return; }
-      await startTikTokAuth();
-      return;
-    }
+    if(pl === 'tiktok'){ openTikTokSetup(); return; }
     if(pl !== 'facebook'){ toast(PLATFORM_META[pl].hint); return; }
     const pageId = prompt("ID de votre Page Facebook (série de chiffres — Paramètres de la Page → Infos) :");
     if(!pageId) return;
@@ -1094,12 +1194,56 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   }
   if(errors.length) errEl.textContent = errors.join(' · ');
   btn.disabled = false;
+  const trackEvent = document.getElementById('offerTrackEvent').value;
+  if(trackEvent && errors.length < targets.length && socialCache.some(a=>a.platform==='tiktok' && a.config && a.config.pixel_id)){
+    try{
+      const { data:{ session: s2 } } = await sb.auth.getSession();
+      const cid = profile.org_id + ':' + Date.now();
+      const r2 = await fetch(SUPABASE_URL + '/functions/v1/tiktok-events', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + s2.access_token },
+        body: JSON.stringify({ event: trackEvent, external_id: cid, properties:{ content_id: prodSel.value || '', page_url: location.href } })
+      });
+      const out2 = await r2.json().catch(()=>null);
+      if(!r2.ok) toast('Offre publiée, mais événement TikTok non envoyé : ' + (out2?.error || r2.status), true);
+    }catch(_e){ /* le tracking ne bloque jamais la publication */ }
+  }
   if(errors.length < targets.length){
     document.getElementById('offerText').value='';
     prodSel.value='';
+    document.getElementById('offerTrackEvent').value='';
     document.getElementById('offerPreview').classList.add('hidden');
   }
   loadSocial();
+});
+
+// ---- Configuration Tracking (TikTok Events API + MMP placeholders) ----
+document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('trackingErr');
+  errEl.textContent = '';
+  const { data:{ user } } = await sb.auth.getUser();
+  const { data: prof } = await sb.from('profiles').select('org_id').eq('id', user.id).single();
+  if(!prof?.org_id){ errEl.textContent = "Impossible de déterminer votre organisation."; return; }
+  const existing = socialCache.find(a=>a.platform==='tiktok');
+  const cfg = Object.assign({}, (existing && existing.config) || {}, {
+    pixel_id: document.getElementById('ttPixelId').value.trim(),
+    pixel_access_token: document.getElementById('ttPixelToken').value.trim(),
+    adjust_app_token: document.getElementById('mmpAppToken').value.trim(),
+    adjust_s2s_token: document.getElementById('mmpS2SToken').value.trim(),
+  });
+  try{
+    if(existing){
+      const { error } = await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id);
+      if(error) throw error;
+    } else {
+      const { error } = await sb.from('social_accounts').insert({ org_id:prof.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
+      if(error) throw error;
+    }
+    toast('Tracking enregistré.');
+    loadSocial();
+  }catch(ex){
+    errEl.textContent = ex.message || 'Erreur lors de l\'enregistrement.';
+  }
 });
 
 // ================== LOAD EVERYTHING ==================
