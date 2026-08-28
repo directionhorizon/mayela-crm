@@ -22,6 +22,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
+const OPEN_API = "https://open.tiktokapis.com/v1.3";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -139,7 +140,7 @@ Deno.serve(async (req: Request) => {
     // Niveau de confidentialité : on respecte les options autorisées par le créateur
     let privacyOptions: string[] = [];
     try {
-      const ci = await fetch(`${OPEN}/post/publish/creator_info/query/`, {
+      const ci = await fetch(`${OPEN_API}/post/publish/creator_info/query/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -155,7 +156,7 @@ Deno.serve(async (req: Request) => {
     const description = text.slice(0, 4000);
 
     const postOnce = async (level: string) =>
-      fetch(`${OPEN}/post/publish/content/init/`, {
+      fetch(`${OPEN_API}/post/publish/content/init/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json; charset=UTF-8" },
         body: JSON.stringify({

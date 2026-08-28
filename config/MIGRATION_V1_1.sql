@@ -5,6 +5,7 @@
 --   1) Produits : colonnes description + image_url
 --   2) Storage : bucket public "produits" + policies d'upload par org
 --   3) Réseaux sociaux : tables social_accounts + social_posts + RLS
+--   4) Tracking TikTok : table social_events_log + RLS (28 août 2026)
 -- ============================================================
 
 -- ---------- 1) PRODUITS : nouvelles colonnes ----------
@@ -93,5 +94,31 @@ with check (org_id = (select public.current_org_id()));
 drop policy if exists "sp_all_org" on public.social_posts;
 create policy "sp_all_org"
 on public.social_posts for all to authenticated
+using (org_id = (select public.current_org_id()))
+with check (org_id = (select public.current_org_id()));
+
+-- ---------- 4) TRACKING TIKTOK : table d'audit des événements ----------
+-- Journal des événements envoyés (TikTok Events API / futur MMP).
+-- Lecture/écriture réservée aux membres de l'organisation.
+create table if not exists public.social_events_log (
+  id            uuid primary key default gen_random_uuid(),
+  org_id        uuid not null references public.organizations(id) on delete cascade,
+  platform      text not null default 'tiktok' check (platform in ('tiktok','adjust','branch')),
+  event         text not null,
+  pixel_id      text,
+  event_id      text,
+  external_id   text,
+  status        text not null default 'sent' check (status in ('sent','failed')),
+  error         text,
+  payload       jsonb not null default '{}'::jsonb,
+  sent_by       uuid references auth.users(id),
+  created_at    timestamptz not null default now()
+);
+
+alter table public.social_events_log enable row level security;
+
+drop policy if exists "sel_all_org" on public.social_events_log;
+create policy "sel_all_org"
+on public.social_events_log for all to authenticated
 using (org_id = (select public.current_org_id()))
 with check (org_id = (select public.current_org_id()));

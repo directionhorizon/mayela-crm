@@ -15,6 +15,7 @@ Cela ajoute :
 - les colonnes `description` et `image_url` aux produits
 - le bucket Storage public `produits` + les règles d'upload par organisation
 - les tables `social_accounts` et `social_posts` avec isolation par organisation
+- la table `social_events_log` (journal des événements TikTok)
 
 ---
 
@@ -33,8 +34,10 @@ Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 
 Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 `supabase/functions/social-publish/index.ts`,
-`supabase/functions/social-tiktok/index.ts` et
-`supabase/functions/social-insights/index.ts`.
+`supabase/functions/social-tiktok/index.ts`,
+`supabase/functions/social-insights/index.ts`,
+`supabase/functions/tiktok-events/index.ts` et
+`supabase/functions/adjust-events/index.ts` (coquille MMP, inactive).
 
 ### Option A — Dashboard (sans CLI)
 1. Dashboard Supabase → **Edge Functions** → **Create a new function** / **Create function**
@@ -42,6 +45,8 @@ Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 3. Refaire : nom `social-publish` → contenu de `supabase/functions/social-publish/index.ts` → **Deploy**
 4. Refaire : nom `social-tiktok` → contenu de `supabase/functions/social-tiktok/index.ts` → **Deploy**
 5. Refaire : nom `social-insights` → contenu de `supabase/functions/social-insights/index.ts` → **Deploy**
+6. Refaire : nom `tiktok-events` → contenu de `supabase/functions/tiktok-events/index.ts` → **Deploy**
+7. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
 
 ### Option B — CLI (si installé)
 ```bash
@@ -49,6 +54,8 @@ supabase functions deploy ia-conseiller --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-publish --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-tiktok --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-insights --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy tiktok-events --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy adjust-events --project-ref ymqdmfsqtkmlmwffqskt
 ```
 
 Vérification immédiate : dans l'app, onglet **Conseils**, posez une question au conseiller.
@@ -116,6 +123,38 @@ Les statistiques par publication précise ne sont pas exposées par l'API TikTok
 En pratique : la connexion fonctionne immédiatement ; la publication devient pleinement
 opérationnelle dès qu'un domaine possédé est vérifié dans le portail TikTok (ou après l'audit).
 
+## Connecter le tracking TikTok Events API (server-side)
+
+Le tracking suit les conversions (leads, devis, ventes, RDV) indépendamment de la publication.
+La fonction `tiktok-events` les envoie côté serveur depuis Supabase — le Pixel ID et le token
+ne transitent jamais par le navigateur.
+
+1. https://business-api.tiktok.com → **Assets → Pixel** → **Create Pixel** (ou ouvrez un pixel existant).
+2. Dans le pixel → onglet **Settings/Official Events** :
+   - Activez **Server-side API** (Events API).
+   - Générez / copiez l'**Access Token** (une seule fois, il n'est pas ré-affichable).
+3. Dans l'app MAYELA → onglet **Réseaux** → section **Configuration Tracking** :
+   - collez le **Pixel ID** (23 chiffres),
+   - collez le **Events API Access Token** → **Enregistrer le tracking**.
+4. Lors de la publication d'une offre, choisissez l'**événement TikTok** à associer
+   (Nouveau lead / Inscription / Devis / Vente / RDV). L'événement est envoyé après publication.
+
+Les événements et leurs statuts sont journalisés dans la table `social_events_log` (audit).
+
+### Table de correspondance des événements
+
+| Événement CRM | Événement TikTok | Déclencheur |
+|---|---|---|
+| Nouveau lead | `SubmitForm` | Ajout client |
+| Inscription | `CompleteRegistration` | Création compte |
+| Demande de devis | `Contact` | Interaction social |
+| Vente | `Purchase` | Offre vendue |
+| RDV pris | `Schedule` | Interaction appel/visite |
+
+> Les champs **Adjust App Token / S2S Token** de la section Configuration Tracking sont des
+> emplacements pour le futur MMP (Branch/Adjust). Ils sont conservés mais sans effet tant que
+> le compte pro Branch/Adjust n'est pas activé.
+
 ## Activer « Continuer avec Google » (connexion en 1 clic)
 
 Le bouton existe déjà dans l'app ; il ne reste qu'à déclarer l'app chez Google puis Supabase.
@@ -155,4 +194,5 @@ e-mail + code à 6 chiffres.
 | TikTok : publication refusée `url_ownership_unverified` / privée uniquement | Voir section « Limites actuelles de TikTok » ci-dessus |
 | Analyse d'audience vide ou en erreur | Fonction `social-insights` non déployée ; ou token sans `pages_read_engagement` / expiré → regénérer le token (étape « Connecter la Page Facebook ») |
 | Analyse d'audience : chiffres TikTok absents | Compte TikTok non connecté, ou fonction `social-insights` déployée avant sa mise à jour TikTok → redéployer |
+| Événement TikTok non envoyé à la publication | Section Configuration Tracking vide (Pixel ID / token manquants), fonction `tiktok-events` non déployée, ou token Events API expiré → vérifier dans la table `social_events_log` le statut `failed` |
 | Le bouton « Continuer avec Google » échoue | Fournisseur Google non activé dans Supabase (Authentication → Providers), ou URI de redirection absente chez Google |

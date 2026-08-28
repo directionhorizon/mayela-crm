@@ -53,6 +53,8 @@ En mode installé : icône sur l'écran d'accueil, plein écran sans barre d'URL
 - [`docs/CHECKLIST_TEST_E2E.md`](docs/CHECKLIST_TEST_E2E.md) — 5 scénarios de test avant présentation
 - [`docs/GUIDE_DEMONSTRATION.md`](docs/GUIDE_DEMONSTRATION.md) — trame de démo, questions/réponses préparées
 - [`config/SCHEMA_SUPABASE.md`](config/SCHEMA_SUPABASE.md) — schéma de données, RLS, RPC, Edge Functions
+- [`config/DEPLOY_BACKEND.md`](config/DEPLOY_BACKEND.md) — déploiement backend, publication social, tracking TikTok Events API
+- [`config/SUIVI_TIKTOK_INTEGRATIONS.md`](config/SUIVI_TIKTOK_INTEGRATIONS.md) — suivi des intégrations TikTok
 - [`config/NOTES_TECHNIQUES.md`](config/NOTES_TECHNIQUES.md) — décisions techniques, points de vigilance
 
 ## Stack
