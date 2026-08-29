@@ -65,30 +65,77 @@ Si l'IA répond → tout est branché.
 
 ## Connecter la Page Facebook (publication d'offres)
 
-À faire une seule fois, depuis un compte admin de la Page :
+À faire **une seule fois**, depuis un compte **admin** de la Page Facebook.
 
-1. https://developers.facebook.com → **My Apps** → **Create App** (type Business) — si vous en avez déjà une app, réutilisez-la.
-2. **Graph API Explorer** (Outils → Graph API Explorer) :
-   - Sélectionnez votre app
-   - **Generate Access Token** avec les permissions : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`
-   - **Page Access Token** : choisissez votre Page dans le sélecteur de token (le token devient un token de Page)
-3. Échangez contre un token longue durée (60 jours) :
-   `https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=<APP_ID>&client_secret=<APP_SECRET>&fb_exchange_token=<TOKEN_COURT>`
-4. Dans l'app MAYELA → onglet **Réseaux** → carte Facebook → **Connecter** :
-   - collez l'ID de la Page (chiffres, visible via Graph API Explorer `/me/accounts`)
-   - collez le token longue durée
+### Ce que fournit le branchement
+- **Publication d'offres** : texte + photo, directement sur votre Page (fonction `social-publish`).
+- **Analyse d'audience** : abonnés, portée/impressions/engagements 28 j, villes, âge + genre
+  (fonction `social-insights`).
 
-Le token reste côté serveur (table `social_accounts`, jamais envoyée au navigateur des autres membres).
-Pensez à le renouveler tous les ~60 jours.
+Dans MAYELA, la connexion est manuelle : il faut lui fournir **2 valeurs** —
+l'**ID de la Page** et l'**Access Token de la Page** (longue durée). Voici comment les obtenir.
 
-Le même token alimente l'**analyse d'audience** (onglet Réseaux → « Analyse d'audience » : abonnés,
-portée/impressions/engagements 28 jours, villes, âge et genre) via la fonction `social-insights`.
-La permission `pages_read_engagement` déjà demandée ci-dessus suffit.
-Si un compte TikTok est aussi connecté, la même analyse affiche en plus ses stats de base
-(abonnés, j'aime cumulés, publications) — les deux sources sont indépendantes.
+### Étape 1 — Créer/configurer l'app Facebook
+1. https://developers.facebook.com → **My Apps** → **Create App** (type **Business**).
+   - Si vous avez déjà une app, réutilisez-la.
+2. Ajoutez les produits nécessaires si demandé (Page API / Graph API).
 
-> Mode dev : les publications fonctionnent immédiatement sur VOTRE Page sans revue Meta.
-> La revue (`pages_manage_posts`) n'est nécessaire que si d'autres personnes doivent utiliser l'app avec leurs propres Pages.
+### Étape 2 — Ouvrir Graph API Explorer
+1. **Outils → Graph API Explorer** (dans le menu App).
+2. En haut à droite, **sélectionnez votre app**.
+3. Activez la **Graph API v21.0** (version utilisée par MAYELA).
+
+### Étape 3 — Générer le token avec les bonnes permissions
+1. Dans le selecteur de permissions, ajoutez :
+   - `pages_show_list` — lister les Pages du compte
+   - `pages_manage_posts` — publier des offres
+   - `pages_read_engagement` — lire l'analyse d'audience
+   - (recommandé) `pages_read_user_content`, `pages_show_list`
+2. Cliquez **Generate Access Token** → autorisez.
+
+### Étape 4 — Choisir la Page (token de Page)
+1. Dans le sélecteur de token : choisissez votre **Page**, pas votre profil
+   (le token devient alors un **Page Access Token**).
+2. Vérifiez l'**ID de la Page** : dans l'Explorer, requêtez `GET /me/accounts`
+   → copiez le champ `id` de votre Page (série de chiffres, ~15-17).
+
+### Étape 5 — Échanger contre un token longue durée (60 jours)
+Le token court expire en ~1 h. Échangez-le dans le navigateur
+(remplacez les valeurs entre `<>`) :
+
+```
+https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=<APP_ID>&client_secret=<APP_SECRET>&fb_exchange_token=<TOKEN_COURT>
+```
+
+- `<APP_ID>` et `<APP_SECRET>` : onglet **App settings → Basic** de votre app.
+- `<TOKEN_COURT>` : le token de Page généré à l'étape 4.
+- Réponse : un nouveau `access_token` valable **~60 jours**. Copiez-le.
+
+### Étape 6 — Renseigner dans MAYELA
+1. App MAYELA → onglet **Réseaux** → carte **Page Facebook** → **Connecter**.
+2. Collez l'**ID de la Page** (chiffres).
+3. Collez le **token longue durée** → enregistrer.
+
+> Le token reste côté serveur (table `social_accounts`), jamais envoyé aux autres membres.
+> **Pensez à le renouveler tous les ~60 jours** (refaire les étapes 3-5 puis reconnecter).
+
+### Permissions et usage
+| Permission | Utilisée par |
+|---|---|
+| `pages_show_list` | Lister/récupérer l'ID de la Page |
+| `pages_manage_posts` | Publication de l'offre (`social-publish`) |
+| `pages_read_engagement` | Analyse d'audience (`social-insights`) |
+
+> **Mode dev** : la publication fonctionne immédiatement sur VOTRE Page, sans revue Meta.
+> La **revue** de `pages_manage_posts` n'est nécessaire que si **d'autres personnes** doivent utiliser l'app avec leurs propres Pages.
+
+### Dépannage Facebook
+| Symptôme | Cause probable → solution |
+|---|---|
+| « Page Facebook non connectée » | Carte non connectée → faire les étapes 1-6 |
+| Publication refuse avec erreur Graph | Token expiré (~60 j) ou permissions manquantes → regénérer le token |
+| Analyse d'audience vide/erreur | Token sans `pages_read_engagement`, ou fonction `social-insights` non déployée → redéployer + regénérer le token |
+| `(#200) Permission` | Permission non octroyée → regénérer le token avec le bon scope |
 
 ## Connecter TikTok (publication d'offres)
 
