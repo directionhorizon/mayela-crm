@@ -451,9 +451,13 @@
             <div class="tt-step">
               <div class="meta"><b>1 · Redirect URI (obligatoire)</b></div>
               <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Sur <b>developers.tiktok.com</b> → menu <b>Manage apps</b> → votre app →
-                <b>Products</b> → <b>Login Kit</b> → activez <b>Configure for Web</b>,
-                puis collez cette URI exacte dans <b>Redirect URI</b> :
+                Sur <b>developers.tiktok.com</b> → icône de profil (en haut à droite) →
+                <b>Manage apps</b> → ouvrez votre app.<br>
+                <b>Important :</b> dans <b>App details → Platforms</b>, cochez d'abord
+                <b>Web</b> (sinon aucun champ Redirect URI n'apparaît dans Login Kit),
+                puis <b>Products → Add products → Login Kit</b>.<br>
+                Dans la section <b>Web</b> de Login Kit, collez cette URI exacte dans
+                <b>Redirect URI</b> → <b>+ Add a URI</b> → <b>Save</b> :
               </div>
               <div class="tt-uri" id="ttRedirectUriView"></div>
               <button class="btn-ghost" id="ttCopyUriBtn">📋 Copier le Redirect URI</button>
@@ -1026,7 +1030,7 @@ async function loadSocialTopClients(){
 function tiktokRedirectUri(){
   return /mayela-crm\.html$/.test(location.pathname)
     ? location.origin + location.pathname
-    : location.origin + location.pathname.replace(/\/$/,'') + '/src/mayela-crm.html';
+    : location.origin + location.pathname.replace(/\/$/,'') + '/mayela-crm.html';
 }
 async function startTikTokAuth(){
   const acc = socialCache.find(a=>a.platform==='tiktok');
