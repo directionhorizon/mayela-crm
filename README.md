@@ -7,31 +7,37 @@ CRM léger pour PME de Pointe-Noire, Congo. Backend Supabase, frontend HTML/JS a
 ## Structure du dépôt
 
 ```
-/src      → mayela-crm.html (l'application, fichier unique)
-/docs     → checklist de test E2E, guide de démonstration
-/config   → schéma Supabase documenté, notes techniques
+/mayela-crm.html            → l'application (fichier unique)
+/index.html                 → redirige vers mayela-crm.html (app static Pinokio)
+/terms.html                 → conditions d'utilisation
+/politique-confidentialite.html → politique de confidentialité
+/sw.js + manifest.webmanifest + icons/ → PWA
+/docs                       → checklist de test E2E, guide de démonstration
+/config                     → schéma Supabase documenté, notes techniques
 ```
 
 ## Démarrage rapide
 
 ```bash
-npx http-server src/mayela-crm.html --port 8080
+npx http-server mayela-crm.html --port 8080
 # http://localhost:8080
 ```
 
-⚠️ Ne jamais ouvrir `src/mayela-crm.html` directement en double-clic (`file://`) — le fetch vers Supabase sera bloqué par CORS. Toujours passer par un serveur local ou une URL déployée.
+⚠️ Ne jamais ouvrir `mayela-crm.html` directement en double-clic (`file://`) — le fetch vers Supabase sera bloqué par CORS. Toujours passer par un serveur local ou une URL déployée.
 
 ## Lancer via Pinokio
 
-Le dossier étant reconnu comme web app statique (`index.html` à la racine qui redirige vers `src/mayela-crm.html`, + `pinokio.json`), l'app apparaît dans Pinokio et se lance en un clic. Le code source reste uniquement dans `src/` — ne pas éditer `index.html`.
+Le dossier étant reconnu comme web app statique (`index.html` à la racine qui redirige vers `mayela-crm.html`, + `pinokio.json`), l'app apparaît dans Pinokio et se lance en un clic. Le code source vit à la racine du dépôt.
 
 ## Déploiement
 
+Déploiement de production : projet Vercel **`mayela-crm`** → `https://mayela-crm.vercel.app` (racine = dépôt).
+
 ```bash
-npx vercel deploy src --prod
+npx vercel deploy --prod
 ```
 
-⚠️ Déployer le dossier `src` entier (pas seulement le `.html`), sinon le manifest, le service worker et les icônes PWA ne seront pas servis.
+⚠️ Déployer la racine du dépôt entière (pas uniquement un `.html`), sinon le manifest, le service worker, les icônes PWA et les pages légales (`terms.html`, `politique-confidentialite.html`) ne seront pas servis.
 
 ## Android / PWA
 

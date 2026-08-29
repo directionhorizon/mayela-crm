@@ -37,7 +37,7 @@ Dernière mise à jour : 2026-08-26
 | Événements : SubmitForm, CompleteRegistration, Contact, Purchase, Schedule | — | — |
 | User data : SHA-256 hash email/phone/external_id | — | — |
 | Dedup : event_id unique par conversion | — | — |
-| Ajouter champs Pixel ID + Events API token dans config UI | `src/mayela-crm.html` | ⏳ À faire |
+| Ajouter champs Pixel ID + Events API token dans config UI | `mayela-crm.html` | ⏳ À faire |
 
 ---
 
@@ -57,10 +57,10 @@ Dernière mise à jour : 2026-08-26
 
 | Tâche | Fichier | Statut |
 |---|---|---|
-| Section "Configuration Tracking" dans onglet Réseaux | `src/mayela-crm.html` | ✅ Fait (2026-08-27) |
+| Section "Configuration Tracking" dans onglet Réseaux | `mayela-crm.html` | ✅ Fait (2026-08-27) |
 | Champs : Pixel ID, Events API Token | — | ✅ Fait |
 | Champs : Adjust App Token, S2S Token (placeholder) | — | ✅ Fait |
-| Sélecteur d'événement TikTok dans formulaire Offre | `src/mayela-crm.html` | ✅ Fait |
+| Sélecteur d'événement TikTok dans formulaire Offre | `mayela-crm.html` | ✅ Fait |
 | Options : Aucun, SubmitForm, Purchase, Contact, Schedule | — | ✅ Fait |
 | Envoyer événement lors de la publication | — | ✅ Fait |
 

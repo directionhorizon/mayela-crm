@@ -2,7 +2,7 @@
 
 ## Infra
 - **Projet Supabase** : `ymqdmfsqtkmlmwffqskt`, région `eu-central-1`, plan **Free**
-- **Frontend** : fichier HTML unique (`src/mayela-crm.html`), pas de build, pas de framework
+- **Frontend** : fichier HTML unique (`mayela-crm.html` à la racine), pas de build, pas de framework
 - **Auth** : Supabase Auth, OTP e-mail uniquement (pas de mot de passe) + verrouillage PIN local (RPC `set_pin`/`verify_pin`)
 - **Déploiement cible** : Vercel (statique, pas de config serveur nécessaire)
 
@@ -39,10 +39,10 @@ Décision volontaire : présentation dans 9 jours, une seule personne dessus. Un
 
 ```bash
 # Lancer en local
-npx http-server src/mayela-crm.html --port 8080
+npx http-server mayela-crm.html --port 8080
 
-# Déployer sur Vercel
-npx vercel deploy src/mayela-crm.html --prod
+# Déployer sur Vercel (production : projet mayela-crm → https://mayela-crm.vercel.app)
+npx vercel deploy --prod
 ```
 
 ```sql

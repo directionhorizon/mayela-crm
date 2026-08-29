@@ -94,12 +94,14 @@ Si un compte TikTok est aussi connecté, la même analyse affiche en plus ses st
 
 À faire une seule fois, avec le compte TikTok de l'entreprise :
 
-1. https://developers.tiktok.com → créez une app (mode **Sandbox** : pas besoin de domaine vérifié ni de revue pour tester).
-2. Dans l'app → **Add products** :
-   - **Login Kit** → dans sa configuration, ajoutez le **Redirect URI** exact affiché par l'app MAYELA au moment de la connexion.
-     - Contraintes TikTok : URI **https**, statique, sans paramètres. Pinokio sert l'app aussi en HTTPS : utilisez `https://<PORT>.localhost/src/mayela-crm.html` (le même port que l'URL http locale). Si l'app est hébergée en ligne, utilisez son URL https complète.
-   - **Content Posting API** → activez **Direct Post**.
-3. Copiez la **Client Key** et le **Client Secret** de l'app.
+1. https://developers.tiktok.com → connectez-vous → icône de profil (en haut à droite) → **Manage apps** → **Connect an app** pour créer votre app, puis basculez en mode **Sandbox** (en haut de page) pour tester sans revue.
+2. Page de l'app, deux prérequis avant les produits :
+   - **App details → Platforms** → cochez **Web** et renseignez l'URL de votre site. **Sans la plateforme Web, aucun champ Redirect URI n'apparaît dans Login Kit — c'est la cause la plus fréquente du blocage.**
+   - **Products → Add products** :
+     - **Login Kit** → dans la section **Web**, collez le **Redirect URI** exact affiché par l'app MAYELA au moment de la connexion → **+ Add a URI** → **Save** (bouton en haut de page).
+       - Contraintes TikTok : URI **https**, statique, sans paramètres. Pinokio sert l'app aussi en HTTPS : utilisez `https://<PORT>.localhost/mayela-crm.html` (le même port que l'URL http locale ; le fichier `mayela-crm.html` vit à la racine). Si l'app est hébergée en ligne, utilisez son URL https complète (ex. `https://mayela-crm.vercel.app/mayela-crm.html`).
+     - **Content Posting API** → ajoutez-le aussi (il dépend de Login Kit ; inutile en mode Sandbox, voir « Limites »).
+3. **App details → Credentials** → copiez la **Client Key** et le **Client Secret** (cliquez sur l'icône œil pour les afficher).
 4. Dans l'app MAYELA → onglet **Réseaux** → carte **TikTok Business** → **Connecter** :
    - confirmez le Redirect URI affiché,
    - collez la Client Key, puis le Client Secret → redirection vers TikTok → autorisez l'accès.
@@ -116,12 +118,35 @@ Les statistiques par publication précise ne sont pas exposées par l'API TikTok
 
 | Situation | Effet |
 |---|---|
-| App non auditée (Sandbox/dev) | Les publications sont **privées** (visibles seulement par le compte connecté) et limitées à quelques posts/24 h. L'API retente automatiquement en privé. |
+| Mode Sandbox | La publication **publique** via Content Posting API n'est pas disponible en Sandbox (seule la publication via Login Kit + ciblages test marche). Il faut passer en **Production** (app **Live** ou en **Draft** avec revue) pour publier publiquement. |
+| App non auditée (Draft/revue en cours) | Publications limitées à quelques posts/24 h et visibles surtout par le compte connecté. |
 | Images via URL | TikTok exige un **domaine vérifié** dans le portail développeur pour récupérer les photos produit (`url_ownership_unverified`). Sans domaine vérifié, la publication photo est refusée — l'erreur exacte s'affiche dans l'app. |
 | Publication publique | Nécessite la **revue/audit** de l'app TikTok (Content Posting API) puis, pour les images, un domaine vérifié pointant vers vos visuels. |
 
 En pratique : la connexion fonctionne immédiatement ; la publication devient pleinement
 opérationnelle dès qu'un domaine possédé est vérifié dans le portail TikTok (ou après l'audit).
+
+### Champs d'application à renseigner dans le portail TikTok
+
+Quand l'app TikTok est **déployée en ligne** (domaine de production ci-dessous), les URL à
+saisir dans **App details** / **Products** sont les suivantes (base = `https://mayela-crm.vercel.app`) :
+
+| Champ (portail TikTok) | Valeur à saisir | Où |
+|---|---|---|
+| **Web / Desktop URL** (plateforme Web) | `https://mayela-crm.vercel.app/` | **App details → Platforms → Web** |
+| **Terms of Service URL** | `https://mayela-crm.vercel.app/terms.html` | **App details → Legal** |
+| **Privacy Policy URL** | `https://mayela-crm.vercel.app/politique-confidentialite.html` | **App details → Legal** |
+| **Redirect URI** (Login Kit) | `https://mayela-crm.vercel.app/mayela-crm.html` (ou l'URL https affichée par l'app au moment de la connexion) | **Products → Login Kit → Web** |
+| **WebhooksCallback URL** | Non requis pour cette intégration (voir note ci-dessous) | **Products → Webhooks** |
+| **Content Posting API** | Produit **activé** (pas une URL) | **Products → Add products** |
+
+**Notes :**
+- En local via Pinokio, l'URL https est `https://<PORT>.localhost/…` (même port que l'URL http) —
+  voir la ligne 102. En production, utiliser systématiquement le domaine ci-dessus.
+- **WebhooksCallback URL** : l'intégration MAYELA n'utilise **pas** les webhooks TikTok (pas de
+  suivi de status vidéo/commentaire). Le tracking des conversions passe par l'**Events API
+  server-side** (`tiktok-events`), qui ne requiert aucun callback. Ce champ peut donc rester vide ;
+  il ne servirait que si on activait plus tard les webhooks (ex. statut de publication vidéo).
 
 ## Connecter le tracking TikTok Events API (server-side)
 
@@ -189,7 +214,7 @@ e-mail + code à 6 chiffres.
 | Upload photo produit échoue | Migration non exécutée (bucket/policy manquants), ou espace org non créé |
 | Publication échoue « compte non connecté » | Carte Facebook non connectée |
 | Publication échoue avec message Graph API | Token expiré (~60 jours) ou permissions manquantes → regénérer |
-| TikTok : erreur à l'autorisation (redirect_uri) | Le Redirect URI collé dans le portail TikTok ne correspond pas exactement à celui affiché par l'app (https obligatoire, sans paramètres) |
+| TikTok : erreur à l'autorisation (redirect_uri) | Le Redirect URI collé dans le portail TikTok ne correspond pas exactement à celui affiché par l'app (https obligatoire, sans paramètres), ou la plateforme **Web** n'a pas été cochée dans **App details → Platforms** (le champ Redirect URI n'existe alors pas — cochez Web puis ouvrez **Products → Login Kit → Web**) |
 | TikTok : « Session expirée, reconnectez » | Refresh_token révoqué ou app TikTok recréée → Déconnecter puis Connecter à nouveau |
 | TikTok : publication refusée `url_ownership_unverified` / privée uniquement | Voir section « Limites actuelles de TikTok » ci-dessus |
 | Analyse d'audience vide ou en erreur | Fonction `social-insights` non déployée ; ou token sans `pages_read_engagement` / expiré → regénérer le token (étape « Connecter la Page Facebook ») |
