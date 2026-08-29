@@ -1,6 +1,6 @@
 # Suivi intégrations TikTok — MAYELA CRM
 
-Dernière mise à jour : 2026-08-26
+Dernière mise à jour : 2026-08-29
 
 ---
 
@@ -8,8 +8,10 @@ Dernière mise à jour : 2026-08-26
 
 | Décision | Statut |
 |---|---|
-| Conserver le mode Sandbox (fallback SELF_ONLY) | ✅ Validé |
+| Conserver le mode Sandbox (fallback SELF_ONLY) | ✅ Validé — à basculer en Production (voir Phase 6) |
 | Ajouter TikTok Events API (server-side) | ✅ Validé |
+| Passage en Production (publication publique) | ✅ Décidé — doc ajoutée, à exécuter côté portail |
+| Ajouter MMP : Branch (deep linking > Adjust) | ✅ Validé, en attente email pro |
 | Ajouter MMP : Branch (deep linking > Adjust) | ✅ Validé, en attente email pro |
 | Sélecteur d'événements TikTok par offre dans l'UI | ✅ Validé |
 | Config tracking dans l'onglet Réseaux | ✅ Validé |
@@ -73,6 +75,19 @@ Dernière mise à jour : 2026-08-26
 | Table `social_events_log` (audit trail) | `config/MIGRATION_V1_1.sql` | ✅ Fait (2026-08-27) |
 | Policies RLS pour `social_events_log` | — | ✅ Fait |
 | Mettre à jour DEPLOY_BACKEND.md (setup Events API TikTok) | `config/DEPLOY_BACKEND.md` | ✅ Fait |
+
+---
+
+## Phase 6 — Passage en Production (publication publique TikTok)
+
+| Tâche | Fichier / Lieu | Statut |
+|---|---|---|
+| Documenter les étapes Production | `config/DEPLOY_BACKEND.md` (section « Passer l'app TikTok en Production ») | ✅ Fait (2026-08-29) |
+| Vérifier prérequis app (Web, Login Kit, Content Posting API, Legal) | Portail TikTok | ⏳ À faire (manuel) |
+| Bascule Sandbox → Production | Portail TikTok → App details → Status | ⏳ À faire (manuel) |
+| Revue/audit Content Posting API (si demandée) | Portail TikTok → Submission | ⏳ À faire (manuel) |
+| Vérifier un domaine pour les images produit | `mayela-crm.vercel.app` (fichier/meta tag TikTok) | ⏳ À faire (manuel) |
+| Reconnecter le compte TikTok dans l'app | Onglet Réseaux | ⏳ Après bascule |
 
 ---
 

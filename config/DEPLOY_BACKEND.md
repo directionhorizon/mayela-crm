@@ -148,6 +148,75 @@ saisir dans **App details** / **Products** sont les suivantes (base = `https://m
   server-side** (`tiktok-events`), qui ne requiert aucun callback. Ce champ peut donc rester vide ;
   il ne servirait que si on activait plus tard les webhooks (ex. statut de publication vidéo).
 
+## Passer l'app TikTok en Production (publication publique)
+
+Une seule fois, dans le portail développeur TikTok, pour débloquer la **publication publique**.
+
+**Objectif** : passer l'app du mode **Sandbox** (publications en test, visibles surtout par le
+compte connecté) au mode **Production** pour publier réellement sur l'audience.
+
+### Résumé rapide
+1. Vérifier que tous les champs obligatoires sont renseignés (voir « Champs d'application » ci-dessus).
+2. Activer **Content Posting API** (déjà fait si suivi) + renseigner la **plateforme Web**.
+3. Remplir **App details → Legal** : Terms of Service URL, Privacy Policy URL (déjà dispo).
+4. **App details → Status** : passer l'app de **Sandbox** à **Production**.
+5. Selon l'état, soumettre l'app à **revue/audit** si demandé.
+6. Vérifier un **domaine** (pour les photos produit) et/ou finaliser si requis.
+7. Dans l'app MAYELA → onglet **Réseaux** → déconnecter puis **reconnecter** le compte TikTok
+   pour rafraîchir le flux OAuth avec les nouveaux statuts.
+
+### Détail des étapes (portail développeur TikTok)
+
+**Étape A — Vérifier les prérequis de l'app** (`developers.tiktok.com` → profil → **Manage apps** → votre app)
+| Vérification | Détail |
+|---|---|
+| Plateforme **Web** | Renseignée et valide (voir « Champs d'application ») |
+| **Login Kit** | Redirect URI correct (`https://mayela-crm.vercel.app/mayela-crm.html`) |
+| **Content Posting API** | Produit **activé** (il est le pilier de la publication publique) |
+| **Legal** (Terms + Privacy) | Deux URLs renseignées et accessibles en ligne |
+
+**Étape B — Bascule Sandbox → Production**
+1. Dans la page de l'app → section **App details → Status** (ou bouton **Management** selon l'interface).
+2. Choisissez **Production** (certaines interfaces proposent « Sandbox » / « Production » ; d'autres
+   « Draft » / « Live »).
+3. Si TikTok demande des justificatifs (description d'usage, captures, etc.), fournissez-les.
+
+**Étape C — Revue/audit (le cas échéant)**
+- Pour **Content Posting API**, TikTok peut exiger une **revue** avant publication publique.
+- L'app passe alors en **Draft** (revue en cours) : les publications restent limitées
+  (quelques posts/24 h, visibles surtout par le compte connecté) jusqu'à l'approbation.
+- Suivez l'état dans le portail ; li est possible de soumettre à l'audit via **Submission**.
+
+**Étape D — Domaine vérifié (images produit)**
+- Pour publier des **photos produit** via URL, TikTok exige un **domaine vérifié** dans le portail
+  (`url_ownership_unverified` sinon).
+- Le domaine à vérifier est celui qui héberge les visuels : `mayela-crm.vercel.app`.
+- Méthode de vérification : ajouter le **meta tag** ou le **fichier** exigé par TikTok sur ce domaine
+  (fichier statique servi à la racine ou dans `/.well-known/`).
+
+**Étape E — Reconnecter le compte dans MAYELA**
+1. App MAYELA → onglet **Réseaux** → carte TikTok → **Déconnecter**.
+2. **Connecter** à nouveau (coller Client Key + Client Secret, autoriser) — le refresh token est
+   révoqué si l'app a été recréée, d'où la reconnexion.
+
+### Après le passage en Production
+- La publication d'offres (texte + photo) devient **publique** : visible par l'audience TikTok.
+- Le tracking **Events API** continue de fonctionner sans changement.
+- Le **réglage** `social_posts` existe déjà : le statut de chaque envoi est journalisé dans
+  `social_events_log` (audit).
+
+### Tableau de bord de contrôle rapide
+| Élément | À vérifier |
+|---|---|
+| Statut de l'app | **Production** (et non Sandbox) |
+| Produits actifs | **Content Posting API** + **Login Kit** |
+| Plateforme | **Web** renseignée |
+| Legal | **Terms** + **Privacy** renseignées |
+| Domaine (photos) | **vérifié** (si publication d'images) |
+
+> En cas de doute sur l'état (Live vs Draft), vérifiez le bandeau de statut en haut de la page de
+> l'app dans le portail. La publication reste opérationnelle en Draft pour les tests.
+
 ## Connecter le tracking TikTok Events API (server-side)
 
 Le tracking suit les conversions (leads, devis, ventes, RDV) indépendamment de la publication.
