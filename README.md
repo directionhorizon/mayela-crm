@@ -33,6 +33,10 @@ Le dossier étant reconnu comme web app statique (`index.html` à la racine qui 
 
 Déploiement de production : projet Vercel **`mayela-crm`** → `https://mayela-crm.vercel.app` (racine = dépôt).
 
+**Auto-deploy Git branché** : le projet Vercel est connecté au repo `directionhorizon/mayela-crm`. Chaque push sur la branche `main` déclenche un déploiement de production automatique. Pas besoin de commande manuelle.
+
+Déploiement manuel éventuel (si nécessaire) :
+
 ```bash
 npx vercel deploy --prod
 ```
