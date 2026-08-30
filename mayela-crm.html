@@ -503,6 +503,13 @@
           <img id="offerPreview" alt="" class="hidden" style="width:100%; max-height:180px; object-fit:cover; border-radius:10px;">
           <button class="btn" id="publishOfferBtn">Publier l'offre</button>
           <div class="err-msg" id="offerErr"></div>
+          <div class="meta" style="color:var(--sage);">Sans connexion réseaux — contenu prêt à poster manuellement :</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-ghost" id="copyOfferBtn">📋 Copier le texte</button>
+            <button class="btn-ghost" id="imgOfferBtn">🖼️ Télécharger l'image</button>
+          </div>
+          <canvas id="offerCanvas" class="hidden"></canvas>
+          <div class="err-msg" id="manualOfferErr"></div>
         </div>
         <div class="section-title">Configuration Tracking</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
@@ -530,6 +537,10 @@
         <div id="socialTopClients" class="card-list" style="padding-top:0;"></div>
         <div class="section-title">Publications récentes</div>
         <div id="socialPostsList" class="card-list" style="padding-top:0;"></div>
+        <div class="section-title">Impact opérationnel (interne)</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div id="opImpactBody"><div class="empty">Chargement…</div></div>
+        </div>
         <div style="height:16px;"></div>
       </div>
 
@@ -926,6 +937,7 @@ async function loadSocial(){
     if(insightsData) document.getElementById('socialInsightsBody').innerHTML = renderInsights(insightsData);
     else loadSocialInsights();
   }
+  loadOperationalImpact();
 }
 
 // ---- Analyse d'audience (Edge Function social-insights) ----
@@ -1081,6 +1093,37 @@ async function loadSocialTopClients(){
     }).join('');
   }catch(_e){
     el.innerHTML = '<div class="empty">Impossible de charger les statistiques.</div>';
+  }
+}
+// ---- Impact opérationnel (interne) : remplace les statistiques réseaux non disponibles ----
+async function loadOperationalImpact(){
+  const body = document.getElementById('opImpactBody');
+  try{
+    const { count: published } = await sb.from('social_posts').select('*', { count:'exact', head:true }).eq('status','sent');
+    const { count: failed } = await sb.from('social_posts').select('*', { count:'exact', head:true }).eq('status','failed');
+    const { data: inter } = await sb.from('interactions').select('type').in('type',['whatsapp','facebook','tiktok','appel','visite','autre']);
+    const counts = { whatsapp:0, facebook:0, tiktok:0, appel:0, visite:0, autre:0 };
+    for(const it of inter||[]) counts[it.type] = (counts[it.type]||0)+1;
+    const totalInter = (inter||[]).length;
+    const ca = document.getElementById('kpiCA').textContent;
+    const kpis = [
+      [published ?? 0, 'Offres publiées'],
+      [totalInter, 'Échanges clients enregistrés'],
+      [clientsCache.length, 'Clients suivis'],
+      [ca !== '–' ? ca : '—', 'Achats (30j, FCFA)']
+    ];
+    const per = ['whatsapp','tiktok','facebook','appel','visite'].map(k=>{
+      const label = k==='whatsapp'?'WhatsApp':k==='tiktok'?'TikTok':k==='facebook'?'Facebook':k==='appel'?'Appels':'Visites';
+      const c = counts[k]||0;
+      return `<span style="display:inline-block;background:var(--panel-2);border-radius:20px;padding:3px 10px;font-size:11px;margin:2px;">${label} : ${c}</span>`;
+    }).join(' ');
+    let html = `<div class="kpi-grid" style="padding:0;">` + kpis.map(k=>`<div class="kpi"><div class="num">${esc(String(k[0]))}</div><div class="lbl">${k[1]}</div></div>`).join('') + `</div>`;
+    html += `<div style="color:var(--sage);font-size:11px;margin-top:6px;">Répartition des échanges</div><div>${per}</div>`;
+    if((failed??0)>0) html += `<div style="color:var(--clay);font-size:11px;margin-top:6px;">⚠ ${failed} publication(s) en échec à retenter.</div>`;
+    html += `<div style="color:var(--sage);font-size:10.5px;margin-top:6px;">En attendant le branchement TikTok/Facebook, suivez ici l'impact réel de vos offres sur vos clients.</div>`;
+    body.innerHTML = html;
+  }catch(_e){
+    body.innerHTML = '<div class="empty">Suivi opérationnel indisponible.</div>';
   }
 }
 // ---- Connexion TikTok (OAuth Login Kit) ----
@@ -1277,6 +1320,107 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   }
   loadSocial();
 });
+
+// ---- Publication manuelle (sans connexion réseaux) : contenu prêt à poster ----
+function getOfferSelection(){
+  const text = document.getElementById('offerText').value.trim();
+  const sel = document.getElementById('offerProduit');
+  let nom='', prix='', img=null;
+  if(sel.value){
+    const opt = sel.selectedOptions[0];
+    nom = opt.dataset.nom || ''; prix = opt.dataset.prix || ''; img = opt.dataset.img || null;
+  }
+  return { text, nom, prix, img };
+}
+function orgLabel(){
+  return (currentOrg && currentOrg.name) ? String(currentOrg.name) : (profile.company || 'MAYELA');
+}
+function buildManualText(){
+  const { text, nom, prix } = getOfferSelection();
+  const lines = [];
+  if(text) lines.push(text);
+  if(nom) lines.push('\n🛍️ ' + nom + (prix ? ' — ' + fmtFCFA(prix) : ''));
+  lines.push('\n📍 ' + orgLabel());
+  lines.push('📲 Commandez vite, stock limité !');
+  lines.push('\n#pharmacie #promo #offre #santé #' + orgLabel().toLowerCase().replace(/[^a-z0-9]+/g,''));
+  return lines.join('\n');
+}
+async function copyManualText(){
+  const errEl = document.getElementById('manualOfferErr');
+  errEl.textContent = '';
+  const content = buildManualText();
+  try{
+    await navigator.clipboard.writeText(content);
+    toast('📋 Contenu copié, collez-le sur TikTok / Facebook');
+  }catch(_e){ errEl.textContent = "Impossible de copier : sélectionnez et copiez le texte à la main."; }
+}
+async function downloadManualImage(){
+  const errEl = document.getElementById('manualOfferErr');
+  errEl.textContent = '';
+  const { text, nom, prix, img } = getOfferSelection();
+  const c = document.getElementById('offerCanvas');
+  const W = 1080, H = 1080;
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0,0,W,H);
+  g.addColorStop(0,'#2f4f4f'); g.addColorStop(0.5,'#3a675b'); g.addColorStop(1,'#d8b45a');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  // bandeau org
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(0,0,W,180);
+  ctx.fillStyle = '#fff'; ctx.font = '700 54px system-ui, sans-serif'; ctx.textAlign='center';
+  ctx.fillText(orgLabel(), W/2, 115);
+  // image produit
+  let drawTextAt = H/2 + 80;
+  if(img){
+    drawTextAt = 0;
+    try{
+      const bmp = await createImageBitmap(await (await fetch(img)).blob());
+      const s = Math.min(700/Math.max(bmp.width,bmp.height), 1);
+      const w=bmp.width*s, h=bmp.height*s;
+      ctx.save(); ctx.beginPath(); ctx.arc(W/2, H/2-40, 320,0,Math.PI*2); ctx.clip();
+      ctx.drawImage(bmp, W/2-w/2, H/2-40-h/2, w, h); ctx.restore();
+      drawTextAt = H/2 + 320;
+    }catch(_e){
+      ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.font='60px system-ui'; ctx.fillText('🛍️', W/2, H/2-30);
+      drawTextAt = H/2 + 60;
+    }
+  }
+  ctx.fillStyle = '#fff'; ctx.textAlign='center';
+  if(nom){
+    ctx.font = '700 52px system-ui, sans-serif';
+    ctx.fillText(nom, W/2, drawTextAt);
+    drawTextAt += 80;
+  }
+  if(prix){
+    ctx.font = '700 84px system-ui, sans-serif'; ctx.fillStyle = '#f7e6b5';
+    ctx.fillText(fmtFCFA(prix), W/2, drawTextAt);
+    drawTextAt += 90;
+  }
+  ctx.font = '44px system-ui, sans-serif'; ctx.fillStyle = '#fff';
+  const desc = text || 'Nouvelle offre';
+  const wrapped = wrapText(ctx, desc, 900);
+  wrapped.slice(0,3).forEach(t=>{ ctx.fillText(t, W/2, drawTextAt); drawTextAt += 62; });
+  // pied de page
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, H-130, W, 130);
+  ctx.fillStyle = '#fff'; ctx.font = '600 40px system-ui, sans-serif';
+  ctx.textAlign='left'; ctx.fillText('📲 Commandez vite — stock limité', 80, H-62);
+  ctx.textAlign = 'right'; ctx.fillStyle='#f5e9c8';
+  ctx.fillText(orgLabel(), W-80, H-62);
+  try{
+    const url = c.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url; a.download = 'offre-' + Date.now() + '.png'; a.click();
+    toast('🖼️ Image téléchargée — publiez-la sur TikTok / Facebook');
+  }catch(_e){ errEl.textContent = "Génération d'image impossible dans ce navigateur."; }
+}
+function wrapText(ctx, text, maxWidth){
+  const words = String(text).split(/\s+/); const lines=[]; let line='';
+  for(const w of words){ const test = line ? line+' '+w : w; if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; } else line = test; }
+  if(line) lines.push(line);
+  return lines;
+}
+document.getElementById('copyOfferBtn').addEventListener('click', copyManualText);
+document.getElementById('imgOfferBtn').addEventListener('click', downloadManualImage);
 
 // ---- Configuration Tracking (TikTok Events API + MMP placeholders) ----
 document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
