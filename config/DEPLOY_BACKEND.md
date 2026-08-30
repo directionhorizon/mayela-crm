@@ -45,8 +45,9 @@ Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 3. Refaire : nom `social-publish` → contenu de `supabase/functions/social-publish/index.ts` → **Deploy**
 4. Refaire : nom `social-tiktok` → contenu de `supabase/functions/social-tiktok/index.ts` → **Deploy**
 5. Refaire : nom `social-insights` → contenu de `supabase/functions/social-insights/index.ts` → **Deploy**
-6. Refaire : nom `tiktok-events` → contenu de `supabase/functions/tiktok-events/index.ts` → **Deploy**
-7. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
+6. Refaire : nom `social-health` → contenu de `supabase/functions/social-health/index.ts` → **Deploy**
+7. Refaire : nom `tiktok-events` → contenu de `supabase/functions/tiktok-events/index.ts` → **Deploy**
+8. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
 
 ### Option B — CLI (si installé)
 ```bash
@@ -54,6 +55,7 @@ supabase functions deploy ia-conseiller --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-publish --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-tiktok --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-insights --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy social-health --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy tiktok-events --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy adjust-events --project-ref ymqdmfsqtkmlmwffqskt
 ```

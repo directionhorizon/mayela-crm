@@ -515,6 +515,11 @@
           <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
           <div class="err-msg" id="trackingErr"></div>
         </div>
+        <div class="section-title">État des intégrations</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div id="socialHealthBody"><div class="empty">Chargement…</div></div>
+          <button class="btn-ghost" id="refreshHealthBtn">🔍 Vérifier l'état des intégrations</button>
+        </div>
         <div class="section-title">Analyse d'audience</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
           <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div></div>
@@ -916,6 +921,7 @@ async function loadSocial(){
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
     <div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.icon || ''} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
   loadSocialTopClients();
+  loadSocialHealth();
   if(socialCache.some(a=>a.platform==='facebook')){
     if(insightsData) document.getElementById('socialInsightsBody').innerHTML = renderInsights(insightsData);
     else loadSocialInsights();
@@ -972,6 +978,57 @@ function renderInsights(d){
   }
   return html;
 }
+// ---- État des intégrations (diagnostic automatisé, Edge Function social-health) ----
+let healthCache = null;
+const HEALTH_META = {
+  facebook:{ icon:'📘', label:'Page Facebook' },
+  tiktok:  { icon:'🎵', label:'TikTok Business' }
+};
+function renderSocialHealth(platforms){
+  const rows = (platforms||[]).map(p=>{
+    const meta = HEALTH_META[p.platform] || {};
+    let badge, badgeColor;
+    if(p.state === 'absent'){ badge = 'Non connecté'; badgeColor = 'var(--sage)'; }
+    else if(p.state === 'incomplete'){ badge = 'Incomplet'; badgeColor = 'var(--clay)'; }
+    else if(p.token_valid === false){ badge = 'Token invalide'; badgeColor = 'var(--clay)'; }
+    else { badge = 'OK'; badgeColor = 'var(--gold)'; }
+    let detail = [];
+    if(p.display_name) detail.push(esc(p.display_name));
+    if(p.missing && p.missing.length) detail.push('Manque : ' + p.missing.map(esc).join(', '));
+    if(p.expires_at && typeof p.expires_at === 'number'){
+      const days = Math.floor((p.expires_at - Date.now())/86400000);
+      detail.push(days < 0 ? 'Token expiré' : (days <= 7 ? 'Expire dans ~'+days+' j' : 'Validité : ~'+days+' j'));
+    }
+    const notes = (p.notes||[]).map(esc);
+    return `<div class="relance-card">
+      <div style="min-width:0;">
+        <div class="name">${meta.icon||''} ${meta.label||esc(p.platform)} <span style="color:${badgeColor};font-weight:600;">· ${badge}</span></div>
+        <div class="meta">${detail.length ? detail.join(' · ') : (p.state==='absent' ? 'Aucune configuration. Utilisez « Connecter ».' : 'Prêt pour la publication.')}</div>
+        ${notes.length ? `<div class="meta">${notes.join('<br>')}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  return rows || '<div class="empty">Aucune plateforme à diagnostiquer.</div>';
+}
+async function loadSocialHealth(force){
+  const body = document.getElementById('socialHealthBody');
+  if(!force && healthCache){ body.innerHTML = renderSocialHealth(healthCache); return; }
+  body.innerHTML = '<div class="empty">Vérification en cours…</div>';
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-health', {
+      headers:{ Authorization:'Bearer ' + session.access_token }
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Diagnostic indisponible.");
+    healthCache = out.platforms;
+    body.innerHTML = renderSocialHealth(out.platforms);
+  }catch(ex){
+    body.innerHTML = '<div class="empty">'+esc(ex.message||'Diagnostic indisponible.')+'</div>';
+  }
+}
+document.getElementById('refreshHealthBtn').addEventListener('click', ()=>loadSocialHealth(true));
+
 async function loadSocialInsights(force){
   const body = document.getElementById('socialInsightsBody');
   const errEl = document.getElementById('insightsErr');
