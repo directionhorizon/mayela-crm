@@ -1341,8 +1341,8 @@ function buildManualText(){
   if(text) lines.push(text);
   if(nom) lines.push('\n🛍️ ' + nom + (prix ? ' — ' + fmtFCFA(prix) : ''));
   lines.push('\n📍 ' + orgLabel());
-  lines.push('📲 Commandez vite, stock limité !');
-  lines.push('\n#pharmacie #promo #offre #santé #' + orgLabel().toLowerCase().replace(/[^a-z0-9]+/g,''));
+  lines.push('📲 Contactez-nous pour plus d\'informations !');
+  lines.push('\n#promo #offre #decouverte #nouveaute #' + orgLabel().toLowerCase().replace(/[^a-z0-9]+/g,''));
   return lines.join('\n');
 }
 async function copyManualText(){
@@ -1403,7 +1403,7 @@ async function downloadManualImage(){
   // pied de page
   ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, H-130, W, 130);
   ctx.fillStyle = '#fff'; ctx.font = '600 40px system-ui, sans-serif';
-  ctx.textAlign='left'; ctx.fillText('📲 Commandez vite — stock limité', 80, H-62);
+  ctx.textAlign='left'; ctx.fillText('📲 Contactez-nous pour plus d\'informations', 80, H-62);
   ctx.textAlign = 'right'; ctx.fillStyle='#f5e9c8';
   ctx.fillText(orgLabel(), W-80, H-62);
   try{
