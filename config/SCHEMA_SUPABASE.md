@@ -1,8 +1,10 @@
 # Schéma Supabase — MAYELA CRM
-*Extrait le 16 juillet 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
+*Extrait le 16 juillet 2026, actualisé le 30 août 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
 
 > Ceci est une documentation du schéma réel, pas un dump SQL exécutable.
-> Toute modification de schéma doit passer par une migration Supabase (`apply_migration`), jamais par édition manuelle de ce fichier.
+> Toute modification de schéma passe par une migration (`config/MIGRATION_V1_1.sql`, `config/MIGRATION_V2.sql`), jamais par édition manuelle de ce fichier.
+> ⚠️ V2 : certaines tables (creances, social_*) existaient en base mais SANS GRANT ni policies → erreurs 42501
+> "permission denied". La migration V2 ajoute les GRANT + policies + colonnes manquantes.
 
 ## `organizations`
 ```
@@ -11,6 +13,7 @@ name          text NOT NULL
 join_code     text NOT NULL      -- code d'invitation partagé à l'équipe
 created_by    uuid
 created_at    timestamptz NOT NULL
+members_can_rename boolean NOT NULL DEFAULT false   -- autorise l'équipe à renommer l'espace
 ```
 
 ## `profiles` (1 ligne par utilisateur `auth.users`)
@@ -50,9 +53,22 @@ updated_at              timestamptz NOT NULL
 id            uuid NOT NULL
 client_id     uuid NOT NULL  -- FK clients
 user_id       uuid
-type          text NOT NULL  -- appel | whatsapp | visite | autre
+type          text NOT NULL  -- appel | whatsapp | visite | autre | facebook | tiktok
 note          text
 occurred_at   timestamptz NOT NULL
+created_at    timestamptz NOT NULL
+```
+
+## `produits_services` (catalogue)
+```
+id            uuid NOT NULL
+nom           text NOT NULL
+description   text
+image_url     text          -- URL publique (bucket "produits")
+prix_defaut   numeric
+actif         boolean NOT NULL DEFAULT true
+owner_user_id uuid
+org_id        uuid
 created_at    timestamptz NOT NULL
 ```
 
@@ -61,6 +77,7 @@ created_at    timestamptz NOT NULL
 id            uuid NOT NULL
 client_id     uuid NOT NULL
 montant       numeric NOT NULL
+produit_id    uuid          -- FK produits_services (optionnel)
 achat_date    date NOT NULL
 created_at    timestamptz NOT NULL
 ```
@@ -70,18 +87,29 @@ created_at    timestamptz NOT NULL
 id            uuid NOT NULL
 client_id     uuid NOT NULL
 montant       numeric
+produit_id    uuid          -- FK produits_services (optionnel)
 devis_date    date NOT NULL
 created_by    uuid
 created_at    timestamptz NOT NULL
 ```
-Déclenche un trigger → Edge Function `notify-new-devis` à l'INSERT.
+
+## `creances` (dettes clients)
+```
+id            uuid NOT NULL
+client_id     uuid NOT NULL  -- FK clients
+montant       numeric NOT NULL
+produit_id    uuid           -- FK produits_services (optionnel)
+statut        text NOT NULL  -- due | payee
+created_at    timestamptz NOT NULL
+```
 
 ## `tasks`
 ```
 id            uuid NOT NULL
 client_id     uuid NOT NULL
 due_date      date NOT NULL
-status        text NOT NULL  -- a_faire | fait
+status        text NOT NULL  -- a_faire | fait | reporte
+libelle       text           -- libellé de la tâche (optionnel)
 created_by    uuid
 created_at    timestamptz NOT NULL
 ```
@@ -99,6 +127,61 @@ user_id      uuid
 created_at   timestamptz NOT NULL
 ```
 Rempli automatiquement par un trigger générique (`log_change`) sur les tables sensibles.
+
+## `social_accounts` (comptes réseaux connectés, 1 par espace/plateforme)
+```
+id            uuid NOT NULL
+org_id        uuid NOT NULL  -- FK organizations
+platform      text NOT NULL  -- facebook | whatsapp | tiktok
+display_name  text
+config        jsonb NOT NULL -- tokens & identifiants (jamais envoyés au navigateur des autres membres)
+connected_by  uuid
+created_at    timestamptz NOT NULL
+-- unique (org_id, platform)
+```
+
+## `social_posts` (journal des publications)
+```
+id                uuid NOT NULL
+org_id            uuid NOT NULL
+platform          text NOT NULL  -- facebook | whatsapp | tiktok
+content           text NOT NULL
+image_url         text
+status            text NOT NULL  -- sent | failed
+error             text
+external_post_id  text
+posted_by         uuid
+created_at        timestamptz NOT NULL
+```
+
+## `social_events_log` (audit des événements TikTok Events API / MMP)
+```
+id            uuid NOT NULL
+org_id        uuid NOT NULL
+platform      text NOT NULL  -- tiktok | adjust | branch
+event         text NOT NULL
+pixel_id      text
+event_id      text
+external_id   text
+status        text NOT NULL  -- sent | failed
+error         text
+payload       jsonb NOT NULL
+sent_by       uuid
+created_at    timestamptz NOT NULL
+```
+
+## `integrations_oauth` (connexions OAuth Google Sheets / Notion, par espace)
+```
+id            uuid NOT NULL
+org_id        uuid NOT NULL  -- FK organizations
+provider      text NOT NULL  -- google_sheets | notion
+display_name  text
+config        jsonb NOT NULL -- tokens d'accès/refresh (côté serveur)
+connected_by  uuid
+created_at    timestamptz NOT NULL
+updated_at    timestamptz NOT NULL
+-- unique (org_id, provider)
+```
 
 ## `horizon_leads` (interne HORIZON, hors périmètre produit)
 ```
@@ -138,16 +221,22 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
 - RESTRICTIVE deny-anonymous sur les 8 tables `public` sensibles
 - Isolation via `owner_user_id = auth.uid()` OU `org_id = current_org_id()`
 - `current_org_id()` lit `profiles.org_id` via `auth.uid()`
-- Tables enfants (`interactions`, `achats`, `tasks`, `devis`) : policy `ALL` vérifiant que le `client_id` référencé appartient bien à l'utilisateur/l'org
+- Tables enfants (`interactions`, `achats`, `tasks`, `devis`, `creances`) : policy `ALL` vérifiant que le `client_id` référencé appartient bien à l'utilisateur/l'org
 
 ## Edge Functions déployées
 
-| Fonction | JWT requis | Déclencheur |
+| Fonction | JWT requis | Déclencheur / usage |
 |---|---|---|
 | `notify-new-devis` | oui | Trigger DB sur INSERT `devis` |
 | `task-expiry-alerts` | oui | pg_cron quotidien 07h00 |
 | `horizon-leads-webhook` | non | Webhook entrant Make.com |
 | `horizon-send-email` | oui | Appel manuel (staff) |
 | `check-password-pwned` | non | Legacy, non utilisée (auth 100% OTP) |
+| `social-publish` | oui | Publie une offre (Facebook Graph / TikTok Content Posting) |
+| `social-tiktok` | oui | Flux OAuth TikTok (échange du code / refresh) |
+| `social-insights` | oui | Analyse d'audience (Facebook + TikTok) |
+| `social-health` | oui | Diagnostic de l'état des intégrations (absent/incomplet/complete) |
+| `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
+| `adjust-events` | oui | (inactive) Coquille MMP Adjust/Branch |
 
 **Secrets non configurés à ce jour** (401 attendus tant que non fait) : `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `ALERT_EMAIL_FROM`, clé Brevo.

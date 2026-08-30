@@ -1,21 +1,39 @@
-# Déploiement backend — MAYELA CRM V1.1
+# Déploiement backend — MAYELA CRM
 
-Trois étapes, dans l'ordre. Comptez ~20 minutes.
+Trois étapes, dans l'ordre. Comptez ~30 minutes.
 
 ---
 
 ## Étape 1 — Migration base de données (obligatoire pour tout)
 
+### 1a — Migration V1.1 (produits + réseaux sociaux)
 1. Ouvrez https://supabase.com/dashboard → projet `ymqdmfsqtkmlmwffqskt`
 2. Menu gauche **SQL Editor** → **New query**
-3. Copiez-collez TOUT le contenu du fichier `MIGRATION_V1_1.sql` (même dossier que ce guide)
+3. Copiez-collez TOUT le contenu du fichier `MIGRATION_V1_1.sql`
 4. Cliquez **Run** — doit se terminer par "Success. No rows returned"
 
+Cela ajoute : colonnes `description`/`image_url` aux produits, bucket Storage `produits`, tables
+`social_accounts`, `social_posts`, `social_events_log`.
+
+### 1b — Migration V2 (corrections + actualisation du schéma) — IMPORTANT
+> Vérifié le 30/08/2026 : plusieurs tables existaient en base mais SANS GRANT ni policies
+> → erreurs `42501 permission denied` sur `produits_services`, `creances`, `social_accounts`,
+> `social_posts`, `social_events_log`. L'application ne peut pas les lire/écrire tant que V2 n'est pas passée.
+
+1. Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V2.sql`
+3. Cliquez **Run**
+
 Cela ajoute :
-- les colonnes `description` et `image_url` aux produits
-- le bucket Storage public `produits` + les règles d'upload par organisation
-- les tables `social_accounts` et `social_posts` avec isolation par organisation
-- la table `social_events_log` (journal des événements TikTok)
+- les **GRANT** SELECT/INSERT/UPDATE/DELETE sur toutes les tables métier (débloque les 42501)
+- colonnes manquantes : `produits_services.actif`, `achats.produit_id`, `devis.produit_id`,
+  `tasks.libelle`, `organizations.members_can_rename`
+- la table **`creances`** (dettes clients) + RLS
+- les **policies RLS** org-based de `social_accounts`, `social_posts`, `social_events_log`
+- la table **`integrations_oauth`** (connexions Google Sheets / Notion par espace) + RLS
+
+Vérification : relancez la requête `GET /rest/v1/social_accounts?select=id&limit=1` → doit répondre
+200 (et non plus 403).
 
 ---
 
