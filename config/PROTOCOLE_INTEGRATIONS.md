@@ -85,4 +85,37 @@ Page ou le compte TikTok de CET espace.
 
 ---
 
+## 7. Automatisations opérationnelles (en attendant les réseaux)
+
+Même sans Facebook/TikTok connectés, l'onglet **Réseaux** offre un travail manuel assisté
+et un suivi d'impact interne. Fonctionnement **identique pour chaque espace** (données de
+l'espace courant uniquement).
+
+### 7.1 Contenu prêt à poster (texte)
+- Onglet Réseaux → **Publier une offre** → bouton **📋 Copier le texte**.
+- Génère : texte saisi + produit + prix + coordonnées de l'espace + hashtags, prêt à
+  coller sur TikTok/Facebook/WhatsApp.
+- Pas d'API requise : simple copier-coller manuel.
+
+### 7.2 Image de l'offre (visuel prêt à poster)
+- Bouton **🖼️ Télécharger l'image** → génère un PNG 1080×1080 (format carré réseaux)
+  avec : nom de l'espace, image du produit (si renseignée), prix, texte, mention
+  « Commandez vite — stock limité ».
+- Téléchargé localement, prêt à être publié manuellement.
+
+### 7.3 Suivi opérationnel interne (remplace l'analyse d'audience)
+- Section **Impact opérationnel (interne)**, affichée en complément dans l'onglet Réseaux.
+- KPIs dérivés des données internes de l'espace :
+  - offres publiées (et échecs à retenter)
+  - échanges clients enregistrés, répartis par canal (WhatsApp, TikTok, Facebook, appels, visites)
+  - clients suivis
+  - achats 30 jours (FCFA)
+- Fournit un indicateur d'impact réel sans dépendre des APIs réseaux.
+
+> Ces automatisations remplissent temporairement les manques opérationnels tant que les
+> intégrations Facebook/TikTok ne sont pas branchées. Elles cohabitent avec le diagnostic
+> d'état automatisé (`social-health`) et les publications API dès qu'une intégration est complète.
+
+---
+
 *Fichier lié : voir aussi `config/DEPLOY_BACKEND.md` pour les détails pas-à-pas de chaque plateforme.*
