@@ -571,26 +571,50 @@
           <button class="stage-chip" data-report-period="90">90 j</button>
           <button class="stage-chip" data-report-period="all">Tout</button>
         </div>
-        <div class="kpi-grid">
-          <div class="kpi"><div class="num" id="rpRevenue">–</div><div class="lbl">Achats (FCFA)</div></div>
-          <div class="kpi"><div class="num" id="rpSales">–</div><div class="lbl">Ventes</div></div>
-          <div class="kpi"><div class="num" id="rpDevis">–</div><div class="lbl">Devis</div></div>
-          <div class="kpi"><div class="num" id="rpClients">–</div><div class="lbl">Clients</div></div>
-          <div class="kpi"><div class="num" id="rpCreances">–</div><div class="lbl">Créances en attente</div></div>
+        <div class="section-title">Type de données</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <select id="reportType" class="field" style="font-family:'Work Sans';">
+            <option value="synthese">Synthèse globale (vue d'ensemble)</option>
+            <option value="clients">Clients (fichier, zones, sources)</option>
+            <option value="ventes">Ventes & achats</option>
+            <option value="devis">Devis</option>
+            <option value="creances">Créances (dettes clients)</option>
+            <option value="interactions">Interactions & rendez-vous</option>
+            <option value="tasks">Tâches</option>
+            <option value="produits">Produits & services</option>
+            <option value="reseaux">Réseaux sociaux (publications)</option>
+            <option value="autre">Autre… (rapport personnalisé)</option>
+          </select>
+          <div id="reportAutreWrap" style="display:none; flex-direction:column; gap:6px;">
+            <textarea id="reportAutre" class="field" rows="3" placeholder="Décrivez le rapport que vous souhaitez (données, période, style…). L'assistant IA générera le contenu." style="resize:vertical; font-family:'Work Sans';"></textarea>
+            <button class="btn" id="rpGenerateIaBtn">✨ Générer avec l'assistant</button>
+          </div>
+          <div class="meta" style="color:var(--sage); font-size:11px;">Le résumé et le tableau ci-dessous suivent la catégorie choisie. « Autre » génère un rapport personnalisé avec l'assistant.</div>
+          <div class="err-msg" id="reportErr"></div>
         </div>
-        <div class="section-title">Tableaux de détail</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div class="meta" style="color:var(--sage);">Choisissez un format pour exporter les données de la période :</div>
+        <div id="reportExtra" class="kpi-grid"></div>
+        <div class="section-title">Aperçu</div>
+        <div id="reportPreviewWrap" style="margin:0 20px;"><span id="reportDataIa" style="display:none;"></span>
+          <div id="reportPreviewText" style="display:none; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:12.5px; line-height:1.55; white-space:pre-wrap; color:var(--text); max-height:260px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#41604f transparent;"></div>
+          <div id="reportPreviewTable" style="display:none; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px; max-height:280px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#41604f transparent;">
+            <table id="reportPreviewTableInner" style="width:100%; border-collapse:collapse; font-size:11px; min-width:340px;">
+              <thead><tr id="reportPreviewHead"></tr></thead>
+              <tbody id="reportPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-title">Exporter / Télécharger</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn" id="exportCsvBtn">⬇️ CSV</button>
             <button class="btn" id="exportXlsxBtn">⬇️ Excel</button>
             <button class="btn" id="exportPdfBtn">🖨️ PDF</button>
+            <button class="btn" id="gsExportBtn2">📊 Google Sheets</button>
           </div>
-          <div class="err-msg" id="reportErr"></div>
+          <div class="meta" style="color:var(--sage); font-size:11px;">Astuce : le bouton « Voir » est inutile, l'aperçu s'affiche directement ci-dessus, prêt à être modifié si besoin (saisissez directement dans les cellules du tableau).</div>
         </div>
         <div class="section-title">Synthèse</div>
         <div id="reportSummary" class="card-list" style="padding-top:0;"></div>
-        <div class="section-title">Meilleurs clients (CA)</div>
         <div id="reportTop" class="card-list" style="padding-top:0;"></div>
         <div style="height:16px;"></div>
       </div>
@@ -2153,74 +2177,225 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
 // ================== RAPPORTS ==================
 let reportPeriod = '30';
 let reportData = null;
+let reportType = 'synthese';
 const PERIOD_MS = { 7:7*864e5, 30:30*864e5, 90:90*864e5, all:0 };
 function periodSince(){
   const d = PERIOD_MS[reportPeriod];
   return d ? new Date(Date.now() - d).toISOString() : '1970-01-01';
 }
+
+// Résumé textuel généré automatiquement pour la catégorie choisie
+function reportSummaryText(d){
+  const { clients=[], achats=[], devis=[], creances=[], interactions=[], tasks=[], produits=[], posts=[] } = d || {};
+  const rev = achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
+  const dev = devis.reduce((s,x)=>s+(Number(x.montant)||0),0);
+  const due = creances.reduce((s,x)=>s+(Number(x.montant)||0),0);
+  const zoneTxt = (()=>{ const z={}; clients.forEach(c=>{ const k=c.zone||'Non renseigné'; z[k]=(z[k]||0)+1; }); return Object.entries(z).map(([k,v])=>`${k}: ${v}`).join(' · '); })();
+  let t;
+  switch(reportType){
+    case 'clients':
+      t=`${clients.length} client(s) au total. Répartition par zone : ${zoneTxt||'aucune zone renseignée'}.`;
+      break;
+    case 'ventes':
+      t=`${achats.length} vente(s) sur la période, pour un total de ${fmtFCFA(rev)} FCFA. Panier moyen : ${fmtFCFA(achats.length?Math.round(rev/achats.length):0)} FCFA.`;
+      break;
+    case 'devis':
+      t=`${devis.length} devis, montant total de ${fmtFCFA(dev)} FCFA.`;
+      break;
+    case 'creances':
+      t=`${creances.length} créance(s) en attente, pour un total de ${fmtFCFA(due)} FCFA.`;
+      break;
+    case 'interactions':
+      t=`${interactions.length} interaction(s) & rendez-vous enregistrés sur la période.`;
+      break;
+    case 'tasks':
+      t=`${tasks.length} tâche(s) sur la période (à traiter avec échéance).`;
+      break;
+    case 'produits':
+      t=`${produits.length} produit(s) & service(s) au catalogue.`;
+      break;
+    case 'reseaux':
+      t=`${posts.length} publication(s) réseaux sociaux sur la période.`;
+      break;
+    default:
+      t=`${clients.length} clients · ${achats.length} ventes (${fmtFCFA(rev)} FCFA) · ${devis.length} devis · ${fmtFCFA(due)} FCFA de créances en attente. Zones : ${zoneTxt||'non renseignées'}.`;
+  }
+  return t;
+}
+
+// Construit les lignes du tableau selon la catégorie
+function reportRows(d){
+  const { clients=[], achats=[], devis=[], creances=[], interactions=[], tasks=[], produits=[], posts=[] } = d || {};
+  const nm = id => { const c=clients.find(x=>x.id===id); return c ? c.name : ''; };
+  const nmProd = id => { const p=produits.find(x=>x.id===id); return p ? (p.nom||'') : ''; };
+  switch(reportType){
+    case 'clients':
+      return [['Client','Zone','Source','Étape','Enregistré le']].concat(
+        clients.map(c=>[c.name||'', c.zone||'', c.source||'', c.stage_override||'', String(c.created_at||'').slice(0,10)])
+      );
+    case 'ventes':
+      return [['Client','Montant (FCFA)','Produit','Date']].concat(
+        achats.map(a=>[nm(a.client_id), Number(a.montant)||0, nmProd(a.produit_id), String(a.achat_date||'').slice(0,10)])
+      );
+    case 'devis':
+      return [['Client','Montant (FCFA)','Produit','Date']].concat(
+        devis.map(dd=>[nm(dd.client_id), Number(dd.montant)||0, nmProd(dd.produit_id), String(dd.devis_date||'').slice(0,10)])
+      );
+    case 'creances':
+      return [['Client','Montant (FCFA)','Produit','Statut','Date']].concat(
+        creances.map(c=>[nm(c.client_id), Number(c.montant)||0, nmProd(c.produit_id), c.statut||'', String(c.created_at||'').slice(0,10)])
+      );
+    case 'interactions':
+      return [['Client','Type','Date']].concat(
+        interactions.map(i=>[nm(i.client_id), i.type||'', String(i.occurred_at||'').slice(0,16)])
+      );
+    case 'tasks':
+      return [['Client','Libellé','Échéance','Statut']].concat(
+        tasks.map(t=>[nm(t.client_id), t.libelle||'', String(t.due_date||'').slice(0,10), t.status||''])
+      );
+    case 'produits':
+      return [['Nom','Description','Prix (FCFA)','Actif']].concat(
+        produits.map(p=>[p.nom||'', p.description||'', Number(p.prix_defaut)||0, p.actif!==false?'Oui':'Non'])
+      );
+    case 'reseaux':
+      return [['Réseau','Contenu','Statut','Date']].concat(
+        posts.map(p=>[p.platform||'', (p.content||'').slice(0,80), p.status||'', String(p.created_at||'').slice(0,10)])
+      );
+    default:
+      return [['Type','Client','Montant (FCFA)','Date']].concat(
+        achats.map(a=>['Achat', nm(a.client_id), Number(a.montant)||0, String(a.achat_date||'').slice(0,10)]),
+        devis.map(dd=>['Devis', nm(dd.client_id), Number(dd.montant)||0, String(dd.devis_date||'').slice(0,10)])
+      );
+  }
+}
+
+function renderReportPreview(rows, text){
+  const tw = document.getElementById('reportPreviewText');
+  const tbl = document.getElementById('reportPreviewTable');
+  if(text !== null && text !== undefined){
+    tbl.style.display = 'none';
+    tw.style.display = 'block';
+    tw.textContent = text;
+    return;
+  }
+  tw.style.display = 'none';
+  if(!rows || !rows.length){ tbl.style.display='none'; return; }
+  tbl.style.display = 'block';
+  const head = rows[0];
+  document.getElementById('reportPreviewHead').innerHTML = head.map(h=>'<th style="padding:6px;border-bottom:1px solid var(--line);color:var(--gold);text-align:left;white-space:nowrap;">'+esc(String(h))+'</th>').join('');
+  document.getElementById('reportPreviewBody').innerHTML = rows.slice(1).map(r=>
+    '<tr>'+r.map((c,ci)=>{ const editable = ci!==0 ? ' contenteditable="true"' : ''; return '<td'+editable+' style="padding:6px;border-bottom:1px solid var(--line);white-space:nowrap;">'+esc(String(c??''))+'</td>'; }).join('')+'</tr>'
+  ).join('');
+}
+
 async function loadReports(){
   const errEl = document.getElementById('reportErr');
   errEl.textContent = '';
   document.getElementById('reportCount').textContent = '…';
   try{
     const since = periodSince();
-    const [cl, ac, dv, cr] = await Promise.all([
-      sb.from('clients').select('id,name,zone,created_at'),
-      sb.from('achats').select('client_id,montant,achat_date').gte('achat_date', since),
-      sb.from('devis').select('client_id,montant,devis_date').gte('devis_date', since),
-      sb.from('creances').select('montant,statut').eq('statut','due')
+    const [cl, ac, dv, cr, it, tk, pr, po] = await Promise.all([
+      sb.from('clients').select('id,name,zone,source,stage_override,created_at'),
+      sb.from('achats').select('client_id,montant,produit_id,achat_date').gte('achat_date', since),
+      sb.from('devis').select('client_id,montant,produit_id,devis_date').gte('devis_date', since),
+      sb.from('creances').select('client_id,montant,produit_id,statut,created_at'),
+      sb.from('interactions').select('client_id,type,occurred_at').gte('occurred_at', since),
+      sb.from('tasks').select('client_id,libelle,due_date,status').gte('due_date', '1970-01-01'),
+      sb.from('produits_services').select('id,nom,description,prix_defaut,actif'),
+      sb.from('social_posts').select('platform,content,status,created_at').gte('created_at', since)
     ]);
-    const clients = cl.data||[]; const achats = ac.data||[]; const devis = dv.data||[]; const creances = cr.data||[];
-    const totalRevenue = achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
-    const devisTotal = devis.reduce((s,x)=>s+(Number(x.montant)||0),0);
-    const dueTotal = creances.reduce((s,x)=>s+(Number(x.montant)||0),0);
-    reportData = { clients, achats, devis, creances };
+    const d = {
+      clients: cl.data||[], achats: ac.data||[], devis: dv.data||[],
+      creances: cr.data||[], interactions: it.data||[], tasks: tk.data||[],
+      produits: pr.data||[], posts: po.data||[]
+    };
+    reportData = d;
 
-    document.getElementById('rpRevenue').textContent = fmtFCFA(totalRevenue);
-    document.getElementById('rpSales').textContent = achats.length;
-    document.getElementById('rpDevis').textContent = devis.length;
-    document.getElementById('rpClients').textContent = clients.length;
-    document.getElementById('rpCreances').textContent = fmtFCFA(dueTotal);
-    document.getElementById('reportCount').textContent = achats.length + ' ventes';
+    const totalRevenue = d.achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
+    const dueTotal = d.creances.reduce((s,x)=>s+(Number(x.montant)||0),0);
+    // KPIs (toujours pour synthèse ; sinon on affiche une ligne de résumé simple)
+    document.getElementById('reportCount').textContent = d.achats.length + ' ventes · ' + d.clients.length + ' clients';
+    const rpIds = ['rpRevenue','rpSales','rpDevis','rpClients','rpCreances'];
+    const rpVals = [fmtFCFA(totalRevenue), String(d.achats.length), String(d.devis.length), String(d.clients.length), fmtFCFA(dueTotal)];
+    const extra = document.getElementById('reportExtra');
+    if(reportType==='synthese'){
+      extra.style.display = 'grid';
+      extra.innerHTML = rpIds.map((id,i)=>'<div class="kpi"><div class="num">'+rpVals[i]+'</div><div class="lbl">'+(['Achats (FCFA)','Ventes','Devis','Clients','Créances'][i])+'</div></div>').join('');
+    } else {
+      extra.style.display = 'none';
+    }
 
-    // Synthèse
-    const top = {};
-    for(const a of achats){ top[a.client_id] = (top[a.client_id]||0)+(Number(a.montant)||0); }
-    const ranked = Object.entries(top).map(([id,sum])=>({ id, sum })).sort((a,b)=>b.sum-a.sum).slice(0,5);
-    const clientName = id => { const c = clients.find(x=>x.id===id); return c ? c.name : 'Client supprimé'; };
+    // Aperçu
+    if(reportType==='autre'){
+      renderReportPreview(null, "Choisissez « Générer avec l'assistant » pour produire le rapport personnalisé, ou renseignez une catégorie ci-dessus pour un aperçu de données.");
+    } else {
+      renderReportPreview(reportRows(d));
+    }
 
-    const topHtml = ranked.length
-      ? ranked.map((r,i)=>`<div class="relance-card"><div style="min-width:0;"><div class="name">${i+1}. ${esc(clientName(r.id))}</div><div class="meta">${fmtFCFA(r.sum)} d'achats sur la période</div></div></div>`).join('')
-      : '<div class="empty">Aucune vente sur la période. Ajoutez des achats dans les fiches clients.</div>';
-
-    const zones = {};
-    for(const c of clients){ zones[c.zone||'Non renseigné'] = (zones[c.zone||'Non renseigné']||0)+1; }
-    const zoneHtml = Object.entries(zones).sort((a,b)=>b[1]-a[1]).map(([z,n])=>
-      `<span style="display:inline-block;background:var(--panel-2);border-radius:20px;padding:3px 10px;font-size:11px;margin:2px;">${esc(z)} : ${n}</span>`).join(' ') || '<span style="color:var(--sage);font-size:11px;">Aucune zone renseignée.</span>';
-
+    // Synthèse textuelle
     document.getElementById('reportSummary').innerHTML =
-      `<div class="relance-card"><div style="min-width:0;"><div class="name">Période : ${reportPeriod==='all'?'Tout l’historique':reportPeriod+' jours'}</div><div class="meta">${clients.length} clients · ${achats.length} achats · ${devis.length} devis · ${fmtFCFA(dueTotal)} de créances en attente</div><div class="meta" style="margin-top:6px;">Répartition par zone :</div><div style="margin-top:4px;">${zoneHtml}</div></div></div>`;
+      '<div class="relance-card"><div style="min-width:0;"><div class="name">Période : '+(reportPeriod==='all'?'Tout l\u2019historique':reportPeriod+' jours')+'</div><div class="meta">'+esc(reportSummaryText(d))+'</div></div></div>';
 
-    document.getElementById('reportTop').innerHTML = topHtml;
+    // Meilleurs clients (CA) — pour synthèse
+    const top = {};
+    d.achats.forEach(a=>{ top[a.client_id]=(top[a.client_id]||0)+(Number(a.montant)||0); });
+    const ranked = Object.entries(top).map(([id,sum])=>({id,sum})).sort((a,b)=>b.sum-a.sum).slice(0,5);
+    const clientName = id => { const c=d.clients.find(x=>x.id===id); return c?c.name:'Client supprimé'; };
+    document.getElementById('reportTop').innerHTML = reportType==='synthese'
+      ? (ranked.length?ranked.map((r,i)=>'<div class="relance-card"><div style="min-width:0;"><div class="name">'+(i+1)+'. '+esc(clientName(r.id))+'</div><div class="meta">'+fmtFCFA(r.sum)+' d\u2019achats sur la période</div></div></div>').join('') : '<div class="empty">Aucune vente sur la période.</div>')
+      : '';
   }catch(ex){
-    errEl.textContent = ex.message || "Impossible de charger les rapports. Certaines tables (creances) peuvent attendre la migration.";
+    errEl.textContent = ex.message || "Impossible de charger les rapports. Vérifiez que la base est bien accessible.";
   }
 }
+function reportTypeChange(){
+  const t = document.getElementById('reportType').value;
+  reportType = t;
+  const wrap = document.getElementById('reportAutreWrap');
+  wrap.style.display = (t==='autre') ? 'flex' : 'none';
+  loadReports();
+}
+document.getElementById('reportType').addEventListener('change', reportTypeChange);
 document.querySelectorAll('[data-report-period]').forEach(b=>{
   b.addEventListener('click', ()=>{
     document.querySelectorAll('[data-report-period]').forEach(x=>x.classList.toggle('active', x===b));
     reportPeriod = b.dataset.reportPeriod;
+    if(reportType==='autre'){ renderReportPreview(null,"Choisissez « Générer avec l'assistant » pour produire le rapport personnalisé."); }
     loadReports();
   });
 });
-function reportRows(){
-  const { clients, achats, devis } = reportData || {};
-  const rows = [['Type','Client','Montant (FCFA)','Date']];
-  const nm = id => { const c=(clients||[]).find(x=>x.id===id); return c ? c.name : ''; };
-  (achats||[]).forEach(a=>rows.push(['Achat', nm(a.client_id), Number(a.montant)||0, String(a.achat_date||'').slice(0,10)]));
-  (devis||[]).forEach(d=>rows.push(['Devis', nm(d.client_id), Number(d.montant)||0, String(d.devis_date||'').slice(0,10)]));
-  return rows;
-}
+
+// ==== Rapport personnalisé assisté par IA ====
+document.getElementById('rpGenerateIaBtn').addEventListener('click', async ()=>{
+  const box = document.getElementById('reportAutre');
+  const prompt = box.value.trim();
+  if(!prompt){ toast("Décrivez d'abord le rapport souhaité.", true); return; }
+  const btn = document.getElementById('rpGenerateIaBtn');
+  btn.disabled = true; btn.textContent = 'Génération…';
+  const errEl = document.getElementById('reportErr'); errEl.textContent='';
+  try{
+    const since = periodSince();
+    const { data:{ session } } = await sb.auth.getSession();
+    const res = await fetch(SUPABASE_URL + '/functions/v1/ia-conseiller', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + session.access_token },
+      body: JSON.stringify({ message: 'Rapport personnalisé demandé : ' + prompt, fileText:'' })
+    });
+    const out = await res.json();
+    const text = out.reply || ("⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide"));
+    renderReportPreview(null, text);
+    reportAutreText = text;
+    document.getElementById('reportDataIa').textContent = text;
+    toast('Rapport généré par l\u2019assistant.');
+  }catch(ex){
+    errEl.textContent = "Impossible de joindre l'assistant.";
+  }finally{
+    btn.disabled = false; btn.textContent = '✨ Générer avec l\u2019assistant';
+  }
+});
+let reportAutreText = '';
+
+// ==== Téléchargements ====
 function downloadFile(name, blob){
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name;
@@ -2230,33 +2405,83 @@ function downloadFile(name, blob){
 function csvString(rows){
   return rows.map(r=>r.map(c=>{ const s=String(c??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(',')).join('\r\n');
 }
+function currentExportRows(){
+  if(reportType==='autre'){
+    return [['Rapport personnalisé'],[reportAutreText||'']];
+  }
+  return reportData ? reportRows(reportData) : [['']];
+}
 document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
   if(!reportData) return loadReports();
-  downloadFile('rapport_crm_' + reportPeriod + '.csv', new Blob(['\ufeff'+csvString(reportRows())], { type:'text/csv;charset=utf-8' }));
+  downloadFile('rapport_crm_' + reportPeriod + '.csv', new Blob(['\ufeff'+csvString(currentExportRows())], { type:'text/csv;charset=utf-8' }));
   toast('Export CSV téléchargé.');
 });
 document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
   if(!reportData) return loadReports();
-  const rows = reportRows();
-  const workbook = [['<?xml version="1.0"?>', '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">', '<Worksheet ss:Name="Rapport"><Table>']];
-  rows.forEach(r=>{
-    workbook.push('<Row>' + r.map(c=>'<Cell><Data ss:Type="String">'+String(c??'').replace(/[<>&]/g, ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))+'</Data></Cell>').join('') + '</Row>');
-  });
-  workbook.push('</Table></Worksheet></Workbook>');
-  downloadFile('rapport_crm_' + reportPeriod + '.xls', new Blob([workbook.join('\n')], { type:'application/vnd.ms-excel' }));
+  const rows = currentExportRows();
+  const wb = [['<?xml version="1.0"?>', '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">', '<Worksheet ss:Name="Rapport"><Table>']];
+  rows.forEach(r=>{ wb.push('<Row>' + r.map(c=>'<Cell><Data ss:Type="String">'+String(c??'').replace(/[<>&]/g, ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))+'</Data></Cell>').join('') + '</Row>'); });
+  wb.push('</Table></Worksheet></Workbook>');
+  downloadFile('rapport_crm_' + reportPeriod + '.xls', new Blob([wb.join('\n')], { type:'application/vnd.ms-excel' }));
   toast('Export Excel téléchargé.');
 });
 document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
   if(!reportData) return loadReports();
-  const rows = reportRows();
-  let html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:12px;}h1{font-size:18px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #999;padding:5px;text-align:left;}</style></head><body>';
-  html += '<h1>Rapport CRM — ' + (reportPeriod==='all'?'Tout l’historique':reportPeriod+' jours') + '</h1>';
-  html += '<table><thead><tr>' + rows[0].map(h=>'<th>'+h+'</th>').join('') + '</tr></thead><tbody>';
-  rows.slice(1).forEach(r=>{ html += '<tr>' + r.map(c=>'<td>'+String(c??'')+'</td>').join('') + '</tr>'; });
+  const rows = currentExportRows();
+  let html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:12px;}h1{font-size:18px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #999;padding:5px;text-align:left;white-space:pre-wrap;}</style></head><body>';
+  html += '<h1>Rapport CRM — ' + (reportPeriod==='all'?'Tout l\u2019historique':reportPeriod+' jours') + '</h1>';
+  html += '<table><thead><tr>' + (rows[0]||['']).map(h=>'<th>'+esc(String(h))+'</th>').join('') + '</tr></thead><tbody>';
+  rows.slice(1).forEach(r=>{ html += '<tr>' + r.map(c=>'<td>'+String(c??'').replace(/</g,'&lt;')+'</td>').join('') + '</tr>'; });
   html += '</tbody></table></body></html>';
   const w = window.open('', '_blank');
   w.document.write(html); w.document.close();
   setTimeout(()=>{ w.focus(); w.print(); }, 300);
+});
+// ==== Export Google Sheets du rapport courant ====
+document.getElementById('gsExportBtn2').addEventListener('click', async ()=>{
+  if(!reportData && reportType!=='autre') return loadReports();
+  const errEl = document.getElementById('reportErr');
+  errEl.textContent = '';
+  const isAutre = reportType==='autre';
+  let rows;
+  if(isAutre){
+    rows = [['Rapport personnalisé'],[reportAutreText||('Rapport : ' + document.getElementById('reportAutre').value)]];
+  } else {
+    rows = currentExportRows();
+  }
+  // 1) backend par espace
+  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+        body: JSON.stringify({ action:'export', rows, fileName:'Rapport MAYELA ' + localDateStr() })
+      });
+      const out = await r.json();
+      if(out && out.ok){ toast('Export envoyé dans Google Sheets.'); window.open(out.url,'_blank'); return; }
+      throw new Error((out&&out.error)||"Export en échec côté espace.");
+    }catch(ex){ /* fallback navigateur */ }
+  }
+  const tok = gsTokenLocal();
+  if(!tok || tok.expires_at < Date.now()){ errEl.textContent = "Google Sheets non connecté : ouvrez l'onglet Réseaux et connectez-vous à Google."; return; }
+  try{
+    const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method:'POST',
+      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ properties:{ title:'Rapport MAYELA ' + localDateStr() } })
+    });
+    const sheet = await createRes.json();
+    const sid = sheet.spreadsheetId, range = sheet.sheets[0].properties.title;
+    if(sheet.error) throw new Error(sheet.error.message);
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+sid+'/values/'+encodeURIComponent(range+'!A1')+':append?valueInputOption=RAW', {
+      method:'POST',
+      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ values: rows, majorDimension:'ROWS' })
+    });
+    toast('Export envoyé dans Google Sheets.');
+    window.open('https://docs.google.com/spreadsheets/d/'+sid, '_blank');
+  }catch(ex){ errEl.textContent = ex.message || "Export en échec."; }
 });
 </script>
 <script>
