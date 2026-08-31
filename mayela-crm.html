@@ -74,12 +74,13 @@
     }
   }
 
-  .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; }
+  .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; }
   .screen.active{ display:flex; }
-  .screen::-webkit-scrollbar{ width:6px; }
-  .screen::-webkit-scrollbar-track{ background:transparent; }
-  .screen::-webkit-scrollbar-thumb{ background:#41604f; border-radius:4px; }
-  .screen{ scrollbar-width:thin; scrollbar-color:#41604f transparent; }
+  .screen::-webkit-scrollbar{ width:10px; }
+  .screen::-webkit-scrollbar-track{ background:rgba(255,255,255,0.06); border-radius:6px; }
+  .screen::-webkit-scrollbar-thumb{ background:#D9A441; border-radius:6px; border:2px solid var(--ink); }
+  .screen::-webkit-scrollbar-thumb:hover{ background:var(--gold); }
+  .screen{ scrollbar-width:auto; scrollbar-color:#D9A441 rgba(255,255,255,0.08); }
 
   .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
   .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
@@ -513,21 +514,28 @@
           <div class="err-msg" id="manualOfferErr"></div>
         </div>
         <div class="section-title">Configuration Tracking</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
-          <div class="meta">TikTok Events API (server-side) — laissez vide pour ne pas renvoyer d'événements.</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">TikTok · Événements (server-side)</span><span class="pill" style="background:rgba(76,154,107,0.14); color:#7BC79A; border-color:rgba(76,154,107,0.3);">Actif</span></div>
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Suit les conversions (leads, devis, ventes…). Laissez vide pour ne pas renvoyer d'événements.</div>
           <input class="field" id="ttPixelId" placeholder="Pixel ID TikTok" autocomplete="off">
           <input class="field" id="ttPixelToken" placeholder="Events API Access Token" type="password" autocomplete="off">
-          <div class="meta" style="color:var(--sage);">Adjust / Branch (MMP) — à renseigner après l'activation du compte pro.</div>
+          <div style="height:4px; border-top:1px solid var(--line);"></div>
+          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--sage);">Adjust / Branch (MMP)</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Optionnel</span></div>
+          <div class="meta" style="color:var(--sage); line-height:1.5;">À renseigner après l'activation du compte pro.</div>
           <input class="field" id="mmpAppToken" placeholder="Adjust App Token (optionnel)" autocomplete="off">
           <input class="field" id="mmpS2SToken" placeholder="Adjust S2S Token (optionnel)" autocomplete="off">
           <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
           <div class="err-msg" id="trackingErr"></div>
         </div>
         <div class="section-title">Google Sheets (export de données)</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12px; font-weight:700; color:var(--gold);">📤 Envoyer vers Google Sheets</span>
+            <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
+          </div>
           <div class="meta" style="color:var(--sage); line-height:1.5;">
-            Envoyez vos clients, achats et devis dans Google Sheets. Créez une app OAuth sur
-            <b style="color:var(--text);">console.cloud.google.com</b> (type : application de bureau), puis renseignez :
+            Créez une app OAuth sur <b style="color:var(--text);">console.cloud.google.com</b>
+            (type : application de bureau), puis renseignez vos identifiants pour autoriser l'export.
           </div>
           <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
           <input class="field" id="gsClientSecret" placeholder="Client Secret Google" type="password" autocomplete="off">
@@ -535,13 +543,14 @@
             Redirect URI à ajouter à votre app Google :
             <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
           </div>
-          <button class="btn" id="gsConnectBtn">📤 Se connecter à Google</button>
-          <div class="meta" id="gsStatus" style="color:var(--sage);">Non connecté.</div>
-          <button class="btn-ghost" id="gsExportBtn">📊 Exporter les données vers Google Sheets</button>
+          <button class="btn" id="gsConnectBtn">🔗 Se connecter à Google</button>
+          <div style="height:4px; border-top:1px solid var(--line);"></div>
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Une fois connecté, vous pouvez aussi exporter le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
           <div class="err-msg" id="gsErr"></div>
         </div>
         <div class="section-title">État des intégrations</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">Réseaux connectés</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Vérif.</span></div>
           <div id="socialHealthBody"><div class="empty">Chargement…</div></div>
           <button class="btn-ghost" id="refreshHealthBtn">🔍 Vérifier l'état des intégrations</button>
         </div>
@@ -606,12 +615,10 @@
         <div class="section-title">Exporter / Télécharger</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn" id="exportCsvBtn">⬇️ CSV</button>
-            <button class="btn" id="exportXlsxBtn">⬇️ Excel</button>
             <button class="btn" id="exportPdfBtn">🖨️ PDF</button>
             <button class="btn" id="gsExportBtn2">📊 Google Sheets</button>
           </div>
-          <div class="meta" style="color:var(--sage); font-size:11px;">Astuce : le bouton « Voir » est inutile, l'aperçu s'affiche directement ci-dessus, prêt à être modifié si besoin (saisissez directement dans les cellules du tableau).</div>
+          <div class="meta" style="color:var(--sage); font-size:11px;">PDF = fichier téléchargé, imprimable. Google Sheets = nouvelle feuille créée dans votre Drive (données ou rapport).</div>
         </div>
         <div class="section-title">Synthèse</div>
         <div id="reportSummary" class="card-list" style="padding-top:0;"></div>
@@ -1483,7 +1490,6 @@ async function gsExport(){
 }
 document.addEventListener('DOMContentLoaded', ()=>{ gsSetupStatus(); });
 document.getElementById('gsConnectBtn').addEventListener('click', ()=>gsConnect());
-document.getElementById('gsExportBtn').addEventListener('click', ()=>gsExport());
 document.getElementById('gsClientId').addEventListener('input', ()=>localStorage.setItem('mayela_gs_clientid', document.getElementById('gsClientId').value));
 document.getElementById('gsClientSecret').addEventListener('input', ()=>localStorage.setItem('mayela_gs_secret', document.getElementById('gsClientSecret').value));
 // hydration du statut au chargement de l'écran réseaux
@@ -2411,20 +2417,6 @@ function currentExportRows(){
   }
   return reportData ? reportRows(reportData) : [['']];
 }
-document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
-  if(!reportData) return loadReports();
-  downloadFile('rapport_crm_' + reportPeriod + '.csv', new Blob(['\ufeff'+csvString(currentExportRows())], { type:'text/csv;charset=utf-8' }));
-  toast('Export CSV téléchargé.');
-});
-document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
-  if(!reportData) return loadReports();
-  const rows = currentExportRows();
-  const wb = [['<?xml version="1.0"?>', '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">', '<Worksheet ss:Name="Rapport"><Table>']];
-  rows.forEach(r=>{ wb.push('<Row>' + r.map(c=>'<Cell><Data ss:Type="String">'+String(c??'').replace(/[<>&]/g, ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))+'</Data></Cell>').join('') + '</Row>'); });
-  wb.push('</Table></Worksheet></Workbook>');
-  downloadFile('rapport_crm_' + reportPeriod + '.xls', new Blob([wb.join('\n')], { type:'application/vnd.ms-excel' }));
-  toast('Export Excel téléchargé.');
-});
 document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
   if(!reportData) return loadReports();
   const rows = currentExportRows();
