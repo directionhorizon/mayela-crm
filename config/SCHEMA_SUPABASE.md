@@ -1,10 +1,13 @@
 # Schéma Supabase — MAYELA CRM
-*Extrait le 16 juillet 2026, actualisé le 30 août 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
+*Extrait le 16 juillet 2026, actualisé le 31 août 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
 
 > Ceci est une documentation du schéma réel, pas un dump SQL exécutable.
 > Toute modification de schéma passe par une migration (`config/MIGRATION_V1_1.sql`, `config/MIGRATION_V2.sql`), jamais par édition manuelle de ce fichier.
-> ⚠️ V2 : certaines tables (creances, social_*) existaient en base mais SANS GRANT ni policies → erreurs 42501
-> "permission denied". La migration V2 ajoute les GRANT + policies + colonnes manquantes.
+>
+> ✔️ **Statut à jour (31/08/2026)** : la migration V2 a été **appliquée en base** (via une Edge
+> Function temporaire `db-migrate`, car le SQL Editor renvoyait "Backend error"). Toutes les tables
+> métier répondent désormais en HTTP 200 via REST, y compris `creances`, `social_*` et
+> `integrations_oauth` (auparavant en 42501 "permission denied").
 
 ## `organizations`
 ```
@@ -238,5 +241,6 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
 | `social-health` | oui | Diagnostic de l'état des intégrations (absent/incomplet/complete) |
 | `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
 | `adjust-events` | oui | (inactive) Coquille MMP Adjust/Branch |
+| `google-sheets` | oui | Google Sheets export par espace : exchange/refresh (OAuth), status, export |
 
 **Secrets non configurés à ce jour** (401 attendus tant que non fait) : `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `ALERT_EMAIL_FROM`, clé Brevo.

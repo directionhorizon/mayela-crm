@@ -111,6 +111,12 @@ create policy "io_all_org" on public.integrations_oauth
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.integrations_oauth
 TO anon, authenticated, service_role;
 
+-- ---------- 5bis) EXECUTE sur current_org_id() ----------
+-- Les policies RLS org-based appellent current_org_id() (SECURITY DEFINER) :
+-- sans GRANT EXECUTE, l'évaluation d'une policy pour un rôle sans permission
+-- échoue avec "permission denied for function current_org_id" (42501).
+GRANT EXECUTE ON FUNCTION public.current_org_id() TO anon, authenticated, service_role;
+
 -- ---------- 6) BONUS : GRANT sur éventuelles séquences ----------
 -- (Les IDs sont des uuid générés par défaut ; seules quelques tables legacy en serial
 --  pourraient avoir des séquences. Ce bloc est inoffensif si aucune n'existe.)

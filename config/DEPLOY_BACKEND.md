@@ -16,11 +16,16 @@ Cela ajoute : colonnes `description`/`image_url` aux produits, bucket Storage `p
 `social_accounts`, `social_posts`, `social_events_log`.
 
 ### 1b — Migration V2 (corrections + actualisation du schéma) — IMPORTANT
-> Vérifié le 30/08/2026 : plusieurs tables existaient en base mais SANS GRANT ni policies
-> → erreurs `42501 permission denied` sur `produits_services`, `creances`, `social_accounts`,
-> `social_posts`, `social_events_log`. L'application ne peut pas les lire/écrire tant que V2 n'est pas passée.
+> ✔️ **Statut : déjà appliquée en base le 31/08/2026.** Toutes les tables métier répondent en
+> HTTP 200 via REST, y compris `creances`, `social_*` et `integrations_oauth` (auparavant en
+> `42501 permission denied`). Cette section est conservée pour référence / nouvelles installations.
 
-1. Dashboard Supabase → **SQL Editor** → **New query**
+> ⚠️ **Contexte** : sur ce projet, le **SQL Editor Supabase renvoie « Backend error »** (cause
+> côté serveur), même sur un simple GRANT. La migration V2 a donc été exécutée via une **Edge
+> Function temporaire** `db-migrate` (clé service requise), puis **supprimée** une fois l'opération
+> terminée (aucune porte SQL laissée ouverte).
+
+1. (Recommandé si le SQL Editor fonctionne sur votre projet) Dashboard Supabase → **SQL Editor** → **New query**
 2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V2.sql`
 3. Cliquez **Run**
 
@@ -48,13 +53,14 @@ Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 
 ---
 
-## Étape 3 — Déployer les 4 Edge Functions
+## Étape 3 — Déployer les Edge Functions
 
 Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 `supabase/functions/social-publish/index.ts`,
 `supabase/functions/social-tiktok/index.ts`,
 `supabase/functions/social-insights/index.ts`,
-`supabase/functions/tiktok-events/index.ts` et
+`supabase/functions/tiktok-events/index.ts`,
+`supabase/functions/google-sheets/index.ts` (export Google Sheets OAuth) et
 `supabase/functions/adjust-events/index.ts` (coquille MMP, inactive).
 
 ### Option A — Dashboard (sans CLI)
@@ -65,7 +71,8 @@ Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 5. Refaire : nom `social-insights` → contenu de `supabase/functions/social-insights/index.ts` → **Deploy**
 6. Refaire : nom `social-health` → contenu de `supabase/functions/social-health/index.ts` → **Deploy**
 7. Refaire : nom `tiktok-events` → contenu de `supabase/functions/tiktok-events/index.ts` → **Deploy**
-8. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
+8. Refaire : nom `google-sheets` → contenu de `supabase/functions/google-sheets/index.ts` → **Deploy**
+9. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
 
 ### Option B — CLI (si installé)
 ```bash
@@ -75,6 +82,7 @@ supabase functions deploy social-tiktok --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-insights --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-health --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy tiktok-events --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy google-sheets --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy adjust-events --project-ref ymqdmfsqtkmlmwffqskt
 ```
 
@@ -335,6 +343,47 @@ Le bouton existe déjà dans l'app ; il ne reste qu'à déclarer l'app chez Goog
 C'est tout. Dans l'app, « Continuer avec Google » crée automatiquement le compte et le profil
 (nom repris de Google, sans formulaire). Les utilisateurs sans Google gardent le parcours
 e-mail + code à 6 chiffres.
+
+## Connecter Google Sheets (export des rapports)
+
+À faire une seule fois, avec le compte Google qui doit héberger les feuilles exportées.
+
+### Fonctionnement
+- L'export (bouton « Exporter vers Google Sheets » dans l'onglet **Rapports**) crée une **nouvelle
+  feuille de calcul** sur votre Google Drive, puis y écrit les lignes (entêtes + données).
+- La connexion est **par espace** : chaque espace renseigne son propre Client ID/Secret dans
+  l'onglet **Réseaux → Google Sheets**. Les tokens OAuth restent côté serveur (table
+  `integrations_oauth`), jamais exposés au navigateur.
+- Fonction backend : `google-sheets` (actions `exchange`, `refresh`, `status`, `export`).
+
+### Étape 1 — Créer l'app OAuth chez Google
+1. https://console.cloud.google.com → créez un projet (ou réutilisez-en un).
+2. **API et services → Écran de consentement OAuth** → type **Externe** → nom de l'app
+   + e-mail support → Enregistrer. Ajoutez votre adresse dans **Utilisateurs test** pour tester.
+3. **API et services → Bibliothèque** → activez **Google Sheets API**.
+4. **API et services → Identifiants → Créer des identifiants → ID client OAuth** :
+   - Type : **Application de bureau** (Desktop)
+   - Notez le **Client ID** et le **Client Secret**.
+
+### Étape 2 — Renseigner dans MAYELA
+1. App MAYELA → onglet **Réseaux** → carte **Google Sheets**.
+2. Collez le **Client ID** puis le **Client Secret** → Enregistrer.
+3. Cliquez **Connecter** → autorisez l'accès Google.
+4. Onglet **Rapports** → sélectionnez une période → **Exporter vers Google Sheets** :
+   une nouvelle feuille est créée dans votre Drive et ouverte.
+
+> **Scopes** demandés à l'autorisation : `https://www.googleapis.com/auth/spreadsheets`
+> (créer/écrire des feuilles) et `https://www.googleapis.com/auth/userinfo.email`
+> (identifier le compte connecté). Si Google n'affiche pas ces écrans, vérifiez que le type
+> d'app est **Application de bureau** et que l'`api_scope` de l'UI est cohérent.
+
+### Dépannage Google Sheets
+| Symptôme | Cause probable → solution |
+|---|---|
+| « App Google non configurée » | Client ID/Secret absents dans l'onglet Réseaux → Google Sheets → renseigner |
+| « Google a refusé le code » | Type d'app non « Application de bureau », ou code OAuth réutilisé → reconnexion |
+| « Session expirée » | Refresh token révoqué → **Déconnecter** puis **Connecter** à nouveau |
+| L'export échoue | Fonction `google-sheets` non déployée → redéployer (voir Étape 3) |
 
 ## WhatsApp
 
