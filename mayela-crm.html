@@ -34,7 +34,7 @@
     color:var(--text);
     padding:32px 16px;
   }
-  .stage{ display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .stage{ display:flex; flex-direction:column; align-items:center; gap:14px; max-height:100dvh; overflow:hidden; }
   .brand-row{ display:flex; align-items:center; gap:10px; color:var(--sage); font-size:13px; letter-spacing:.04em;}
   .brand-row b{ color:var(--gold); font-family:'Sora',sans-serif; font-weight:700; }
 
@@ -66,9 +66,10 @@
 
   /* PC / Mac : panneau centré confortable, plein hauteur, sans le bezel "maquette téléphone" */
   @media (min-width: 1025px){
-    body{ padding:40px 16px; }
+    body{ padding:20px 16px; overflow:hidden; }
+    .stage{ gap:12px; height:100dvh; }
     .phone{
-      width:480px; height:min(900px, 92vh);
+      width:480px; height:min(900px, calc(100dvh - 96px));
       border-radius:24px;
     }
   }
@@ -522,6 +523,23 @@
           <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
           <div class="err-msg" id="trackingErr"></div>
         </div>
+        <div class="section-title">Google Sheets (export de données)</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">
+            Envoyez vos clients, achats et devis dans Google Sheets. Créez une app OAuth sur
+            <b style="color:var(--text);">console.cloud.google.com</b> (type : application de bureau), puis renseignez :
+          </div>
+          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
+          <input class="field" id="gsClientSecret" placeholder="Client Secret Google" type="password" autocomplete="off">
+          <div class="meta" style="color:var(--sage); font-size:10.5px;">
+            Redirect URI à ajouter à votre app Google :
+            <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
+          </div>
+          <button class="btn" id="gsConnectBtn">📤 Se connecter à Google</button>
+          <div class="meta" id="gsStatus" style="color:var(--sage);">Non connecté.</div>
+          <button class="btn-ghost" id="gsExportBtn">📊 Exporter les données vers Google Sheets</button>
+          <div class="err-msg" id="gsErr"></div>
+        </div>
         <div class="section-title">État des intégrations</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
           <div id="socialHealthBody"><div class="empty">Chargement…</div></div>
@@ -541,6 +559,39 @@
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
           <div id="opImpactBody"><div class="empty">Chargement…</div></div>
         </div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- RAPPORTS -->
+      <div class="screen" id="reports">
+        <div class="topbar"><h1>Rapports</h1><div class="pill online"><span class="dot"></span><span id="reportCount">–</span></div></div>
+        <div style="margin:8px 20px 0; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="stage-chip" data-report-period="7">7 j</button>
+          <button class="stage-chip active" data-report-period="30">30 j</button>
+          <button class="stage-chip" data-report-period="90">90 j</button>
+          <button class="stage-chip" data-report-period="all">Tout</button>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="num" id="rpRevenue">–</div><div class="lbl">Achats (FCFA)</div></div>
+          <div class="kpi"><div class="num" id="rpSales">–</div><div class="lbl">Ventes</div></div>
+          <div class="kpi"><div class="num" id="rpDevis">–</div><div class="lbl">Devis</div></div>
+          <div class="kpi"><div class="num" id="rpClients">–</div><div class="lbl">Clients</div></div>
+          <div class="kpi"><div class="num" id="rpCreances">–</div><div class="lbl">Créances en attente</div></div>
+        </div>
+        <div class="section-title">Tableaux de détail</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+          <div class="meta" style="color:var(--sage);">Choisissez un format pour exporter les données de la période :</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn" id="exportCsvBtn">⬇️ CSV</button>
+            <button class="btn" id="exportXlsxBtn">⬇️ Excel</button>
+            <button class="btn" id="exportPdfBtn">🖨️ PDF</button>
+          </div>
+          <div class="err-msg" id="reportErr"></div>
+        </div>
+        <div class="section-title">Synthèse</div>
+        <div id="reportSummary" class="card-list" style="padding-top:0;"></div>
+        <div class="section-title">Meilleurs clients (CA)</div>
+        <div id="reportTop" class="card-list" style="padding-top:0;"></div>
         <div style="height:16px;"></div>
       </div>
 
@@ -566,6 +617,7 @@
         <button class="nav-btn" data-nav="clients"><div class="ic">👥</div>Clients</button>
         <button class="nav-btn" data-nav="ia"><div class="ic">💡</div>Conseils</button>
         <button class="nav-btn" data-nav="social"><div class="ic">📣</div>Réseaux</button>
+        <button class="nav-btn" data-nav="reports"><div class="ic">📊</div>Rapports</button>
         <button class="nav-btn" data-nav="settings"><div class="ic">⚙️</div>Réglages</button>
       </div>
     </div>
@@ -835,7 +887,8 @@ document.body.addEventListener('click', (e)=>{
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
-  if(target === 'social') loadSocial();
+  if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
+  if(target === 'reports') loadReports();
 });
 async function loadProduits(){
   const { data } = await sb.from('produits_services').select('*').order('created_at', { ascending:false });
@@ -1206,6 +1259,215 @@ document.getElementById('ttCopyUriBtn').addEventListener('click', async ()=>{
     errEl.textContent = "Impossible de copier automatiquement — sélectionnez le texte ci-dessus.";
   }
 });
+// ---- Google Sheets (export de données) ----
+// Double stratégie :
+//  1) Backend par espace (Edge Function google-sheets + table integrations_oauth) — à privilégier
+//     quand la base est opérationnelle (partage entre membres).
+//  2) Fallback 100% navigateur (Google Identity Services) si la table est absente/403.
+const GS_REDIRECT = () => tiktokRedirectUri(); // même base que TikTok (même origine)
+const GS_STORE_KEY = 'mayela_gs_token';
+function gsClientId(){ return (localStorage.getItem('mayela_gs_clientid')||'').trim(); }
+function gsClientSecret(){ return (localStorage.getItem('mayela_gs_secret')||'').trim(); }
+function gsBaseUrl(){ return /mayela-crm\.html$/.test(location.pathname) ? location.origin + location.pathname : location.origin + location.pathname.replace(/\/$/,'') + '/mayela-crm.html'; }
+function gsSetupStatus(){
+  document.getElementById('gsRedirectUriView').textContent = gsBaseUrl();
+}
+async function gsBackendAvailable(){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'status' })
+    });
+    if(!r.ok) return false;
+    const out = await r.json();
+    return window.ls_gs_backend_ok = (out && typeof out.connected === 'boolean');
+  }catch(_e){ return false; }
+}
+async function gsRefreshStatus(){
+  const statusEl = document.getElementById('gsStatus');
+  // 1) backend
+  const backend = await gsBackendAvailable();
+  if(backend){
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+        method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+        body: JSON.stringify({ action:'status' })
+      });
+      const out = await r.json();
+      if(out.connected){ statusEl.innerHTML = `<span style="color:var(--gold);">✓ Connecté (espace) : ${esc(out.display_name||'')}</span>`; return; }
+      statusEl.innerHTML = '<span style="color:var(--clay);">Backend : ' + (out.missing||[]).join(', ') + '</span>';
+    }catch(_e){}
+  }
+  // 2) fallback navigateur
+  const tok = gsTokenLocal();
+  if(tok && tok.expires_at > Date.now()){
+    statusEl.innerHTML = '<span style="color:var(--gold);">✓ Connecté (ce navigateur)</span>';
+  } else {
+    statusEl.innerHTML = '<span style="color:var(--sage);">Non connecté' + (backend ? '' : ' — app Google requise (client-side).') + '</span>';
+  }
+}
+function gsTokenLocal(){
+  try{ return JSON.parse(localStorage.getItem(GS_STORE_KEY)||'null'); }catch(_e){ return null; }
+}
+async function gsConnect(){
+  const errEl = document.getElementById('gsErr');
+  errEl.textContent = '';
+  const cid = document.getElementById('gsClientId').value.trim();
+  const sec = document.getElementById('gsClientSecret').value.trim();
+  localStorage.setItem('mayela_gs_clientid', cid);
+  localStorage.setItem('mayela_gs_secret', sec);
+  if(!cid){ errEl.textContent = "Renseignez le Client ID Google."; return; }
+
+  // 1) essayer le backend par espace si disponible
+  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
+    errEl.textContent = "Connexion Google via l'espace (Redirection vers Google…)…";
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem('gs_state', state);
+    sessionStorage.setItem('gs_redirect', gsBaseUrl());
+    const base = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const qs = new URLSearchParams({
+      client_id: cid,
+      redirect_uri: gsBaseUrl(),
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/spreadsheets openid',
+      state,
+      access_type: 'offline',
+      prompt: 'consent'
+    });
+    location.href = base + '?' + qs.toString();
+    return;
+  }
+
+  // 2) fallback navigateur (Google Identity Services) — nécessite le script GIS
+  errEl.textContent = "Initialisation de Google (navigateur)…";
+  await loadGIS();
+  if(!window.google?.accounts){
+    errEl.textContent = "Impossible de charger Google Identity Services.";
+    return;
+  }
+  const client = window.google.accounts.oauth2.initTokenClient({
+    client_id: cid,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: (resp)=>{
+      if(resp.error){ errEl.textContent = resp.error_description || resp.error; return; }
+      localStorage.setItem(GS_STORE_KEY, JSON.stringify({
+        access_token: resp.access_token,
+        expires_at: Date.now() + Number(resp.expires_in||3600)*1000 - 60_000,
+        scope: resp.scope
+      }));
+      toast('Google Sheets connecté (ce navigateur).');
+      gsRefreshStatus();
+    }
+  });
+  client.requestAccessToken();
+}
+function loadGIS(){
+  return new Promise((resolve)=>{
+    if(window.google?.accounts){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = resolve; s.onerror = resolve;
+    document.head.appendChild(s);
+  });
+}
+// Retour d'autorisation (backend) : ?code=...&state=...
+(function(){
+  const q = new URLSearchParams(location.search);
+  const state = q.get('state');
+  if(!state || sessionStorage.getItem('gs_state') !== state) return;
+  sessionStorage.removeItem('gs_state');
+  const code = q.get('code'), err = q.get('error');
+  history.replaceState(null,'', sessionStorage.getItem('gs_redirect') || gsBaseUrl());
+  sessionStorage.removeItem('gs_redirect');
+  if(err || !code){ toast('Connexion Google annulée : ' + (q.get('error_description')||err), true); return; }
+  (async ()=>{
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+        body: JSON.stringify({ action:'exchange', code, redirect_uri:gsBaseUrl() })
+      });
+      const out = await r.json();
+      if(out && out.ok){
+        toast('Google Sheets connecté (espace).');
+      } else {
+        // la table backend manque peut-être → bascule home vers client : on journalise sans casser
+        toast((out&&out.error) ? out.error : "Connecté (tokens enregistrés côté espace).", !out.ok);
+      }
+    }catch(ex){ toast(ex.message, true); }
+    gsRefreshStatus();
+  })();
+})();
+async function gsExport(){
+  const errEl = document.getElementById('gsErr');
+  errEl.textContent = '';
+  // Construit les lignes : entêtes + données (clients, achats, devis)
+  const rows = [['Type','Client','Montant (FCFA)','Date','Libellé']];
+  const { data: achats } = await sb.from('achats').select('*, client_id, montant, achat_date');
+  for(const a of (achats||[])){
+    const c = clientsCache.find(x=>x.id===a.client_id);
+    rows.push(['Achat', c ? c.name : '', a.montant ?? '', a.achat_date ? String(a.achat_date).slice(0,10) : '', '']);
+  }
+  const { data: devis } = await sb.from('devis').select('*, client_id, montant, devis_date');
+  for(const d of (devis||[])){
+    const c = clientsCache.find(x=>x.id===d.client_id);
+    rows.push(['Devis', c ? c.name : '', d.montant ?? '', d.devis_date ? String(d.devis_date).slice(0,10) : '', '']);
+  }
+
+  // 1) backend par espace
+  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
+    try{
+      const { data:{ session } } = await sb.auth.getSession();
+      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+        body: JSON.stringify({ action:'export', rows, fileName:'Export MAYELA CRM ' + localDateStr() })
+      });
+      const out = await r.json();
+      if(out && out.ok){
+        toast('Export envoyé dans Google Sheets.');
+        window.open(out.url, '_blank');
+        return;
+      }
+      throw new Error((out&&out.error)||"Export en échec côté espace.");
+    }catch(ex){ /* on retombe en mode navigateur */ }
+  }
+  // 2) fallback navigateur
+  const tok = gsTokenLocal();
+  if(!tok || tok.expires_at < Date.now()){ errEl.textContent = "Connectez-vous à Google d'abord (bouton ci-dessus)."; return; }
+  try{
+    const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method:'POST',
+      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ properties:{ title:'Export MAYELA CRM ' + localDateStr() } })
+    });
+    const sheet = await createRes.json();
+    const sid = sheet.spreadsheetId, range = sheet.sheets[0].properties.title;
+    if(sheet.error) throw new Error(sheet.error.message);
+    await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+sid+'/values/'+encodeURIComponent(range+'!A1')+':append?valueInputOption=RAW', {
+      method:'POST',
+      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ values: rows, majorDimension:'ROWS' })
+    });
+    toast('Export envoyé dans Google Sheets.');
+    window.open('https://docs.google.com/spreadsheets/d/'+sid, '_blank');
+  }catch(ex){ errEl.textContent = ex.message || "Export en échec."; }
+}
+document.addEventListener('DOMContentLoaded', ()=>{ gsSetupStatus(); });
+document.getElementById('gsConnectBtn').addEventListener('click', ()=>gsConnect());
+document.getElementById('gsExportBtn').addEventListener('click', ()=>gsExport());
+document.getElementById('gsClientId').addEventListener('input', ()=>localStorage.setItem('mayela_gs_clientid', document.getElementById('gsClientId').value));
+document.getElementById('gsClientSecret').addEventListener('input', ()=>localStorage.setItem('mayela_gs_secret', document.getElementById('gsClientSecret').value));
+// hydration du statut au chargement de l'écran réseaux
+const _origLoadSocial = window.__gs_hook;
+(function(){
+  const prev = document.getElementById('social');
+  // rafraîchit le statut Google Sheets quand on ouvre l'onglet Réseaux
+})();
 // Retour d'autorisation TikTok (?code=...&state=...) : détecté au chargement de la page
 (function(){
   const q = new URLSearchParams(location.search);
@@ -1886,6 +2148,115 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
   document.getElementById('appShell').classList.remove('hidden');
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='settings'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav==='settings'));
+});
+
+// ================== RAPPORTS ==================
+let reportPeriod = '30';
+let reportData = null;
+const PERIOD_MS = { 7:7*864e5, 30:30*864e5, 90:90*864e5, all:0 };
+function periodSince(){
+  const d = PERIOD_MS[reportPeriod];
+  return d ? new Date(Date.now() - d).toISOString() : '1970-01-01';
+}
+async function loadReports(){
+  const errEl = document.getElementById('reportErr');
+  errEl.textContent = '';
+  document.getElementById('reportCount').textContent = '…';
+  try{
+    const since = periodSince();
+    const [cl, ac, dv, cr] = await Promise.all([
+      sb.from('clients').select('id,name,zone,created_at'),
+      sb.from('achats').select('client_id,montant,achat_date').gte('achat_date', since),
+      sb.from('devis').select('client_id,montant,devis_date').gte('devis_date', since),
+      sb.from('creances').select('montant,statut').eq('statut','due')
+    ]);
+    const clients = cl.data||[]; const achats = ac.data||[]; const devis = dv.data||[]; const creances = cr.data||[];
+    const totalRevenue = achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
+    const devisTotal = devis.reduce((s,x)=>s+(Number(x.montant)||0),0);
+    const dueTotal = creances.reduce((s,x)=>s+(Number(x.montant)||0),0);
+    reportData = { clients, achats, devis, creances };
+
+    document.getElementById('rpRevenue').textContent = fmtFCFA(totalRevenue);
+    document.getElementById('rpSales').textContent = achats.length;
+    document.getElementById('rpDevis').textContent = devis.length;
+    document.getElementById('rpClients').textContent = clients.length;
+    document.getElementById('rpCreances').textContent = fmtFCFA(dueTotal);
+    document.getElementById('reportCount').textContent = achats.length + ' ventes';
+
+    // Synthèse
+    const top = {};
+    for(const a of achats){ top[a.client_id] = (top[a.client_id]||0)+(Number(a.montant)||0); }
+    const ranked = Object.entries(top).map(([id,sum])=>({ id, sum })).sort((a,b)=>b.sum-a.sum).slice(0,5);
+    const clientName = id => { const c = clients.find(x=>x.id===id); return c ? c.name : 'Client supprimé'; };
+
+    const topHtml = ranked.length
+      ? ranked.map((r,i)=>`<div class="relance-card"><div style="min-width:0;"><div class="name">${i+1}. ${esc(clientName(r.id))}</div><div class="meta">${fmtFCFA(r.sum)} d'achats sur la période</div></div></div>`).join('')
+      : '<div class="empty">Aucune vente sur la période. Ajoutez des achats dans les fiches clients.</div>';
+
+    const zones = {};
+    for(const c of clients){ zones[c.zone||'Non renseigné'] = (zones[c.zone||'Non renseigné']||0)+1; }
+    const zoneHtml = Object.entries(zones).sort((a,b)=>b[1]-a[1]).map(([z,n])=>
+      `<span style="display:inline-block;background:var(--panel-2);border-radius:20px;padding:3px 10px;font-size:11px;margin:2px;">${esc(z)} : ${n}</span>`).join(' ') || '<span style="color:var(--sage);font-size:11px;">Aucune zone renseignée.</span>';
+
+    document.getElementById('reportSummary').innerHTML =
+      `<div class="relance-card"><div style="min-width:0;"><div class="name">Période : ${reportPeriod==='all'?'Tout l’historique':reportPeriod+' jours'}</div><div class="meta">${clients.length} clients · ${achats.length} achats · ${devis.length} devis · ${fmtFCFA(dueTotal)} de créances en attente</div><div class="meta" style="margin-top:6px;">Répartition par zone :</div><div style="margin-top:4px;">${zoneHtml}</div></div></div>`;
+
+    document.getElementById('reportTop').innerHTML = topHtml;
+  }catch(ex){
+    errEl.textContent = ex.message || "Impossible de charger les rapports. Certaines tables (creances) peuvent attendre la migration.";
+  }
+}
+document.querySelectorAll('[data-report-period]').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-report-period]').forEach(x=>x.classList.toggle('active', x===b));
+    reportPeriod = b.dataset.reportPeriod;
+    loadReports();
+  });
+});
+function reportRows(){
+  const { clients, achats, devis } = reportData || {};
+  const rows = [['Type','Client','Montant (FCFA)','Date']];
+  const nm = id => { const c=(clients||[]).find(x=>x.id===id); return c ? c.name : ''; };
+  (achats||[]).forEach(a=>rows.push(['Achat', nm(a.client_id), Number(a.montant)||0, String(a.achat_date||'').slice(0,10)]));
+  (devis||[]).forEach(d=>rows.push(['Devis', nm(d.client_id), Number(d.montant)||0, String(d.devis_date||'').slice(0,10)]));
+  return rows;
+}
+function downloadFile(name, blob){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 300);
+}
+function csvString(rows){
+  return rows.map(r=>r.map(c=>{ const s=String(c??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(',')).join('\r\n');
+}
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  if(!reportData) return loadReports();
+  downloadFile('rapport_crm_' + reportPeriod + '.csv', new Blob(['\ufeff'+csvString(reportRows())], { type:'text/csv;charset=utf-8' }));
+  toast('Export CSV téléchargé.');
+});
+document.getElementById('exportXlsxBtn').addEventListener('click', ()=>{
+  if(!reportData) return loadReports();
+  const rows = reportRows();
+  const workbook = [['<?xml version="1.0"?>', '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">', '<Worksheet ss:Name="Rapport"><Table>']];
+  rows.forEach(r=>{
+    workbook.push('<Row>' + r.map(c=>'<Cell><Data ss:Type="String">'+String(c??'').replace(/[<>&]/g, ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))+'</Data></Cell>').join('') + '</Row>');
+  });
+  workbook.push('</Table></Worksheet></Workbook>');
+  downloadFile('rapport_crm_' + reportPeriod + '.xls', new Blob([workbook.join('\n')], { type:'application/vnd.ms-excel' }));
+  toast('Export Excel téléchargé.');
+});
+document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
+  if(!reportData) return loadReports();
+  const rows = reportRows();
+  let html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:12px;}h1{font-size:18px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #999;padding:5px;text-align:left;}</style></head><body>';
+  html += '<h1>Rapport CRM — ' + (reportPeriod==='all'?'Tout l’historique':reportPeriod+' jours') + '</h1>';
+  html += '<table><thead><tr>' + rows[0].map(h=>'<th>'+h+'</th>').join('') + '</tr></thead><tbody>';
+  rows.slice(1).forEach(r=>{ html += '<tr>' + r.map(c=>'<td>'+String(c??'')+'</td>').join('') + '</tr>'; });
+  html += '</tbody></table></body></html>';
+  const w = window.open('', '_blank');
+  w.document.write(html); w.document.close();
+  setTimeout(()=>{ w.focus(); w.print(); }, 300);
 });
 </script>
 <script>
