@@ -997,17 +997,20 @@ let socialCache = [];
 const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token'];
 function sanitizeSocialAccount(acc){
   const cfg = (acc && acc.config) || {};
-  const connected = Boolean(cfg.access_token);
+  // La vue SQL social_accounts_safe fournit déjà connected / has_pixel_token
+  // (calculés côté serveur sur le config brut) : on s'y fie, sinon on calcule.
+  const connected = typeof acc.connected === 'boolean' ? acc.connected : Boolean(cfg.access_token);
   const clean = {};
   for(const k of Object.keys(cfg)){
     if(SOCIAL_SECRET_KEYS.indexOf(k) === -1) clean[k] = cfg[k];
   }
-  clean.has_pixel_token = Boolean(cfg.pixel_access_token);
+  const hasPixel = typeof acc.has_pixel_token === 'boolean' ? acc.has_pixel_token : Boolean(cfg.pixel_access_token);
+  clean.has_pixel_token = hasPixel;
   return { ...acc, connected, config: clean };
 }
 async function loadSocial(){
   const [accRes, prodRes, postRes] = await Promise.all([
-    sb.from('social_accounts').select('*'),
+    sb.from('social_accounts_safe').select('*'),
     sb.from('produits_services').select('id,nom,image_url,prix_defaut').order('nom'),
     sb.from('social_posts').select('*').order('created_at', { ascending:false }).limit(20)
   ]);
