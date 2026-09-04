@@ -1,5 +1,5 @@
 /* MAYELA CRM - service worker : app shell en cache, réseau direct pour tout le reste */
-const CACHE = 'mayela-crm-v1';
+const CACHE = 'mayela-crm-v2';
 const PRECACHE = [
   './',
   './mayela-crm.html',

@@ -877,7 +877,8 @@ function onVerifyPinDigit(k){
 }
 async function afterPinOk(){
   if(!profile.org_id){ showScreen('onboard'); return; }
-  document.getElementById('appShell').classList.remove('hidden');
+  const shell = document.getElementById('appShell');
+  if(shell) shell.classList.remove('hidden');
   showScreen('dashboard');
   await loadEverything();
 }
