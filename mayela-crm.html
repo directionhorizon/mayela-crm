@@ -47,6 +47,7 @@
     position:relative;
     overflow:hidden;
     display:flex; flex-direction:column;
+    container-type:inline-size;
   }
   .notch{ position:absolute; top:0; left:50%; transform:translateX(-50%); width:140px; height:26px; background:#000; border-radius:0 0 18px 18px; z-index:50; }
 
@@ -64,14 +65,12 @@
     .notch{ display:none; }
   }
 
-  /* Tablettes : un peu plus large en orientation paysage */
+  /* Tablettes : le cadre s'élargit un peu en orientation paysage */
   @media (min-width: 700px) and (max-width: 1024px){
     .phone{ max-width:720px; }
-    .kpi-grid{ grid-template-columns:repeat(3, 1fr); }
-    .charts-grid{ grid-template-columns:repeat(2, 1fr); }
   }
 
-  /* PC / Mac : panneau confortable, plein hauteur, sans le bezel "maquette tAclAcphone" */
+  /* PC / Mac : panneau confortable, plein hauteur, sans le bezel "maquette téléphone" */
   @media (min-width: 1025px){
     body{ padding:20px 16px; overflow:hidden; }
     .stage{ gap:12px; height:100dvh; }
@@ -79,12 +78,16 @@
       width:min(520px, calc(100vw - 32px)); height:min(920px, calc(100dvh - 76px));
       border-radius:24px;
     }
+  }
+
+  /* Contenu : les règles dépendent de la largeur RÉELLE du conteneur .phone (mockup ou plein écran), pas du viewport */
+  @container (min-width: 700px){
     .kpi-grid{ grid-template-columns:repeat(3, 1fr); }
     .charts-grid{ grid-template-columns:repeat(2, 1fr); }
   }
 
-  /* Très petits écrans : matériau tactile plus généreux */
-  @media (max-width: 380px){
+  /* Très petits contenus : matériau tactile plus généreux */
+  @container (max-width: 380px){
     .topbar{ padding:40px 16px 12px; }
     .kpi-grid{ gap:8px; padding:0 16px; }
     .section-title{ padding:18px 16px 8px; }
@@ -93,8 +96,8 @@
     .info-block{ margin:0 16px 10px; padding:12px; }
   }
 
-  /* Mobile : les barres de saisie rapide passent en colonne pour des champs pleine largeur */
-  @media (max-width: 540px){
+  /* Contenu étroit : les barres de saisie rapide passent en colonne pleine largeur */
+  @container (max-width: 540px){
     .add-inline{ flex-direction:column; align-items:stretch; }
     .add-inline select, .add-inline input{ width:100%; flex:1 1 auto; min-height:46px; }
     .add-inline button{ width:100%; min-height:46px; flex:1 1 auto; }
