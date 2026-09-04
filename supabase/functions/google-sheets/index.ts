@@ -51,6 +51,8 @@ Deno.serve(async (req: Request) => {
   let redirectUri = "";
   let rows: string[][] = [];
   let fileName = "";
+  let clientIdInput = "";
+  let clientSecretInput = "";
   try {
     const body = await req.json();
     action = String(body.action ?? "");
@@ -58,6 +60,8 @@ Deno.serve(async (req: Request) => {
     redirectUri = String(body.redirect_uri ?? "");
     rows = Array.isArray(body.rows) ? body.rows : [];
     fileName = String(body.fileName ?? "");
+    clientIdInput = String(body.client_id ?? "");
+    clientSecretInput = String(body.client_secret ?? "");
   } catch {
     return json({ error: "bad_request" }, 400);
   }
@@ -85,6 +89,30 @@ Deno.serve(async (req: Request) => {
     }
     if (!hasToken) missing.push("access_token");
     return json({ connected: false, missing });
+  }
+
+  // ---- ACTION: register (enregistrer Client ID + Secret côté serveur) ----
+  if (action === "register") {
+    if (!clientIdInput || !clientSecretInput) {
+      return json({ error: "Renseignez le Client ID et le Client Secret de l'app Google." }, 400);
+    }
+    const { data: prof } = await sb.from("profiles").select("org_id").eq("id", user.id).single();
+    if (!prof?.org_id) return json({ error: "Impossible de déterminer l'espace." }, 400);
+    const newConfig = { ...cfg, client_id: clientIdInput, client_secret: clientSecretInput };
+    if (acc) {
+      const { error } = await sb.from("integrations_oauth").update({ config: newConfig }).eq("id", acc.id);
+      if (error) return json({ error: error.message }, 500);
+    } else {
+      const { error } = await sb.from("integrations_oauth").insert({
+        org_id: prof.org_id,
+        provider: "google_sheets",
+        display_name: "Google Sheets",
+        config: newConfig,
+        connected_by: user.id,
+      });
+      if (error) return json({ error: error.message }, 500);
+    }
+    return json({ ok: true, missing: [] });
   }
 
   // ---- ACTION: exchange (code OAuth Google) ----

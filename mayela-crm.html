@@ -527,27 +527,6 @@
           <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
           <div class="err-msg" id="trackingErr"></div>
         </div>
-        <div class="section-title">Google Sheets (export de données)</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-            <span style="font-size:12px; font-weight:700; color:var(--gold);">📤 Envoyer vers Google Sheets</span>
-            <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
-          </div>
-          <div class="meta" style="color:var(--sage); line-height:1.5;">
-            Connectez votre compte Google pour autoriser l'export vers Google Sheets.
-            L'autorisation et les jetons sont gérés de façon sécurisée côté serveur :
-            le Client Secret n'est jamais saisi ni conservé sur cet appareil.
-          </div>
-          <input class="field" id="gsClientId" placeholder="Client ID Google (public, se termine par .apps.googleusercontent.com)" autocomplete="off">
-          <div class="meta" style="color:var(--sage); font-size:10.5px;">
-            Redirect URI à configurer dans votre app Google :
-            <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
-          </div>
-          <button class="btn" id="gsConnectBtn">🔗 Se connecter à Google</button>
-          <div style="height:4px; border-top:1px solid var(--line);"></div>
-          <div class="meta" style="color:var(--sage); line-height:1.5;">Une fois connecté, vous pouvez aussi exporter le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
-          <div class="err-msg" id="gsErr"></div>
-        </div>
         <div class="section-title">État des intégrations</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">Réseaux connectés</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Vérif.</span></div>
@@ -640,6 +619,29 @@
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
           <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
           <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
+        </div>
+        <div class="section-title">Intégrations</div>
+        <div class="set-block">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px 0;">
+            <span style="font-size:13px; font-weight:700; color:var(--gold);">Google Sheets</span>
+            <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
+          </div>
+          <div class="meta" style="color:var(--sage); font-size:11px; line-height:1.5;">
+            Configurez ici votre app Google (OAuth) pour autoriser l'export des données vers Google Sheets.
+            Le Client Secret est enregistré et conservé de façon sécurisée côté serveur : il n'est jamais visible après enregistrement.
+          </div>
+          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off" style="margin-top:8px;">
+          <input class="field" id="gsClientSecret" type="password" placeholder="Client Secret Google (affiché une seule fois en console Google)" autocomplete="new-password" style="margin-top:8px;">
+          <div class="meta" style="color:var(--sage); font-size:10.5px; margin-top:8px;">
+            Redirect URI à déclarer dans votre app Google :
+            <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="btn" id="gsSaveBtn">💾 Enregistrer</button>
+            <button class="btn" id="gsConnectBtn">🔗 Se connecter à Google</button>
+          </div>
+          <div class="err-msg" id="gsErr"></div>
+          <div class="meta" style="color:var(--sage); font-size:10.5px; margin-top:8px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
         </div>
       </div>
 
@@ -920,6 +922,7 @@ document.body.addEventListener('click', (e)=>{
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
+  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
   if(target === 'reports') loadReports();
 });
 async function loadProduits(){
@@ -1320,6 +1323,30 @@ function gsBaseUrl(){ return /mayela-crm\.html$/.test(location.pathname) ? locat
 function gsSetupStatus(){
   document.getElementById('gsRedirectUriView').textContent = gsBaseUrl();
 }
+document.getElementById('gsSaveBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('gsErr');
+  errEl.textContent = '';
+  const cid = document.getElementById('gsClientId').value.trim();
+  const sec = document.getElementById('gsClientSecret').value.trim();
+  if(!cid || !sec){
+    errEl.textContent = "Renseignez le Client ID et le Client Secret.";
+    return;
+  }
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'register', client_id:cid, client_secret:sec })
+    });
+    const out = await r.json();
+    if(out && out.ok){
+      document.getElementById('gsClientSecret').value = '';
+      toast('Configuration Google Sheets enregistrée côté serveur.');
+    } else {
+      throw new Error((out&&out.error)||"Enregistrement en échec.");
+    }
+  }catch(ex){ errEl.textContent = ex.message; }
+});
 async function gsBackendAvailable(){
   try{
     const { data:{ session } } = await sb.auth.getSession();
