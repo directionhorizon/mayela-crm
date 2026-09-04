@@ -534,13 +534,13 @@
             <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
           </div>
           <div class="meta" style="color:var(--sage); line-height:1.5;">
-            Créez une app OAuth sur <b style="color:var(--text);">console.cloud.google.com</b>
-            (type : application de bureau), puis renseignez vos identifiants pour autoriser l'export.
+            Connectez votre compte Google pour autoriser l'export vers Google Sheets.
+            L'autorisation et les jetons sont gérés de façon sécurisée côté serveur :
+            le Client Secret n'est jamais saisi ni conservé sur cet appareil.
           </div>
-          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
-          <input class="field" id="gsClientSecret" placeholder="Client Secret Google" type="password" autocomplete="off">
+          <input class="field" id="gsClientId" placeholder="Client ID Google (public, se termine par .apps.googleusercontent.com)" autocomplete="off">
           <div class="meta" style="color:var(--sage); font-size:10.5px;">
-            Redirect URI à ajouter à votre app Google :
+            Redirect URI à configurer dans votre app Google :
             <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
           </div>
           <button class="btn" id="gsConnectBtn">🔗 Se connecter à Google</button>
@@ -1292,14 +1292,9 @@ document.getElementById('ttCopyUriBtn').addEventListener('click', async ()=>{
   }
 });
 // ---- Google Sheets (export de données) ----
-// Double stratégie :
-//  1) Backend par espace (Edge Function google-sheets + table integrations_oauth) — à privilégier
-//     quand la base est opérationnelle (partage entre membres).
-//  2) Fallback 100% navigateur (Google Identity Services) si la table est absente/403.
+// Connexion sécurisée via l'espace (Edge Function google-sheets + table integrations_oauth).
+// Le Client Secret et les jetons Google restent côté serveur : rien n'est stocké en localStorage.
 const GS_REDIRECT = () => tiktokRedirectUri(); // même base que TikTok (même origine)
-const GS_STORE_KEY = 'mayela_gs_token';
-function gsClientId(){ return (localStorage.getItem('mayela_gs_clientid')||'').trim(); }
-function gsClientSecret(){ return (localStorage.getItem('mayela_gs_secret')||'').trim(); }
 function gsBaseUrl(){ return /mayela-crm\.html$/.test(location.pathname) ? location.origin + location.pathname : location.origin + location.pathname.replace(/\/$/,'') + '/mayela-crm.html'; }
 function gsSetupStatus(){
   document.getElementById('gsRedirectUriView').textContent = gsBaseUrl();
@@ -1319,7 +1314,7 @@ async function gsBackendAvailable(){
 }
 async function gsRefreshStatus(){
   const statusEl = document.getElementById('gsStatus');
-  // 1) backend
+  // Seul le backend (espace) gère la connexion Google Sheets : aucun jeton en clair côté client.
   const backend = await gsBackendAvailable();
   if(backend){
     try{
@@ -1331,79 +1326,41 @@ async function gsRefreshStatus(){
       const out = await r.json();
       if(out.connected){ statusEl.innerHTML = `<span style="color:var(--gold);">✓ Connecté (espace) : ${esc(out.display_name||'')}</span>`; return; }
       statusEl.innerHTML = '<span style="color:var(--clay);">Backend : ' + (out.missing||[]).join(', ') + '</span>';
+      return;
     }catch(_e){}
   }
-  // 2) fallback navigateur
-  const tok = gsTokenLocal();
-  if(tok && tok.expires_at > Date.now()){
-    statusEl.innerHTML = '<span style="color:var(--gold);">✓ Connecté (ce navigateur)</span>';
-  } else {
-    statusEl.innerHTML = '<span style="color:var(--sage);">Non connecté' + (backend ? '' : ' — app Google requise (client-side).') + '</span>';
-  }
-}
-function gsTokenLocal(){
-  try{ return JSON.parse(localStorage.getItem(GS_STORE_KEY)||'null'); }catch(_e){ return null; }
+  statusEl.innerHTML = '<span style="color:var(--sage);">Non connecté — autorisation gérée côté serveur.</span>';
 }
 async function gsConnect(){
   const errEl = document.getElementById('gsErr');
   errEl.textContent = '';
-  const cid = document.getElementById('gsClientId').value.trim();
-  const sec = document.getElementById('gsClientSecret').value.trim();
-  localStorage.setItem('mayela_gs_clientid', cid);
-  localStorage.setItem('mayela_gs_secret', sec);
-  if(!cid){ errEl.textContent = "Renseignez le Client ID Google."; return; }
-
-  // 1) essayer le backend par espace si disponible
-  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
-    errEl.textContent = "Connexion Google via l'espace (Redirection vers Google…)…";
-    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    sessionStorage.setItem('gs_state', state);
-    sessionStorage.setItem('gs_redirect', gsBaseUrl());
-    const base = 'https://accounts.google.com/o/oauth2/v2/auth';
-    const qs = new URLSearchParams({
-      client_id: cid,
-      redirect_uri: gsBaseUrl(),
-      response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/spreadsheets',
-      state,
-      access_type: 'offline',
-      prompt: 'consent'
-    });
-    location.href = base + '?' + qs.toString();
+  const cidEl = document.getElementById('gsClientId');
+  const cid = cidEl ? cidEl.value.trim() : '';
+  const backend = window.ls_gs_backend_ok || await gsBackendAvailable();
+  if(!backend){
+    errEl.textContent = "Le service Google Sheets n'est pas configuré côté serveur (espace). Veuillez enregistrer le Client ID / Secret de votre app Google dans l'administration.";
     return;
   }
-
-  // 2) fallback navigateur (Google Identity Services) — nécessite le script GIS
-  errEl.textContent = "Initialisation de Google (navigateur)…";
-  await loadGIS();
-  if(!window.google?.accounts){
-    errEl.textContent = "Impossible de charger Google Identity Services.";
+  if(!cid){
+    errEl.textContent = "Renseignez le Client ID Google (public, il sert à construire l'URL d'autorisation). Le Secret reste côté serveur.";
     return;
   }
-  const client = window.google.accounts.oauth2.initTokenClient({
+  errEl.textContent = "Redirection vers Google…";
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('gs_state', state);
+  sessionStorage.setItem('gs_redirect', gsBaseUrl());
+  // Le client_id est public ; le secret reste côté serveur (fonction Supabase).
+  const base = 'https://accounts.google.com/o/oauth2/v2/auth';
+  const qs = new URLSearchParams({
     client_id: cid,
+    redirect_uri: gsBaseUrl(),
+    response_type: 'code',
     scope: 'https://www.googleapis.com/auth/spreadsheets',
-    callback: (resp)=>{
-      if(resp.error){ errEl.textContent = resp.error_description || resp.error; return; }
-      localStorage.setItem(GS_STORE_KEY, JSON.stringify({
-        access_token: resp.access_token,
-        expires_at: Date.now() + Number(resp.expires_in||3600)*1000 - 60_000,
-        scope: resp.scope
-      }));
-      toast('Google Sheets connecté (ce navigateur).');
-      gsRefreshStatus();
-    }
+    state,
+    access_type: 'offline',
+    prompt: 'consent'
   });
-  client.requestAccessToken();
-}
-function loadGIS(){
-  return new Promise((resolve)=>{
-    if(window.google?.accounts){ resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://accounts.google.com/gsi/client';
-    s.onload = resolve; s.onerror = resolve;
-    document.head.appendChild(s);
-  });
+  location.href = base + '?' + qs.toString();
 }
 // Retour d'autorisation (backend) : ?code=...&state=...
 (function(){
@@ -1468,31 +1425,11 @@ async function gsExport(){
       throw new Error((out&&out.error)||"Export en échec côté espace.");
     }catch(ex){ /* on retombe en mode navigateur */ }
   }
-  // 2) fallback navigateur
-  const tok = gsTokenLocal();
-  if(!tok || tok.expires_at < Date.now()){ errEl.textContent = "Connectez-vous à Google d'abord (bouton ci-dessus)."; return; }
-  try{
-    const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-      method:'POST',
-      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
-      body: JSON.stringify({ properties:{ title:'Export MAYELA CRM ' + localDateStr() } })
-    });
-    const sheet = await createRes.json();
-    const sid = sheet.spreadsheetId, range = sheet.sheets[0].properties.title;
-    if(sheet.error) throw new Error(sheet.error.message);
-    await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+sid+'/values/'+encodeURIComponent(range+'!A1')+':append?valueInputOption=RAW', {
-      method:'POST',
-      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
-      body: JSON.stringify({ values: rows, majorDimension:'ROWS' })
-    });
-    toast('Export envoyé dans Google Sheets.');
-    window.open('https://docs.google.com/spreadsheets/d/'+sid, '_blank');
-  }catch(ex){ errEl.textContent = ex.message || "Export en échec."; }
+  errEl.textContent = "Google Sheets n'est pas connecté côté serveur : ouvrez l'onglet Réseaux et connectez-vous à Google (les jetons sont gérés côté espace).";
 }
 document.addEventListener('DOMContentLoaded', ()=>{ gsSetupStatus(); });
 document.getElementById('gsConnectBtn').addEventListener('click', ()=>gsConnect());
-document.getElementById('gsClientId').addEventListener('input', ()=>localStorage.setItem('mayela_gs_clientid', document.getElementById('gsClientId').value));
-document.getElementById('gsClientSecret').addEventListener('input', ()=>localStorage.setItem('mayela_gs_secret', document.getElementById('gsClientSecret').value));
+// NOTE : le Client ID est saisi à chaque connexion (aucun secret n'est persisté en localStorage/client).
 // hydration du statut au chargement de l'écran réseaux
 const _origLoadSocial = window.__gs_hook;
 (function(){
@@ -2454,27 +2391,9 @@ document.getElementById('gsExportBtn2').addEventListener('click', async ()=>{
       const out = await r.json();
       if(out && out.ok){ toast('Export envoyé dans Google Sheets.'); window.open(out.url,'_blank'); return; }
       throw new Error((out&&out.error)||"Export en échec côté espace.");
-    }catch(ex){ /* fallback navigateur */ }
+    }catch(ex){ /* backend seul */ }
   }
-  const tok = gsTokenLocal();
-  if(!tok || tok.expires_at < Date.now()){ errEl.textContent = "Google Sheets non connecté : ouvrez l'onglet Réseaux et connectez-vous à Google."; return; }
-  try{
-    const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-      method:'POST',
-      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
-      body: JSON.stringify({ properties:{ title:'Rapport MAYELA ' + localDateStr() } })
-    });
-    const sheet = await createRes.json();
-    const sid = sheet.spreadsheetId, range = sheet.sheets[0].properties.title;
-    if(sheet.error) throw new Error(sheet.error.message);
-    await fetch('https://sheets.googleapis.com/v4/spreadsheets/'+sid+'/values/'+encodeURIComponent(range+'!A1')+':append?valueInputOption=RAW', {
-      method:'POST',
-      headers:{ Authorization:'Bearer ' + tok.access_token, 'Content-Type':'application/json' },
-      body: JSON.stringify({ values: rows, majorDimension:'ROWS' })
-    });
-    toast('Export envoyé dans Google Sheets.');
-    window.open('https://docs.google.com/spreadsheets/d/'+sid, '_blank');
-  }catch(ex){ errEl.textContent = ex.message || "Export en échec."; }
+  errEl.textContent = "Google Sheets non connecté côté serveur : ouvrez l'onglet Réseaux et connectez-vous à Google.";
 });
 </script>
 <script>
