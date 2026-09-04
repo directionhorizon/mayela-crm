@@ -991,24 +991,42 @@ const PLATFORM_META = {
   tiktok:   { icon:'🎵', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
 };
 let socialCache = [];
+// Ne conserve jamais les secrets côté client. La publication, le tracking et le rafraîchissement
+// des jetons sont gérés par les Edge Functions (server-side) : le navigateur n'a besoin que des
+// champs publics (client_key, pixel_id) et d'un indicateur de connexion.
+const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token'];
+function sanitizeSocialAccount(acc){
+  const cfg = (acc && acc.config) || {};
+  const connected = Boolean(cfg.access_token);
+  const clean = {};
+  for(const k of Object.keys(cfg)){
+    if(SOCIAL_SECRET_KEYS.indexOf(k) === -1) clean[k] = cfg[k];
+  }
+  clean.has_pixel_token = Boolean(cfg.pixel_access_token);
+  return { ...acc, connected, config: clean };
+}
 async function loadSocial(){
   const [accRes, prodRes, postRes] = await Promise.all([
     sb.from('social_accounts').select('*'),
     sb.from('produits_services').select('id,nom,image_url,prix_defaut').order('nom'),
     sb.from('social_posts').select('*').order('created_at', { ascending:false }).limit(20)
   ]);
-  socialCache = accRes.data || [];
+  socialCache = (accRes.data || []).map(sanitizeSocialAccount);
   const ttAcc = socialCache.find(a=>a.platform==='tiktok');
   const ttCfg = (ttAcc && ttAcc.config) || {};
   document.getElementById('ttPixelId').value = ttCfg.pixel_id || '';
-  document.getElementById('ttPixelToken').value = ttCfg.pixel_access_token || '';
-  document.getElementById('mmpAppToken').value = ttCfg.adjust_app_token || '';
-  document.getElementById('mmpS2SToken').value = ttCfg.adjust_s2s_token || '';
+  // Les jetons/secrets ne sont JAMAIS ré-injectés dans le DOM : le Pixel ID (public) suffit à
+  // savoir que le tracking est configuré. Indicateur si le token est déjà enregistré côté serveur.
+  const pixelTokenSet = !!(ttAcc && ttAcc.config && ttAcc.config.pixel_id && ttCfg.has_pixel_token);
+  document.getElementById('ttPixelToken').value = '';
+  document.getElementById('ttPixelToken').placeholder = pixelTokenSet ? '✓ Token déjà configuré (serveur)' : 'Events API Access Token';
+  document.getElementById('mmpAppToken').value = '';
+  document.getElementById('mmpS2SToken').value = '';
   document.getElementById('socialAccounts').innerHTML = ['facebook','whatsapp','tiktok'].map(pl=>{
     const meta = PLATFORM_META[pl];
     const acc = socialCache.find(a=>a.platform===pl);
     let action;
-    if(acc && acc.config && acc.config.access_token) action = `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>`;
+    if(acc && acc.connected) action = `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>`;
     else if(acc) action = `<span class="link-sm" data-auth-social="${pl}">Autoriser</span>`;
     else action = `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`;
     return `<div class="relance-card"><div><div class="name">${meta.icon} ${meta.label}${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}</div><div class="meta">${esc(meta.hint)}</div></div>${action}</div>`;
@@ -1492,7 +1510,7 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   if(!text){ errEl.textContent = "Écrivez le texte de l'offre."; return; }
   const targets = ['facebook','tiktok'].filter(pl=>{
     const acc = socialCache.find(a=>a.platform===pl);
-    return pl === 'facebook' ? !!acc : !!(acc && acc.config && acc.config.access_token);
+    return pl === 'facebook' ? !!acc : !!(acc && acc.connected);
   });
   if(!targets.length){ errEl.textContent = "Connectez d'abord Facebook ou TikTok ci-dessus."; return; }
   const prodSel = document.getElementById('offerProduit');
@@ -1660,12 +1678,17 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
   const { data: prof } = await sb.from('profiles').select('org_id').eq('id', user.id).single();
   if(!prof?.org_id){ errEl.textContent = "Impossible de déterminer votre organisation."; return; }
   const existing = socialCache.find(a=>a.platform==='tiktok');
-  const cfg = Object.assign({}, (existing && existing.config) || {}, {
+  const prevCfg = (existing && existing.config) || {};
+  const cfg = Object.assign({}, prevCfg, {
     pixel_id: document.getElementById('ttPixelId').value.trim(),
-    pixel_access_token: document.getElementById('ttPixelToken').value.trim(),
-    adjust_app_token: document.getElementById('mmpAppToken').value.trim(),
-    adjust_s2s_token: document.getElementById('mmpS2SToken').value.trim(),
   });
+  // Ne jamais écraser les secrets déjà enregistrés côté serveur quand le champ est laissé vide.
+  const pixTok = document.getElementById('ttPixelToken').value.trim();
+  if(pixTok) cfg.pixel_access_token = pixTok;
+  const appTok = document.getElementById('mmpAppToken').value.trim();
+  if(appTok) cfg.adjust_app_token = appTok;
+  const s2sTok = document.getElementById('mmpS2SToken').value.trim();
+  if(s2sTok) cfg.adjust_s2s_token = s2sTok;
   try{
     if(existing){
       const { error } = await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id);
