@@ -93,6 +93,15 @@
     .info-block{ margin:0 16px 10px; padding:12px; }
   }
 
+  /* Mobile : les barres de saisie rapide passent en colonne pour des champs pleine largeur */
+  @media (max-width: 540px){
+    .add-inline{ flex-direction:column; align-items:stretch; }
+    .add-inline select, .add-inline input{ width:100%; flex:1 1 auto; min-height:46px; }
+    .add-inline button{ width:100%; min-height:46px; flex:1 1 auto; }
+    .actions-row{ flex-wrap:wrap; }
+    .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
+  }
+
   .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; }
   .screen.active{ display:flex; }
   .screen::-webkit-scrollbar{ width:10px; }
@@ -218,9 +227,11 @@
   .reportTableWrap, .health-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   /* Garder les cartes/lignes à l'intérieur de l'écran */
   .relance-card, .info-block, .set-row, .stage-chip{ max-width:100%; }
-  /* Champs : remplir la largeur et éviter le zoom auto iOS (16px) */
+  /* Champs : remplir la largeur, éviter le zoom auto iOS (16px), y compris inputs non typés */
   .field, input[type=text], input[type=number], input[type=tel], input[type=email], input[type=password], select, textarea{ font-size:16px; max-width:100%; }
+  .screen input, .screen select, .screen textarea{ font-size:16px; max-width:100%; }
   .screen .field{ box-sizing:border-box; }
+  .add-inline select, .add-inline input{ flex:1; font-size:16px; min-width:0; }
   /* zones tactile : hauteur minimale confortable */
   .btn, .btn-ghost, .key, .tab-btn, .action-btn{ min-height:44px; }
   /* Empêcher tout débordement horizontal indésirable */
