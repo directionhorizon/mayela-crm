@@ -105,10 +105,12 @@
     .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
   }
 
-.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; }
+.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.4) transparent; }
   .screen.active{ display:flex; }
-  .screen::-webkit-scrollbar{ display:none; }
-  .screen{ scrollbar-width:none; }
+  .screen::-webkit-scrollbar{ width:6px; }
+  .screen::-webkit-scrollbar-track{ background:transparent; }
+  .screen::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.35); border-radius:6px; }
+  .screen::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.6); }
 
   .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
   .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
@@ -207,8 +209,12 @@
   .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--sage); font-size:9.5px; font-family:'Work Sans'; cursor:pointer;}
   .nav-btn.active{ color:var(--gold); }
   .nav-btn .ic{ font-size:18px; }
-  #ia::-webkit-scrollbar{ display:none; }
-  #iaChatLog::-webkit-scrollbar{ display:none; }
+  #ia::-webkit-scrollbar{ width:6px; }
+  #ia::-webkit-scrollbar-track{ background:transparent; }
+  #ia::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.35); border-radius:6px; }
+  #iaChatLog::-webkit-scrollbar{ width:6px; }
+  #iaChatLog::-webkit-scrollbar-track{ background:transparent; }
+  #iaChatLog::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.3); border-radius:6px; }
   .hidden{ display:none !important; }
   .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
   .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
@@ -232,9 +238,6 @@
   /* Empêcher tout débordement horizontal indésirable */
   html, body{ overflow-x:hidden; }
   .screen{ max-width:100vw; }
-  /* Masquer les scrollbars dans toute l'app (style mobile), le défilement reste fonctionnel */
-  .phone ::-webkit-scrollbar{ display:none; }
-  .phone *{ scrollbar-width:none; }
 
 </style>
 </head>
