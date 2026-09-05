@@ -105,12 +105,12 @@
     .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
   }
 
-.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.4) rgba(255,255,255,0.05); }
+.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.45) rgba(255,255,255,0.09); }
   .screen.active{ display:flex; }
   .screen::-webkit-scrollbar{ width:6px; }
-  .screen::-webkit-scrollbar-track{ background:rgba(255,255,255,0.05); border-radius:6px; }
-  .screen::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.35); border-radius:6px; }
-  .screen::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.6); }
+  .screen::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); border-radius:6px; }
+  .screen::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.45); border-radius:6px; }
+  .screen::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.7); }
 
   .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
   .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
@@ -210,11 +210,13 @@
   .nav-btn.active{ color:var(--gold); }
   .nav-btn .ic{ font-size:18px; }
   #ia::-webkit-scrollbar{ width:6px; }
-  #ia::-webkit-scrollbar-track{ background:rgba(255,255,255,0.05); }
-  #ia::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.35); border-radius:6px; }
+  #ia::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); }
+  #ia::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.45); border-radius:6px; }
+  #ia::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.7); }
   #iaChatLog::-webkit-scrollbar{ width:6px; }
-  #iaChatLog::-webkit-scrollbar-track{ background:rgba(255,255,255,0.05); }
-  #iaChatLog::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.3); border-radius:6px; }
+  #iaChatLog::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); }
+  #iaChatLog::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.4); border-radius:6px; }
+  #iaChatLog::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.65); }
   .hidden{ display:none !important; }
   .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
   .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
