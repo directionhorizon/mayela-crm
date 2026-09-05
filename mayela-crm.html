@@ -230,7 +230,8 @@
   .social-card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
   .social-card .sc-icon{ width:42px; height:42px; border-radius:12px; border:1px solid var(--line); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:20px; flex:0 0 auto; }
   .social-card .name{ font-weight:600; font-size:13.5px; }
-  .social-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; }
+  .social-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; line-height:1.45; }
+  .meta, .screen p, .set-row .lbl small, .social-card .meta{ line-height:1.5; overflow-wrap:anywhere; overflow-wrap:break-word; }
   .social-card .sc-action{ flex:0 0 auto; }
   .social-card .sc-status{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:999px; margin-top:4px; }
   .social-card .sc-status.ok{ color:#7ECB89; background:rgba(126,203,137,.12); border:1px solid rgba(126,203,137,.3); }
@@ -1104,7 +1105,7 @@ async function loadSocial(){
     const connected = !!(acc && acc.connected);
     const accent = { facebook:'#1877F2', whatsapp:'#25D366', tiktok:'#27E1E8' }[pl] || 'var(--gold)';
     const st = `<span class="sc-status ${connected ? 'ok' : 'no'}">${connected ? 'Connecté' : 'Non connecté'}</span>`;
-    return `<div class="social-card"><div class="sc-icon" style="border-color:${accent}44; background:${accent}14;"><span style="color:${accent};">${meta.icon}</span></div><div style="min-width:0; flex:1;"><div class="name">${meta.label}</div><div class="meta" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''} ${connected ? '' : meta.hint}</div>${st}</div><div class="sc-action">${action}</div></div>`;
+    return `<div class="social-card"><div class="sc-icon" style="border-color:${accent}44; background:${accent}14;"><span style="color:${accent};">${meta.icon}</span></div><div style="min-width:0; flex:1;"><div class="name">${meta.label}</div><div class="meta">${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}${connected ? '' : ' ' + esc(meta.hint)}</div>${st}</div><div class="sc-action">${action}</div></div>`;
   }).join('');
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${p.id}" data-img="${p.image_url||''}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
