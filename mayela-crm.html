@@ -1508,7 +1508,7 @@ async function gsRefreshStatus(){
       });
       const out = await r.json();
       if(out.connected){ statusEl.innerHTML = `<span style="color:var(--gold);">✓ Connecté (espace) : ${esc(out.display_name||'')}</span>`; return; }
-      statusEl.innerHTML = '<span style="color:var(--clay);">Backend : ' + (out.missing||[]).join(', ') + '</span>';
+      statusEl.innerHTML = '<span style="color:var(--clay);">Non connecté — configuration requise</span>';
       return;
     }catch(_e){}
   }
