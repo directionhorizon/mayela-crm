@@ -123,7 +123,7 @@
   .badge64{ width:64px; height:64px; border-radius:20px; background:var(--panel); display:flex; align-items:center; justify-content:center; margin:0 auto 6px; border:1px solid var(--line); font-size:26px; }
   .stitle{ font-family:'Sora',sans-serif; font-weight:700; font-size:19px; }
   .ssub{ color:var(--sage); font-size:12.5px; line-height:1.5; max-width:260px; margin:0 auto; }
-  .field{ width:100%; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Work Sans'; }
+  .field{ width:100%; background:var(--panel-2); border:1px solid rgba(243,237,224,0.18); border-radius:12px; padding:12px 14px; font-size:14px; color:var(--text); font-family:'Work Sans'; }
   .email-wrap{ position:relative; width:100%; }
   .email-wrap .field{ padding-right:34px; }
   .email-chevron{ position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--sage); font-size:11px; pointer-events:none; transition:transform .15s ease; }
@@ -135,6 +135,7 @@
   .email-dropdown-item:active{ background:var(--panel); }
   .oauth-ic{ width:20px; height:20px; border-radius:6px; background:var(--panel); display:inline-flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono'; font-size:11px; color:var(--gold); flex-shrink:0; }
   .field::placeholder{ color:var(--sage); }
+  .field:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(217,164,65,0.18); }
   .btn{ width:100%; background:var(--gold); color:#1a1305; border:none; border-radius:12px; padding:13px; font-size:13.5px; font-weight:700; font-family:'Sora'; cursor:pointer; }
   .btn:disabled{ opacity:.5; }
   .btn-ghost{ width:100%; background:transparent; border:1px solid var(--line); color:var(--text); border-radius:12px; padding:11px; font-size:12.5px; font-family:'Work Sans'; cursor:pointer; }
@@ -161,7 +162,8 @@
   .relance-card .name{ font-weight:600; font-size:13.5px; }
   .relance-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; }
 
-  .search{ margin:14px 20px 6px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; font-size:13px; color:var(--text); width:calc(100% - 40px); }
+  .search{ margin:14px 20px 6px; background:var(--panel-2); border:1px solid rgba(243,237,224,0.18); border-radius:12px; padding:10px 14px; font-size:13px; color:var(--text); width:calc(100% - 40px); }
+  .search:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(217,164,65,0.18); }
   .search::placeholder{ color:var(--sage); }
   .stage-tabs{ display:flex; gap:6px; padding:10px 20px; overflow-x:auto; }
   .stage-chip{ flex-shrink:0; font-size:11px; padding:6px 12px; border-radius:20px; border:1px solid var(--line); color:var(--sage); background:transparent; font-family:'Work Sans'; cursor:pointer; }
