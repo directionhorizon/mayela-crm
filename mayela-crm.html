@@ -105,7 +105,7 @@
     .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
   }
 
-.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.45) rgba(255,255,255,0.09); }
+.screen{ flex:1; display:none; flex-direction:column; overflow-y:scroll; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.45) rgba(255,255,255,0.09); }
   .screen.active{ display:flex; }
   .screen::-webkit-scrollbar{ width:6px; }
   .screen::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); border-radius:6px; }
@@ -487,7 +487,7 @@
         <div style="display:flex; justify-content:center; padding:6px 0 4px;">
           <div style="width:84px; height:84px; border-radius:50%; background:linear-gradient(160deg, #3a2a1a, #1D3B33); display:flex; align-items:center; justify-content:center; font-size:36px; border:2px solid var(--gold);">🧑🏾‍💼</div>
         </div>
-        <div id="iaChatLog" style="padding:6px 20px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:auto;"></div>
+        <div id="iaChatLog" style="padding:6px 20px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:scroll;"></div>
         <div style="padding:10px 20px 4px;">
           <input type="file" id="iaFileInput" accept=".txt,.csv,.md" class="hidden">
           <div class="add-inline">
