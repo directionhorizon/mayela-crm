@@ -379,7 +379,7 @@
           <textarea class="field" id="newProduitDesc" rows="2" placeholder="Description (matériaux, tailles, délais…)" style="resize:none;"></textarea>
           <div style="display:flex; align-items:center; gap:10px;">
             <button class="btn" id="pickProduitImageBtn" style="flex:0 0 auto; background:var(--panel-2); color:var(--text); border:1px solid var(--line);">📷 Photo</button>
-            <span style="font-size:11px; color:var(--sage);" id="produitImgName">Aucune image</span>
+            <span style="font-size:11px; color:var(--sage); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="produitImgName">Aucune image</span>
           </div>
           <input type="file" id="newProduitImage" accept="image/*" class="hidden">
           <input class="field" id="newProduitPrix" type="number" placeholder="Prix par défaut (FCFA, optionnel)">
