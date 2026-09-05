@@ -1541,7 +1541,7 @@ async function gsConnect(){
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     state,
     access_type: 'offline',
-    prompt: 'consent'
+    prompt: 'select_account consent'
   });
   location.href = base + '?' + qs.toString();
 }
