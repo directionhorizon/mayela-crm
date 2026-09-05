@@ -227,7 +227,15 @@
   /* Conteneurs à tableau : débordement horizontal géré, pas de débordement de page */
   .reportTableWrap, .health-wrap{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   /* Garder les cartes/lignes à l'intérieur de l'écran */
-  .relance-card, .info-block, .set-row, .stage-chip{ max-width:100%; }
+  .social-card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px; }
+  .social-card .sc-icon{ width:42px; height:42px; border-radius:12px; border:1px solid var(--line); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-size:20px; flex:0 0 auto; }
+  .social-card .name{ font-weight:600; font-size:13.5px; }
+  .social-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; }
+  .social-card .sc-action{ flex:0 0 auto; }
+  .social-card .sc-status{ display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:2px 8px; border-radius:999px; margin-top:4px; }
+  .social-card .sc-status.ok{ color:#7ECB89; background:rgba(126,203,137,.12); border:1px solid rgba(126,203,137,.3); }
+  .social-card .sc-status.no{ color:var(--sage); background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); }
+  .relance-card, .info-block, .set-row, .stage-chip, .social-card{ max-width:100%; }
   /* Champs : remplir la largeur, éviter le zoom auto iOS (16px), y compris inputs non typés */
   .field, input[type=text], input[type=number], input[type=tel], input[type=email], input[type=password], select, textarea{ font-size:16px; max-width:100%; }
   .screen input, .screen select, .screen textarea{ font-size:16px; max-width:100%; }
@@ -670,8 +678,8 @@
           <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
         </div>
         <div class="section-title">Intégrations</div>
-        <div class="set-block">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px 0;">
+        <div class="info-block" style="margin:0 20px 12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
             <span style="font-size:13px; font-weight:700; color:var(--gold);">Google Sheets</span>
             <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
           </div>
@@ -679,18 +687,18 @@
             Configurez ici votre app Google (OAuth) pour autoriser l'export des données vers Google Sheets.
             Le Client Secret est enregistré et conservé de façon sécurisée côté serveur : il n'est jamais visible après enregistrement.
           </div>
-          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off" style="margin-top:8px;">
-          <input class="field" id="gsClientSecret" type="password" placeholder="Client Secret Google (affiché une seule fois en console Google)" autocomplete="new-password" style="margin-top:8px;">
-          <div class="meta" style="color:var(--sage); font-size:10.5px; margin-top:8px;">
+          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
+          <input class="field" id="gsClientSecret" type="password" placeholder="Client Secret Google (affiché une seule fois en console Google)" autocomplete="new-password">
+          <div class="meta" style="color:var(--sage); font-size:10.5px;">
             Redirect URI à déclarer dans votre app Google :
             <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-            <button class="btn" id="gsSaveBtn">💾 Enregistrer</button>
-            <button class="btn" id="gsConnectBtn">🔗 Se connecter à Google</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn" id="gsSaveBtn" style="flex:1 1 100%;">💾 Enregistrer</button>
+            <button class="btn" id="gsConnectBtn" style="flex:1 1 100%;">🔗 Se connecter à Google</button>
           </div>
           <div class="err-msg" id="gsErr"></div>
-          <div class="meta" style="color:var(--sage); font-size:10.5px; margin-top:8px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
+          <div class="meta" style="color:var(--sage); font-size:10.5px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
         </div>
       </div>
 
@@ -1093,7 +1101,10 @@ async function loadSocial(){
     if(acc && acc.connected) action = `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>`;
     else if(acc) action = `<span class="link-sm" data-auth-social="${pl}">Autoriser</span>`;
     else action = `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`;
-    return `<div class="relance-card"><div><div class="name">${meta.icon} ${meta.label}${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}</div><div class="meta">${esc(meta.hint)}</div></div>${action}</div>`;
+    const connected = !!(acc && acc.connected);
+    const accent = { facebook:'#1877F2', whatsapp:'#25D366', tiktok:'#27E1E8' }[pl] || 'var(--gold)';
+    const st = `<span class="sc-status ${connected ? 'ok' : 'no'}">${connected ? 'Connecté' : 'Non connecté'}</span>`;
+    return `<div class="social-card"><div class="sc-icon" style="border-color:${accent}44; background:${accent}14;"><span style="color:${accent};">${meta.icon}</span></div><div style="min-width:0; flex:1;"><div class="name">${meta.label}</div><div class="meta" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''} ${connected ? '' : meta.hint}</div>${st}</div><div class="sc-action">${action}</div></div>`;
   }).join('');
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${p.id}" data-img="${p.image_url||''}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
