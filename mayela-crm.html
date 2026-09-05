@@ -105,12 +105,13 @@
     .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
   }
 
-.screen{ flex:1; display:none; flex-direction:column; overflow-y:scroll; padding-bottom:8px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:rgba(217,164,65,0.45) rgba(255,255,255,0.09); }
+.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-width:none; }
   .screen.active{ display:flex; }
-  .screen::-webkit-scrollbar{ width:6px; }
-  .screen::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); border-radius:6px; }
-  .screen::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.45); border-radius:6px; }
-  .screen::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.7); }
+  .screen::-webkit-scrollbar{ display:none; }
+  /* Barre de défilement toujours visible (fonctionne sur tous les navigateurs, y compris iOS) */
+  .sb-wrap{ position:absolute; top:20px; right:6px; bottom:86px; width:6px; pointer-events:none; z-index:20; }
+  .sb-track{ position:absolute; inset:0; background:rgba(255,255,255,0.09); border-radius:6px; }
+  .sb-thumb{ position:absolute; left:0; right:0; top:0; border-radius:6px; background:rgba(217,164,65,0.45); min-height:26px; }
 
   .topbar{ padding:44px 20px 14px; display:flex; align-items:center; justify-content:space-between; }
   .topbar h1{ font-family:'Sora',sans-serif; font-size:20px; font-weight:700; }
@@ -211,14 +212,8 @@
   .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--sage); font-size:9.5px; font-family:'Work Sans'; cursor:pointer;}
   .nav-btn.active{ color:var(--gold); }
   .nav-btn .ic{ font-size:18px; }
-  #ia::-webkit-scrollbar{ width:6px; }
-  #ia::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); }
-  #ia::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.45); border-radius:6px; }
-  #ia::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.7); }
-  #iaChatLog::-webkit-scrollbar{ width:6px; }
-  #iaChatLog::-webkit-scrollbar-track{ background:rgba(255,255,255,0.09); }
-  #iaChatLog::-webkit-scrollbar-thumb{ background:rgba(217,164,65,0.4); border-radius:6px; }
-  #iaChatLog::-webkit-scrollbar-thumb:hover{ background:rgba(217,164,65,0.65); }
+  #ia::-webkit-scrollbar{ display:none; }
+  #iaChatLog::-webkit-scrollbar{ display:none; }
   .hidden{ display:none !important; }
   .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
   .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
@@ -707,6 +702,8 @@
         </div>
       </div>
 
+      <div class="sb-wrap" id="sbWrap"><div class="sb-track"></div><div class="sb-thumb" id="sbThumb"></div></div>
+
       <div class="navbar">
         <button class="nav-btn active" data-nav="dashboard"><div class="ic">🏠</div>Accueil</button>
         <button class="nav-btn" data-nav="clients"><div class="ic">👥</div>Clients</button>
@@ -747,7 +744,29 @@ function esc(s){ return String(s ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<
 function showScreen(id){
   document.querySelectorAll('.stage > .phone > .screen, #appShell > .screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  updateSb();
 }
+function updateSb(){
+  const wrap = document.getElementById('sbWrap');
+  if(!wrap) return;
+  const scr = document.querySelector('.screen.active');
+  if(!scr || scr.clientHeight <= 0 || scr.scrollHeight <= 0){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const thumb = document.getElementById('sbThumb');
+  const sh = scr.scrollHeight, ch = scr.clientHeight;
+  const max = Math.max(1, sh - ch);
+  const trackH = wrap.clientHeight;
+  const thumbH = Math.max(24, Math.round(ch * ch / sh));
+  thumb.style.height = thumbH + 'px';
+  thumb.style.transform = 'translateY(' + Math.round((scr.scrollTop / max) * (trackH - thumbH)) + 'px)';
+}
+document.addEventListener('scroll', updateSb, true);
+addEventListener('resize', updateSb);
+try{
+  const sbObserver = new ResizeObserver(updateSb);
+  sbObserver.observe(document.querySelector('.phone'));
+  document.querySelectorAll('.phone .screen').forEach(s=>sbObserver.observe(s));
+}catch(e){}
 function toast(msg, isErr){
   const t = document.getElementById('toast');
   t.textContent = msg; t.style.borderColor = isErr ? 'var(--clay)' : 'var(--gold)';
