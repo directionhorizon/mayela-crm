@@ -107,6 +107,7 @@
 
 .screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-width:none; }
   .screen.active{ display:flex; }
+  .screen > *{ flex-shrink:0; }
   .screen::-webkit-scrollbar{ display:none; }
   /* Barre de défilement toujours visible et interactive (fonctionne sur tous les navigateurs, y compris iOS) */
   .sb-wrap{ position:absolute; top:20px; right:6px; bottom:86px; width:6px; touch-action:none; z-index:20; }
