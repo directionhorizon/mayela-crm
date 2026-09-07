@@ -168,7 +168,7 @@ const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
     const newConfig = {
       ...cfg,
       access_token: tok.access_token,
-      refresh_token: tok.refresh_token,
+      refresh_token: tok.refresh_token ?? (cfg?.refresh_token as string | undefined),
       scope: tok.scope ?? "",
       expires_at: Date.now() + Number(tok.expires_in ?? 3600) * 1000 - 60_000,
     };

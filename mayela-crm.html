@@ -1684,6 +1684,9 @@ async function gsConnect(){
   sessionStorage.setItem('gs_cid', cid);
   sessionStorage.setItem('gs_redirect', gsBaseUrl());
   // Le client_id est public ; le secret reste côté serveur (fonction Supabase).
+  // login_hint = e-mail du compte connecté à l'espace : Google pré-sélectionne ce
+  // compte et n'affiche plus l'écran de choix d'adresse à chaque connexion.
+  const { data:{ user: gsUser } } = await sb.auth.getUser();
   const base = 'https://accounts.google.com/o/oauth2/v2/auth';
   const qs = new URLSearchParams({
     client_id: cid,
@@ -1692,7 +1695,7 @@ async function gsConnect(){
     scope: 'https://www.googleapis.com/auth/spreadsheets',
     state,
     access_type: 'offline',
-    prompt: 'select_account consent'
+    ...(gsUser && gsUser.email ? { login_hint: gsUser.email } : {})
   });
   console.log('[Google Sheets] URL de consentement envoyée :', base + '?' + qs.toString());
   location.href = base + '?' + qs.toString();
