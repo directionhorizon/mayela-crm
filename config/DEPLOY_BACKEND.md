@@ -58,6 +58,12 @@ jamais à jour le front.
 > ligne après un déploiement. Le bandeau apparaît, on tape « Recharger », et la nouvelle version
 > s'affiche.
 
+**Contrôle de la version sur un appareil installé** : **Réglages → À propos** affiche la version
+exécutée sur l'appareil (cache local du service worker) et la dernière version publiée (lue depuis
+`sw.js` servi par Vercel). Si elles diffèrent, une ligne « Mise à jour disponible — Recharger »
+apparaît et recharge l'app. C'est l'outil le plus simple pour vérifier qu'un téléphone a bien reçu
+le dernier déploiement (comparez avec le hash `mayela-crm-<hash>` de l'étape 2).
+
 ---
 
 ## Étape 1 — Migration base de données (obligatoire pour tout)

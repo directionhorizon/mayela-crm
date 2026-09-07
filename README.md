@@ -53,6 +53,8 @@ L'app est installable comme une application Android native :
 
 En mode installé : icône sur l'écran d'accueil, plein écran sans barre d'URL (manifest + `theme-color`), et l'app shell reste chargée hors-ligne grâce au service worker (`sw.js`). Les données Supabase, elles, nécessitent le réseau. Après chaque évolution de l'app, `node config/bump-sw.mjs` recalcule automatiquement le cache (`mayela-crm-<hash>`) pour que les appareils installés reçoivent la nouvelle version ; l'app détecte elle-même la mise à jour dès qu'elle est ouverte et propose de recharger.
 
+Pour vérifier qu'un téléphone a bien reçu la dernière version : **Réglages → À propos** affiche la version exécutée sur l'appareil (`verInstalled`) et la dernière version publiée (`verPublished`). Si elles diffèrent, une ligne « Mise à jour disponible → Recharger » apparaît et recharge l'app.
+
 ## Branches
 
 - `main` — version stable, celle qu'on montre en démo

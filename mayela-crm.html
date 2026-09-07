@@ -797,6 +797,13 @@
           <div class="err-msg" id="gsErr"></div>
           <div class="meta" style="color:var(--sage); font-size:10.5px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
         </div>
+        <div class="section-title">À propos</div>
+        <div class="set-block">
+          <div class="set-row"><div class="lbl">Version installée<small>La version qui tourne sur cet appareil</small></div><span class="val" id="verInstalled">–</span></div>
+          <div class="set-row"><div class="lbl">Version publiée<small>La dernière version mise en ligne</small></div><span class="val" id="verPublished">–</span></div>
+          <div class="set-row hidden" id="verOutdatedRow" style="cursor:pointer;" onclick="location.reload();"><div class="lbl" style="color:var(--gold)">Mise à jour disponible<small>Une version plus récente est en ligne</small></div><span class="val">Recharger →</span></div>
+          <div class="set-row hidden" id="verUpToDateRow"><div class="lbl" style="color:var(--success)">À jour<small>L'app installée correspond à la version publiée</small></div><span class="val">✓</span></div>
+        </div>
       </div>
 
       <div class="sb-wrap" id="sbWrap"><div class="sb-track"></div><div class="sb-thumb" id="sbThumb"></div></div>
@@ -841,6 +848,7 @@ function esc(s){ return String(s ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<
 function showScreen(id){
   document.querySelectorAll('.stage > .phone > .screen, #appShell > .screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id === 'settings' && typeof refreshVersionInfo === 'function') refreshVersionInfo();
   updateSb();
 }
 function updateSb(){
@@ -2033,6 +2041,33 @@ async function loadEverything(){
     document.getElementById('allowTeamRenameVal').textContent = org.members_can_rename ? 'Activé' : 'Désactivé';
   }
   else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
+}
+
+// Comparaison version installée (cache du service worker local) vs version publiée (sw.js servi
+// par Vercel). Affiche la ligne « À jour » ou « Mise à jour disponible » dans Réglages → À propos.
+async function refreshVersionInfo(){
+  const iEl = document.getElementById('verInstalled');
+  const pEl = document.getElementById('verPublished');
+  const outRow = document.getElementById('verOutdatedRow');
+  const upRow = document.getElementById('verUpToDateRow');
+  let installed = null, published = null;
+  try{
+    const keys = await caches.keys();
+    const c = keys.find(k=>/^mayela-crm-/.test(k));
+    installed = c ? c.replace('mayela-crm-','') : null;
+  }catch(e){}
+  try{
+    const r = await fetch('./sw.js?v=' + Date.now());
+    const t = await r.text();
+    const m = t.match(/mayela-crm-[A-Za-z0-9]+/i);
+    published = m ? m[0].replace('mayela-crm-','') : null;
+  }catch(e){}
+  iEl.textContent = installed || '—';
+  pEl.textContent = published || '—';
+  if(outRow) outRow.classList.add('hidden');
+  if(upRow) upRow.classList.add('hidden');
+  if(installed && published && installed !== published && outRow) outRow.classList.remove('hidden');
+  else if(installed && published && installed === published && upRow) upRow.classList.remove('hidden');
 }
 
 async function renderDashboardKpis(){
