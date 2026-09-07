@@ -210,7 +210,7 @@ Deno.serve(async (req: Request) => {
       { role: "user", parts: userParts },
     ],
     ...(needsWeb ? { tools: [{ googleSearch: {} }] } : {}),
-    generationConfig: { temperature: 0.9, maxOutputTokens: 1024 },
+    generationConfig: { temperature: 0.9, maxOutputTokens: 4096 },
   });
 
   // Transforme le flux SSE de Gemini en flux SSE léger { t: "morceau de texte" }
