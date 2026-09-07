@@ -4,6 +4,62 @@ Trois étapes, dans l'ordre. Comptez ~30 minutes.
 
 ---
 
+## Étape 0 — Déploiement du front (Vercel) — OBLIGATOIRE à chaque mise à jour
+
+L'application n'est PAS servie par Supabase, mais par Vercel. Déployer les Edge Functions ne met
+jamais à jour le front.
+
+1. Vérifier la syntaxe du HTML (extrait les blocs `<script>` et les teste) :
+   ```powershell
+   $c = Get-Content -Raw mayela-crm.html
+   $m = [regex]::Matches($c, '<script>(.*?)</script>', 'Singleline')
+   $i = 0; foreach($x in $m){ $i++; $f = "$env:TEMP\inline_$i.js"; Set-Content $f $x.Groups[1].Value -Encoding UTF8; node --check $f }
+   ```
+2. **Re-versiomer le service worker** (étape indispensable) :
+   ```powershell
+   node config/bump-sw.mjs
+   ```
+   → re-calcule `CACHE = 'mayela-crm-<hash>'` dans `sw.js` d'après le contenu de l'app. Sans ce pas,
+   les appareils installés gardent l'ancien service worker et le cache obsolète.
+3. Déployer :
+   ```powershell
+   npx --yes vercel --prod --yes --force
+   ```
+4. Vérifier en production (le téléphone doit recevoir ce contenu) :
+   ```powershell
+   $h = (Invoke-WebRequest 'https://mayela-crm.vercel.app/mayela-crm.html').Content
+   $h -match 'currentSheetDetail'   # → True = nouveau code servi
+   ```
+
+### Pourquoi la version Android installée ne voyait pas les nouvelles fonctions
+- L'icône Android pointe vers l'URL d'un **ancien déploiement Vercel** (`mayela-<hash>-…vercel.app`,
+  immuable) : il sert pour toujours l'ancien code. **Solution** : une redirection canonique intégrée
+  au début de `mayela-crm.html` renvoie tous les hôtes non canoniques vers `mayela-crm.vercel.app`
+  (seule exception : localhost / LAN / `*.localhost` pour le développement Pinokio). L'utilisateur
+  peut devoir se reconnecter UNE fois après le premier redémarrage (changement d'origine).
+- Le service worker avait une version figée (`v3`) : le cache n'était jamais invalidé. **Solution** :
+  version calculée à partir du contenu déployé à chaque mise à jour (étape 2, `config/bump-sw.mjs` —
+  re-hash de `mayela-crm.html`, `index.html` et `manifest.webmanifest`).
+- Aucune vérification de mise à jour au retour dans l'app : sur Android, rouvrir l'app depuis le
+  sélecteur de tâches (warm resume) ne déclenche pas de navigation → chrome ne re-téléchargeait pas
+  `sw.js` → l'ancien écran restait affiché. **Solution** (bloc service worker en fin de
+  `mayela-crm.html`) :
+  1. `register('./sw.js', { updateViaCache:'none' })` → le navigateur re-télécharge toujours `sw.js`
+     (jamais servi par le cache HTTP) ;
+  2. `reg.update()` forcé au **chargement**, à chaque **retour au premier plan**
+     (`visibilitychange` visible, couvre le warm resume) et au **rétablissement depuis le bfcache**
+     (`pageshow.persisted`) ;
+  3. dès qu'une version plus récente s'installe ✦ `skipWaiting()` dans `sw.js` ✦ l'app installe la
+     nouvelle version et affiche un bandeau **« Nouvelle version disponible — Recharger »** qui
+     recharge immédiatement (au clic). Sans ce bandeau, la nouvelle version est prête mais l'écran
+     affiché reste l'ancien tant qu'on ne recharge pas.
+
+> Aucune action supplémentaire pour l'utilisateur Android : il suffit d'ouvrir l'app une fois en
+> ligne après un déploiement. Le bandeau apparaît, on tape « Recharger », et la nouvelle version
+> s'affiche.
+
+---
+
 ## Étape 1 — Migration base de données (obligatoire pour tout)
 
 ### 1a — Migration V1.1 (produits + réseaux sociaux)
@@ -362,7 +418,9 @@ e-mail + code à 6 chiffres.
    + e-mail support → Enregistrer. Ajoutez votre adresse dans **Utilisateurs test** pour tester.
 3. **API et services → Bibliothèque** → activez **Google Sheets API**.
 4. **API et services → Identifiants → Créer des identifiants → ID client OAuth** :
-   - Type : **Application de bureau** (Desktop)
+   - Type : **Application Web** (Web application)
+   - **Authorized redirect URIs (URIs de redirection autorisées)** → **+ Add URI** :
+     `https://mayela-crm.vercel.app/mayela-crm.html`
    - Notez le **Client ID** et le **Client Secret**.
 
 ### Étape 2 — Renseigner dans MAYELA
@@ -373,15 +431,14 @@ e-mail + code à 6 chiffres.
    une nouvelle feuille est créée dans votre Drive et ouverte.
 
 > **Scopes** demandés à l'autorisation : `https://www.googleapis.com/auth/spreadsheets`
-> (créer/écrire des feuilles) et `https://www.googleapis.com/auth/userinfo.email`
-> (identifier le compte connecté). Si Google n'affiche pas ces écrans, vérifiez que le type
-> d'app est **Application de bureau** et que l'`api_scope` de l'UI est cohérent.
+> (créer/écrire des feuilles). Si Google n'affiche pas ces écrans, vérifiez que le type
+> d'app est **Application Web** et que l'`api_scope` de l'UI est cohérent.
 
 ### Dépannage Google Sheets
 | Symptôme | Cause probable → solution |
 |---|---|
 | « App Google non configurée » | Client ID/Secret absents dans l'onglet Réseaux → Google Sheets → renseigner |
-| « Google a refusé le code » | Type d'app non « Application de bureau », ou code OAuth réutilisé → reconnexion |
+| « Google a refusé le code » | Type d'app non « Application Web », redirect_uri non autorisée, ou code OAuth réutilisé → reconnexion |
 | « Session expirée » | Refresh token révoqué → **Déconnecter** puis **Connecter** à nouveau |
 | L'export échoue | Fonction `google-sheets` non déployée → redéployer (voir Étape 3) |
 

@@ -85,10 +85,23 @@ Deno.serve(async (req: Request) => {
     const hasToken = Boolean(cfg?.access_token);
     if (hasToken && missing.length === 0) {
       const exp = Number(cfg?.expires_at ?? 0);
-      return json({ connected: true, display_name: acc.display_name, expires_at: exp });
+      return json({ connected: true, display_name: acc.display_name, expires_at: exp, client_id: clientId });
     }
     if (!hasToken) missing.push("access_token");
-    return json({ connected: false, missing });
+    return json({ connected: false, missing, client_id: clientId || undefined });
+  }
+
+  // ---- ACTION: disconnect (retirer les jetons Google, garder les identifiants) ----
+  if (action === "disconnect") {
+    if (!acc) return json({ ok: true });
+    const clean = { ...cfg };
+    delete clean.access_token;
+    delete clean.refresh_token;
+    delete clean.expires_at;
+    delete clean.scope;
+    const { error } = await sb.from("integrations_oauth").update({ config: clean }).eq("id", acc.id);
+    if (error) return json({ error: error.message }, 500);
+    return json({ ok: true });
   }
 
   // ---- ACTION: register (enregistrer Client ID + Secret côté serveur) ----
@@ -121,6 +134,13 @@ Deno.serve(async (req: Request) => {
       return json({ error: "App Google non configurée : entrez le Client ID et le Client Secret." }, 400);
     }
     if (!code || !redirectUri) return json({ error: "code/redirect_uri manquants" }, 400);
+    // Le code OAuth est émis pour le Client ID utilisé à l'écran de consentement.
+    // S'il ne correspond pas à celui stocké côté serveur, Google refuse l'échange.
+    if (clientIdInput && clientIdInput !== clientId) {
+      return json({
+        error: "Le Client ID saisi diffère de celui enregistré côté serveur : Google refuse l'échange. Corrigez le Client ID dans l'app puis cliquez « Enregistrer » avant de reconnecter."
+      }, 400);
+    }
 
     const tr = await fetch(OAUTH_TOKEN, {
       method: "POST",
@@ -135,7 +155,7 @@ Deno.serve(async (req: Request) => {
     });
     const tok = await tr.json().catch(() => null);
     if (!tok?.access_token) {
-      return json({ error: "Google a refusé le code : " + (tok?.error_description || tok?.error || "réponse invalide") }, 502);
+      return json({ error: "Google a refusé le code : " + (tok?.error_description || tok?.error || "réponse invalide") + (String(tr.status) !== "200" ? " (HTTP " + tr.status + ")" : "") }, 502);
     }
 
     const newConfig = {
@@ -256,8 +276,8 @@ Deno.serve(async (req: Request) => {
     }
     const range = sheet?.sheets?.[0]?.properties?.title || "Feuille1";
 
-    // 2) On y écrit les lignes (entêtes + données)
-    const upd = await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range + "!A1")}:append`, {
+    // 2) On y écrit les lignes (entêtes + données) — valueInputOption est OBLIGATOIRE
+    const upd = await fetch(`${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range + "!A1")}:append?valueInputOption=USER_ENTERED`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -280,7 +300,8 @@ Deno.serve(async (req: Request) => {
     } catch (_e) { /* non bloquant */ }
 
     if (!upd.ok) {
-      return json({ error: "Écriture dans la feuille en échec." }, 502);
+      const um = await upd.text().catch(() => "");
+      return json({ error: "Écriture dans la feuille en échec : " + um.slice(0, 200) }, 502);
     }
     return json({ ok: true, spreadsheet_id: spreadsheetId, url: `https://docs.google.com/spreadsheets/d/${spreadsheetId}` });
   }

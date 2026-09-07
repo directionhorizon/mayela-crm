@@ -2,11 +2,220 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=./mayela-crm.html">
-<title>MAYELA CRM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0D1F17">
+<meta name="description" content="MAYELA CRM — application de gestion de la relation client pour PME : clients, ventes, devis, créances, tâches, publication sur les réseaux sociaux et export vers Google Sheets.">
+<meta property="og:title" content="MAYELA CRM">
+<meta property="og:description" content="Le chemin de chaque client, jamais perdu. CRM léger pour PME : suivi clients, ventes, devis, créances et réseaux sociaux.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mayela-crm.vercel.app/">
+<meta property="og:image" content="https://mayela-crm.vercel.app/icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="canonical" href="https://mayela-crm.vercel.app/">
+<title>MAYELA CRM — CRM léger pour PME</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1F17;
+    --panel:#16302B;
+    --panel-2:#1D3B33;
+    --gold:#D9A441;
+    --clay:#C1502E;
+    --sage:#9CAB9F;
+    --text:#F3EDE0;
+    --line:rgba(243,237,224,0.12);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family:'Work Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color:var(--text);
+    background: radial-gradient(ellipse at 50% -10%, #14251c 0%, #060d09 70%) fixed;
+    line-height:1.65;
+  }
+  a{ color:var(--gold); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  .wrap{ max-width:1020px; margin:0 auto; padding:0 24px; }
+  .brand-row{ display:flex; align-items:center; gap:10px; }
+  .brand-row img{ width:34px; height:34px; border-radius:9px; }
+  .brand-row b{ font-family:'Sora',sans-serif; font-weight:800; font-size:17px; letter-spacing:.02em; color:var(--gold); }
+  .brand-row span{ color:var(--sage); font-size:12px; }
+
+  header.site{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 0;
+  }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--gold); color:#0D1F17; font-weight:700;
+    padding:12px 22px; border-radius:999px; font-size:15px;
+  }
+  .btn:hover{ text-decoration:none; filter:brightness(1.06); }
+  .btn.ghost{ background:transparent; color:var(--gold); border:1px solid var(--gold); }
+  .btn.small{ padding:8px 16px; font-size:13.5px; }
+
+  .hero{ padding:56px 0 46px; }
+  .hero h1{ font-family:'Sora',sans-serif; font-weight:800; font-size:clamp(30px, 5vw, 46px); line-height:1.15; }
+  .hero h1 em{ font-style:normal; color:var(--gold); }
+  .hero .tag{ font-family:'Sora',sans-serif; font-weight:600; color:var(--gold); margin-bottom:10px; font-size:15px; }
+  .hero p.lead{ color:#D9D0BE; font-size:17px; max-width:640px; margin:16px 0 26px; }
+  .cta-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .fine{ color:var(--sage); font-size:13px; margin-top:14px; }
+
+  section{ padding:40px 0; border-top:1px solid var(--line); }
+  .sec-title{ font-family:'Sora',sans-serif; font-size:22px; font-weight:700; margin-bottom:8px; }
+  .sec-sub{ color:var(--sage); font-size:14.5px; margin-bottom:26px; max-width:720px; }
+
+  .cards{ display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:16px; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:20px; transition:transform .15s ease, border-color .15s ease;
+  }
+  .card:hover{ transform:translateY(-2px); border-color:rgba(217,164,65,0.35); }
+  .card h3{ font-family:'Sora',sans-serif; font-size:15.5px; font-weight:700; display:flex; gap:8px; align-items:center; }
+  .card h3 .dot{ color:var(--gold); flex-shrink:0; }
+  .card p{ color:#D9D0BE; font-size:14px; margin-top:8px; }
+
+  .privacy-box{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px;
+  }
+  .privacy-box h3{ font-family:'Sora',sans-serif; font-size:16px; margin-top:18px; }
+  .privacy-box h3:first-child{ margin-top:0; }
+  .privacy-box ul{ margin:8px 0 0 0; padding-left:18px; color:#D9D0BE; font-size:14.5px; }
+  .privacy-box li{ margin-bottom:6px; }
+  .privacy-box .why{
+    margin-top:18px; background:rgba(217,164,65,0.08); border:1px solid rgba(217,164,65,0.3);
+    border-radius:12px; padding:16px;
+  }
+  .privacy-box .why b{ color:var(--gold); }
+
+  footer.site{
+    border-top:1px solid var(--line); margin-top:30px; padding:30px 0 46px;
+    color:var(--sage); font-size:13.5px;
+  }
+  footer.site .links{ display:flex; gap:20px; flex-wrap:wrap; margin-bottom:14px; }
+  footer.site .links a{ color:var(--sage); }
+  footer.site .links a:hover{ color:var(--gold); }
+  @media (max-width:640px){
+    header.site .brand-row span{ display:none; }
+    .hero{ padding-top:34px; }
+  }
+</style>
 </head>
 <body>
-<script>location.replace("./mayela-crm.html");</script>
-<p>Redirection vers <a href="./mayela-crm.html">MAYELA CRM</a>&hellip;</p>
+<div class="wrap">
+
+  <header class="site">
+    <div class="brand-row">
+      <img src="./icons/icon-192.png" alt="Logo MAYELA CRM">
+      <b>MAYELA CRM</b>
+      <span>le chemin de chaque client, jamais perdu</span>
+    </div>
+    <a class="btn small" href="./mayela-crm.html">Ouvrir l'application</a>
+  </header>
+
+  <section class="hero" style="border-top:none; padding-top:20px;">
+    <div class="tag">Gestion de la relation client · PME</div>
+    <h1>MAYELA CRM —<br>le chemin de <em>chaque client</em>, jamais perdu</h1>
+    <p class="lead">
+      MAYELA CRM est une application de gestion de la relation client simple et légère,
+      pensée pour les petites entreprises : suivi des clients, des ventes, des devis et des
+      créances, relances, publication d'offres sur les réseaux sociaux et export des rapports.
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="./mayela-crm.html">Se connecter / Ouvrir l'application</a>
+      <a class="btn ghost" href="#fonctionnalites">Découvrir les fonctionnalités</a>
+    </div>
+    <p class="fine">Connexion sécurisée par e-mail (code à usage unique) + code PIN · données hébergées sur votre propre espace.</p>
+  </section>
+
+  <section id="fonctionnalites">
+    <h2 class="sec-title">Fonctionnalités</h2>
+    <p class="sec-sub">
+      MAYELA CRM centralise toute la relation commerciale de votre entreprise dans une seule
+      application, utilisable au bureau comme depuis un téléphone.
+    </p>
+    <div class="cards">
+      <div class="card"><h3><span class="dot">◆</span> Fiches clients centralisées</h3>
+        <p>Clients et prospects avec contacts, historique commercial et organisation par espace de travail partagé.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Interactions multi-canal</h3>
+        <p>Notes d'échanges WhatsApp, Facebook, TikTok, appels et visites, rattachées automatiquement à chaque client.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Ventes, devis et créances</h3>
+        <p>Enregistrement des achats, des devis et du suivi des créances avec statuts de paiement clairs.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Tâches et relances</h3>
+        <p>Planification des relances et tâches commerciales avec échéances, pour ne jamais oublier un client.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Catalogue produits &amp; services</h3>
+        <p>Produits et services avec prix, descriptions et photos, référencés dans chaque vente ou devis.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Publication sur les réseaux sociaux</h3>
+        <p>Publication d'offres vers TikTok et Facebook depuis l'application, avec suivi des envois et statistiques.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Rapports et exports</h3>
+        <p>Rapports clients, ventes, devis, créances, interactions, tâches, produits et réseaux — aperçu, PDF et export Google Sheets.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Conseiller IA</h3>
+        <p>Assistant intégré qui aide à analyser votre activité et formuler des recommandations commerciales.</p></div>
+      <div class="card"><h3><span class="dot">◆</span> Sécurité par espace</h3>
+        <p>Authentification par e-mail, code PIN de verrouillage, et isolation stricte des données entre organisations.</p></div>
+    </div>
+  </section>
+
+  <section id="transparence">
+    <h2 class="sec-title">Transparence sur les données</h2>
+    <p class="sec-sub">
+      MAYELA CRM ne collecte que les données strictement nécessaires au fonctionnement décrit ci-dessus.
+      Voici, de façon transparente, la finalité de chaque accès demandé.
+    </p>
+    <div class="privacy-box">
+      <h3>Compte e-mail</h3>
+      <ul>
+        <li><b>Finalité :</b> vous identifier et sécuriser votre accès. Un code à usage unique est envoyé à votre adresse, complété par un code PIN choisi par vous sur chaque appareil.</li>
+      </ul>
+      <h3>Données de gestion commerciale (CRM)</h3>
+      <ul>
+        <li><b>Finalité :</b> gérer votre relation client : fiches, interactions, ventes, devis, créances, tâches, catalogue produits.</li>
+        <li>Ces données sont enregistrées dans l'espace de travail de votre organisation et ne servent qu'à cette gestion. Vous pouvez les exporter ou demander leur suppression à tout moment.</li>
+      </ul>
+      <h3>Connexion TikTok / Facebook</h3>
+      <ul>
+        <li><b>Finalité :</b> vous permettre de publier vos offres sur vos comptes professionnels et de consulter des statistiques. Ces connexions sont facultatives et révocables à tout moment.</li>
+      </ul>
+      <h3>Conseiller IA</h3>
+      <ul>
+        <li><b>Finalité :</b> vous fournir des recommandations commerciales à partir du contexte que vous décrivez. L'historique reste dans votre espace et peut être supprimé.</li>
+      </ul>
+      <div class="why">
+        <b>Pourquoi une connexion Google Sheets ?</b> Lorsque vous choisissez d'<b>exporter un rapport</b>, MAYELA CRM demande à Google
+        la permission de <b>créer et d'écrire dans une feuille de calcul</b> portant le nom « Export MAYELA CRM ». Aucune autre
+        donnée de votre compte Google n'est lue, modifiée ou publiée. L'export est la <b>seule</b> finalité de cet accès.
+      </div>
+      <h3>Aucune revente de données</h3>
+      <ul>
+        <li>MAYELA CRM ne vend, ne loue et ne cède aucune donnée personnelle à des tiers à des fins publicitaires. Les données ne sont communiquées à des autorités que sur réquisition légale.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="acces">
+    <h2 class="sec-title">Accéder à l'application</h2>
+    <p class="sec-sub">
+      L'application se lance dans votre navigateur, sur ordinateur ou sur mobile.
+      Un compte est requis (création en quelques secondes par votre adresse e-mail).
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="./mayela-crm.html">Ouvrir l'application</a>
+      <a class="btn ghost" href="#top">Haut de page</a>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div class="links">
+      <a href="./politique-confidentialite.html">Politique de confidentialité &amp; conditions d'utilisation</a>
+      <a href="./terms.html">Conditions d'utilisation</a>
+      <a href="mailto:direction.horizon.cg@gmail.com">direction.horizon.cg@gmail.com</a>
+    </div>
+    <div>© 2026 MAYELA CRM — République du Congo. Données hébergées et traitées conformément à la loi n° 29-2019 sur la protection des données à caractère personnel.</div>
+  </footer>
+
+</div>
 </body>
 </html>

@@ -51,7 +51,7 @@ L'app est installable comme une application Android native :
 2. Ouvrir l'URL dans Chrome sur le téléphone
 3. Menu ⋮ → « Installer l'application » (ou bannière d'installation)
 
-En mode installé : icône sur l'écran d'accueil, plein écran sans barre d'URL (manifest + `theme-color`), et l'app shell reste chargée hors-ligne grâce au service worker (`sw.js`). Les données Supabase, elles, nécessitent le réseau. Après modification de `sw.js`, incrémenter `CACHE` (`mayela-crm-v2`, etc.) pour invalider l'ancien cache.
+En mode installé : icône sur l'écran d'accueil, plein écran sans barre d'URL (manifest + `theme-color`), et l'app shell reste chargée hors-ligne grâce au service worker (`sw.js`). Les données Supabase, elles, nécessitent le réseau. Après chaque évolution de l'app, `node config/bump-sw.mjs` recalcule automatiquement le cache (`mayela-crm-<hash>`) pour que les appareils installés reçoivent la nouvelle version ; l'app détecte elle-même la mise à jour dès qu'elle est ouverte et propose de recharger.
 
 ## Branches
 

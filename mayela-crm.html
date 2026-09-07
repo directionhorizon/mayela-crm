@@ -2,6 +2,16 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<script>
+<!-- #region redirection canonique -->
+(function(){
+  var H = location.hostname, isLocal = /(\.localhost|^localhost$|^127\.0\.0\.1$|^\d{1,3}(\.\d{1,3}){3}$)/.test(H);
+  if(H !== 'mayela-crm.vercel.app' && !isLocal){
+    location.replace('https://mayela-crm.vercel.app' + location.pathname + location.search + location.hash);
+  }
+})();
+<!-- #endregion redirection canonique -->
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0D1F17">
 <meta name="mobile-web-app-capable" content="yes">
@@ -249,6 +259,54 @@
   html, body{ overflow-x:hidden; }
   .screen{ max-width:100vw; }
 
+  /* ==== Conseiller IA : zone de discussion (enrichissement UX / ne change aucun comportement) ==== */
+  #ia{ height:100dvh; min-height:0; }
+  #ia > .chat-frame{ flex:1 1 auto; min-height:0; flex-shrink:1; display:flex; flex-direction:column; }
+  #iaChatLog{ display:flex; flex-direction:column; gap:8px; overflow-y:auto; overflow-x:hidden; flex:1; min-height:0; padding:6px 20px; scrollbar-width:none; }
+  #iaChatLog::-webkit-scrollbar{ display:none; }
+  .ia-empty{ flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:4px 20px 10px; scrollbar-width:none; }
+  .ia-empty::-webkit-scrollbar{ display:none; }
+  .ia-composer{ border-top:1px solid var(--line); background:rgba(13,31,23,0.4); backdrop-filter:blur(4px); }
+  .ia-inputbar{ display:flex; align-items:flex-end; gap:6px; background:var(--gold); border-radius:999px; padding:4px 6px; }
+  .ia-inputbar #iaMsgInput{ flex:1 1 auto; min-width:0; width:auto; resize:none; overflow-y:hidden; border:none; background:transparent; color:#1a1305; font-size:16px; line-height:1.45; min-height:42px; max-height:96px; padding:9px 4px; font-family:inherit; }
+  .ia-inputbar #iaMsgInput::placeholder{ color:rgba(26,19,5,.55); }
+  .ia-inputbar .ia-icon{ flex:0 0 auto; width:42px; height:42px; border:none; border-radius:50%; background:rgba(255,255,255,.35); color:#1a1305; font-size:17px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:'Work Sans'; }
+  .ia-inputbar .ia-icon:active{ transform:scale(.94); }
+  .ia-inputbar .ia-send{ background:#1a1305; color:var(--gold); }
+  .overlay-panel{ position:absolute; inset:0; z-index:40; background:var(--ink); display:flex; flex-direction:column; }
+  .op-top{ display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--line); }
+  .op-close{ background:var(--panel-2); border:1px solid var(--line); color:var(--text); border-radius:8px; padding:6px 10px; font-size:12.5px; cursor:pointer; font-family:'Work Sans'; }
+  .op-list{ flex:1; overflow-y:auto; padding:10px 20px; display:flex; flex-direction:column; gap:8px; scrollbar-width:none; }
+  .op-list::-webkit-scrollbar{ display:none; }
+  .hist-item{ text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; }
+  .hist-item:hover{ border-color:var(--gold); }
+  .hist-item .q{ font-size:13.5px; line-height:1.35; overflow-wrap:anywhere; }
+  .hist-item .meta{ display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:11px; color:var(--sage); }
+  .hist-item .meta b{ color:var(--gold); font-weight:600; }
+  .ia-row{ display:flex; flex-direction:column; align-items:stretch; }
+  .ia-bubble{ max-width:80%; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; padding:10px 14px; border-radius:16px; font-size:16px; line-height:1.5; }
+  .ia-bubble.user{ align-self:flex-end; background:var(--gold); color:#1a1305; border-bottom-right-radius:4px; }
+  .ia-bubble.ai{ align-self:flex-start; background:var(--panel); color:var(--text); border:1px solid var(--line); border-bottom-left-radius:4px; }
+  .ia-actions{ display:flex; gap:4px; margin-top:8px; opacity:0; transform:translateY(2px); transition:opacity .18s ease, transform .18s ease; }
+  .ia-bubble.ai:hover .ia-actions, .ia-bubble.ai:focus-within .ia-actions{ opacity:1; transform:none; }
+  .ia-act-btn{ background:none; border:1px solid transparent; color:var(--sage); font-size:12.5px; line-height:1; padding:5px 8px; border-radius:7px; cursor:pointer; font-family:'Work Sans'; }
+  .ia-act-btn:hover{ color:var(--gold); border-color:var(--line); background:rgba(217,164,65,.08); }
+  #iaMsgInput{ flex:1 1 auto; min-width:0; width:auto; resize:none; overflow-y:hidden; min-height:46px; max-height:120px; box-sizing:border-box; font-size:16px; line-height:1.45; padding:10px 12px; background:var(--panel-2); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:inherit; }
+  #iaMsgInput::placeholder{ color:var(--sage); }
+  .ia-typing{ display:inline-flex; align-items:center; gap:5px; color:var(--sage); }
+  .ia-typing .dot{ width:7px; height:7px; border-radius:50%; background:var(--sage); animation:iaBlink 1.2s infinite ease-in-out; }
+  .ia-typing .dot:nth-child(2){ animation-delay:.18s; }
+  .ia-typing .dot:nth-child(3){ animation-delay:.36s; }
+  @keyframes iaBlink{ 0%, 70%, 100%{ opacity:.18; transform:scale(.85); } 35%{ opacity:1; transform:scale(1); } }
+  @media (hover: none){ .ia-actions{ opacity:1; transform:none; } }
+    .ia-sources{ margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); opacity:.82; }
+    .ia-sources-title{ font-size:11px; font-weight:600; letter-spacing:.4px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+    .ia-src{ display:flex; align-items:center; gap:5px; padding:2px 0; font-size:12.5px; }
+    .ia-src span{ font-size:11px; }
+    .ia-src a{ color:var(--sage); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .ia-src a:hover{ color:var(--gold); text-decoration:underline; }
+  @container (max-width: 540px){ .add-inline textarea{ width:100%; } }
+
 </style>
 </head>
 <body>
@@ -472,27 +530,49 @@
 
       <!-- CONSEILS -->
       <div class="screen" id="ia">
-        <div class="topbar"><h1>Conseils</h1></div>
-        <div class="info-block" style="background:rgba(217,164,65,0.08); border-color:rgba(217,164,65,0.25); color:var(--gold); font-size:11px; line-height:1.5;">
-          Version 1 : recommandations basées uniquement sur vos données saisies (contacts, achats, délais).
-        </div>
-        <div id="iaCards" class="card-list"></div>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 20px 0;">
-          <div class="section-title" style="margin:0;">Conseiller MAYELA</div>
-          <span class="link-sm" id="iaClearBtn" style="cursor:pointer;">🗑 Effacer</span>
-        </div>
-        <div style="display:flex; justify-content:center; padding:6px 0 4px;">
-          <div style="width:84px; height:84px; border-radius:50%; background:linear-gradient(160deg, #3a2a1a, #1D3B33); display:flex; align-items:center; justify-content:center; font-size:36px; border:2px solid var(--gold);">🧑🏾‍💼</div>
-        </div>
-        <div id="iaChatLog" style="padding:6px 20px; display:flex; flex-direction:column; gap:8px; max-height:220px; overflow-y:scroll;"></div>
-        <div style="padding:10px 20px 4px;">
-          <input type="file" id="iaFileInput" accept=".txt,.csv,.md" class="hidden">
-          <div class="add-inline">
-            <button type="button" id="iaAttachBtn" style="background:var(--panel-2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; cursor:pointer;">📎</button>
-            <input id="iaMsgInput" placeholder="Posez votre question au conseiller…">
-            <button id="iaSendBtn">Envoyer</button>
+        <div class="topbar">
+          <h1>Conseils</h1>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+            <span class="link-sm" id="iaHistoryOpen" style="cursor:pointer;">🕘 Historique</span>
+            <span class="link-sm" id="iaFreshBtn" style="cursor:pointer;">🔄 Mettre à jour</span>
+            <span class="link-sm" id="iaClearBtn" style="cursor:pointer;">💬 Nouvelle</span>
           </div>
-          <div class="err-msg" id="iaFileName"></div>
+        </div>
+        <div class="chat-frame">
+          <div id="iaEmpty" class="ia-empty">
+            <div style="display:flex; justify-content:center; padding:6px 0 2px;">
+              <div style="width:64px; height:64px; border-radius:50%; background:linear-gradient(160deg, #3a2a1a, #1D3B33); display:flex; align-items:center; justify-content:center; font-size:28px; border:2px solid var(--gold);">🧑🏾‍💼</div>
+            </div>
+            <div class="stitle" style="margin:0;">Bonjour <span id="iaEmpName"></span> — que puis-je faire pour vous ?</div>
+            <div style="color:var(--sage); font-size:12px; text-align:center; line-height:1.5;">Posez une question sur vos clients, vos relances, vos ventes, ou démarrez depuis une suggestion :</div>
+            <div id="iaSuggestRow" style="display:flex; gap:6px; padding:2px 0 4px; flex-wrap:wrap; justify-content:center;">
+              <button type="button" class="tab-btn ia-suggest" data-q="Que dois-je faire aujourd'hui avec mes clients ?">🎯 Que faire aujourd'hui ?</button>
+              <button type="button" class="tab-btn ia-suggest" data-q="Qui sont mes clients inactifs à relancer ?">📞 Qui relancer ?</button>
+              <button type="button" class="tab-btn ia-suggest" data-q="Analyse mes ventes des 30 derniers jours.">📊 Mes ventes</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--sage); padding:4px 0;">
+              <div style="flex:1; height:1px; background:var(--line);"></div>Recommandations actuelles<div style="flex:1; height:1px; background:var(--line);"></div>
+            </div>
+            <div id="iaCards" class="card-list" style="padding:0;"></div>
+            <div style="color:var(--sage); font-size:10.5px; text-align:center; margin-top:2px;">Conseils basés sur vos données saisies (contacts, achats, délais).</div>
+          </div>
+          <div id="iaChatLog" class="hidden"></div>
+          <div class="ia-composer" style="padding:8px 20px 2px;">
+            <input type="file" id="iaFileInput" accept=".txt,.csv,.md,.json,image/*" class="hidden">
+            <div class="ia-inputbar">
+              <button type="button" id="iaAttachBtn" class="ia-icon" title="Joindre un fichier">📎</button>
+              <textarea id="iaMsgInput" rows="1" placeholder="Poser une question…"></textarea>
+              <button type="button" id="iaSendBtn" class="ia-icon ia-send" title="Envoyer">➤</button>
+            </div>
+            <div class="err-msg" id="iaFileName"></div>
+          </div>
+        </div>
+        <div id="iaHistoryPanel" class="overlay-panel hidden">
+          <div class="op-top">
+            <div style="font-weight:700; font-size:14px;">🕘 Historique des conversations</div>
+            <button type="button" class="op-close" id="iaHistoryClose">✕</button>
+          </div>
+          <div id="iaHistoryList" class="op-list"></div>
         </div>
       </div>
 
@@ -676,6 +756,15 @@
         <div class="section-title">Compte</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
+          <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div class="lbl">Changer l'e-mail de connexion<small>Un lien est envoyé à votre nouvel e-mail ; l'espace, les clients et les connexions (Google Sheets) sont conservés</small></div>
+            <input class="field" id="changeEmailInput" type="email" placeholder="Nouvel e-mail" autocomplete="off">
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn" id="changeEmailBtn" style="flex:1 1 100%;">Recevoir le lien de confirmation</button>
+              <button class="btn btn-ghost hidden" id="changeEmailResendBtn" style="flex:1 1 100%;">Renvoyer le lien</button>
+            </div>
+            <div class="err-msg" id="changeEmailErr"></div>
+          </div>
           <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
           <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
         </div>
@@ -689,15 +778,21 @@
             Configurez ici votre app Google (OAuth) pour autoriser l'export des données vers Google Sheets.
             Le Client Secret est enregistré et conservé de façon sécurisée côté serveur : il n'est jamais visible après enregistrement.
           </div>
-          <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
-          <input class="field" id="gsClientSecret" type="password" placeholder="Client Secret Google (affiché une seule fois en console Google)" autocomplete="new-password">
-          <div class="meta" style="color:var(--sage); font-size:10.5px;">
-            Redirect URI à déclarer dans votre app Google :
-            <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
+          <div id="gsForm">
+            <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
+            <input class="field" id="gsClientSecret" type="password" placeholder="Client Secret Google (affiché une seule fois en console Google)" autocomplete="new-password">
+            <div class="meta" style="color:var(--sage); font-size:10.5px;">
+              Redirect URI à déclarer dans votre app Google :
+              <span class="tt-uri" id="gsRedirectUriView" style="display:block; margin-top:4px;"></span>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button class="btn" id="gsSaveBtn" style="flex:1 1 100%;">💾 Enregistrer</button>
+              <button class="btn" id="gsConnectBtn" style="flex:1 1 100%;">🔗 Se connecter à Google</button>
+            </div>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn" id="gsSaveBtn" style="flex:1 1 100%;">💾 Enregistrer</button>
-            <button class="btn" id="gsConnectBtn" style="flex:1 1 100%;">🔗 Se connecter à Google</button>
+          <div id="gsConnectedBox" class="hidden">
+            <div class="meta" style="color:var(--gold); font-size:12.5px; margin:2px 0 8px;">Connecté avec <b id="gsConnectedName">—</b></div>
+            <button class="btn" id="gsDisconnectBtn" style="width:100%;">Déconnecter du compte Google</button>
           </div>
           <div class="err-msg" id="gsErr"></div>
           <div class="meta" style="color:var(--sage); font-size:10.5px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
@@ -820,6 +915,12 @@ function fmtFCFA(n){ return new Intl.NumberFormat('fr-FR').format(n||0) + ' FCFA
 function daysAgo(dateStr){ if(!dateStr) return null; const d=(new Date()-new Date(dateStr))/86400000; return Math.floor(d); }
 function fmtDate(d){ if(!d) return '–'; return new Date(d).toLocaleDateString('fr-FR'); }
 function localDateStr(d){ const x = d || new Date(); return x.getFullYear() + '-' + String(x.getMonth()+1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); }
+// Nom de feuille de calcul précis : type + période + date/heure/minute/seconde
+function sheetFileName(detail){
+  const now = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return 'MAYELA - ' + detail + ' - ' + now.getFullYear() + '-' + p(now.getMonth()+1) + '-' + p(now.getDate()) + ' ' + p(now.getHours()) + ':' + p(now.getMinutes()) + ':' + p(now.getSeconds());
+}
 
 // ================== BOOT ==================
 let sessionHandled = false;
@@ -1467,6 +1568,10 @@ document.getElementById('gsSaveBtn').addEventListener('click', async ()=>{
     errEl.textContent = "Renseignez le Client ID et le Client Secret.";
     return;
   }
+  if(!cid.toLowerCase().endsWith('.apps.googleusercontent.com')){
+    errEl.textContent = "Client ID invalide : un ID client OAuth Google se termine toujours par .apps.googleusercontent.com. Copiez le Client ID (pas l'URI, ni le Secret) dans Identifiants → ID client OAuth.";
+    return;
+  }
   try{
     const { data:{ session } } = await sb.auth.getSession();
     const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
@@ -1497,7 +1602,8 @@ async function gsBackendAvailable(){
 }
 async function gsRefreshStatus(){
   const statusEl = document.getElementById('gsStatus');
-  // Seul le backend (espace) gère la connexion Google Sheets : aucun jeton en clair côté client.
+  const formEl = document.getElementById('gsForm');
+  const boxEl = document.getElementById('gsConnectedBox');
   const backend = await gsBackendAvailable();
   if(backend){
     try{
@@ -1507,11 +1613,24 @@ async function gsRefreshStatus(){
         body: JSON.stringify({ action:'status' })
       });
       const out = await r.json();
-      if(out.connected){ statusEl.innerHTML = `<span style="color:var(--gold);">✓ Connecté (espace) : ${esc(out.display_name||'')}</span>`; return; }
+      if(out.connected){
+        statusEl.style.background='rgba(122,205,168,0.16)'; statusEl.style.color='#9FE0C0'; statusEl.style.borderColor='rgba(122,205,168,0.4)';
+        statusEl.innerHTML = '✓ Connecté (espace)';
+        formEl.classList.add('hidden');
+        boxEl.classList.remove('hidden');
+        document.getElementById('gsConnectedName').textContent = out.display_name || 'compte Google';
+        return;
+      }
+      statusEl.style.background='rgba(193,80,46,0.18)'; statusEl.style.color='#E8926F'; statusEl.style.borderColor='rgba(193,80,46,0.35)';
       statusEl.innerHTML = '<span style="color:var(--clay);">Non connecté — configuration requise</span>';
+      formEl.classList.remove('hidden');
+      boxEl.classList.add('hidden');
+      const cidEl = document.getElementById('gsClientId');
+      if(out.client_id && cidEl && !cidEl.value.trim()) cidEl.value = out.client_id;
       return;
     }catch(_e){}
   }
+  statusEl.style.background='rgba(193,80,46,0.18)'; statusEl.style.color='#E8926F'; statusEl.style.borderColor='rgba(193,80,46,0.35)';
   statusEl.innerHTML = '<span style="color:var(--sage);">Non connecté — autorisation gérée côté serveur.</span>';
 }
 async function gsConnect(){
@@ -1528,9 +1647,14 @@ async function gsConnect(){
     errEl.textContent = "Renseignez le Client ID Google (public, il sert à construire l'URL d'autorisation). Le Secret reste côté serveur.";
     return;
   }
+  if(!cid.toLowerCase().endsWith('.apps.googleusercontent.com')){
+    errEl.textContent = "Client ID invalide : il doit se terminer par .apps.googleusercontent.com. Copiez le Client ID (et non l'URI de redirection ni le Secret) depuis Identifiants → ID client OAuth.";
+    return;
+  }
   errEl.textContent = "Redirection vers Google…";
   const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
   sessionStorage.setItem('gs_state', state);
+  sessionStorage.setItem('gs_cid', cid);
   sessionStorage.setItem('gs_redirect', gsBaseUrl());
   // Le client_id est public ; le secret reste côté serveur (fonction Supabase).
   const base = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -1543,6 +1667,7 @@ async function gsConnect(){
     access_type: 'offline',
     prompt: 'select_account consent'
   });
+  console.log('[Google Sheets] URL de consentement envoyée :', base + '?' + qs.toString());
   location.href = base + '?' + qs.toString();
 }
 // Retour d'autorisation (backend) : ?code=...&state=...
@@ -1552,8 +1677,10 @@ async function gsConnect(){
   if(!state || sessionStorage.getItem('gs_state') !== state) return;
   sessionStorage.removeItem('gs_state');
   const code = q.get('code'), err = q.get('error');
+  const gsCid = sessionStorage.getItem('gs_cid');
   history.replaceState(null,'', sessionStorage.getItem('gs_redirect') || gsBaseUrl());
   sessionStorage.removeItem('gs_redirect');
+  sessionStorage.removeItem('gs_cid');
   if(err || !code){ toast('Connexion Google annulée : ' + (q.get('error_description')||err), true); return; }
   (async ()=>{
     try{
@@ -1561,7 +1688,7 @@ async function gsConnect(){
       const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-        body: JSON.stringify({ action:'exchange', code, redirect_uri:gsBaseUrl() })
+        body: JSON.stringify({ action:'exchange', code, redirect_uri:gsBaseUrl(), client_id:gsCid || undefined })
       });
       const out = await r.json();
       if(out && out.ok){
@@ -1590,14 +1717,14 @@ async function gsExport(){
     rows.push(['Devis', c ? c.name : '', d.montant ?? '', d.devis_date ? String(d.devis_date).slice(0,10) : '', '']);
   }
 
-  // 1) backend par espace
+  // 1) backend par espace — on tente l'export et on affiche la vraie erreur du serveur
   if(window.ls_gs_backend_ok || await gsBackendAvailable()){
     try{
       const { data:{ session } } = await sb.auth.getSession();
       const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-        body: JSON.stringify({ action:'export', rows, fileName:'Export MAYELA CRM ' + localDateStr() })
+        body: JSON.stringify({ action:'export', rows, fileName: sheetFileName('Données CRM (achats + devis)') })
       });
       const out = await r.json();
       if(out && out.ok){
@@ -1605,13 +1732,27 @@ async function gsExport(){
         window.open(out.url, '_blank');
         return;
       }
-      throw new Error((out&&out.error)||"Export en échec côté espace.");
-    }catch(ex){ /* on retombe en mode navigateur */ }
+      errEl.textContent = (out && out.error) || "Export en échec côté serveur.";
+      return;
+    }catch(ex){ errEl.textContent = "Export indisponible : " + ex.message; return; }
   }
-  errEl.textContent = "Google Sheets n'est pas connecté côté serveur : ouvrez l'onglet Réseaux et connectez-vous à Google (les jetons sont gérés côté espace).";
+  errEl.textContent = "Google Sheets non configuré côté serveur : ouvrez l'onglet Réseaux et enregistrez le Client ID / Secret de votre app Google.";
 }
 document.addEventListener('DOMContentLoaded', ()=>{ gsSetupStatus(); });
 document.getElementById('gsConnectBtn').addEventListener('click', ()=>gsConnect());
+document.getElementById('gsDisconnectBtn').addEventListener('click', async ()=>{
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+      method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'disconnect' })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || 'Échec de la déconnexion.');
+    toast('Connexion Google Sheets retirée (les identifiants restent enregistrés).');
+  }catch(ex){ toast(ex.message, true); }
+  gsRefreshStatus();
+});
 // NOTE : le Client ID est saisi à chaque connexion (aucun secret n'est persisté en localStorage/client).
 // hydration du statut au chargement de l'écran réseaux
 const _origLoadSocial = window.__gs_hook;
@@ -1959,9 +2100,11 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('addClientErr');
   if(!name){ errEl.textContent = "Le nom est obligatoire."; return; }
   const { data:{ user } } = await sb.auth.getUser();
+  const isSolo = !profile.org_id;
+  const clientOwner = isSolo ? { owner_user_id: user.id } : { org_id: profile.org_id };
   const { error } = await sb.from('clients').insert({
     name, zone: zone||null, phone: phone||null, stage_override: stage,
-    owner_user_id: user.id, org_id: profile.org_id
+    ...clientOwner
   });
   if(error){ errEl.textContent = error.message; return; }
   document.getElementById('newName').value=''; document.getElementById('newZone').value=''; document.getElementById('newPhone').value='';
@@ -2191,77 +2334,392 @@ function renderIA(){
 
 // ================== CONSEILLER IA (chat) ==================
 let iaPendingFile = null;
+let iaPendingImage = null;
 let iaThread = [];
+let iaConvId = null;
+function newIaConvId(){
+  iaConvId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'conv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+  return iaConvId;
+}
+// Regroupe les messages en conversations : priorité à conversation_id (séparation stricte),
+// sinon repli sur la proximité temporelle (<= 30 min) pour les anciens messages.
+function segmentIa(msgsAsc){
+  const convs = [];
+  const GAP = 30 * 60000;
+  let cur = null;
+  for(const m of msgsAsc){
+    const t = m.created_at ? new Date(m.created_at).getTime() : null;
+    const mId = m.conversation_id || null;
+    const cId = cur ? cur.conversation_id : null;
+    const strictSame = !!(mId && cId && mId === cId);
+    const strictDiff = !!(mId && cId && mId !== cId);
+    const withinGap = cur && cur.last !== null && t !== null && (t - cur.last) <= GAP;
+    if(!cur || strictDiff || (!strictSame && !withinGap)){
+      cur = { conversation_id: mId, last: t, msgs: [] };
+      convs.push(cur);
+    }
+    cur.last = t;
+    cur.msgs.push(m);
+  }
+  return convs;
+}
 
-function iaAppendBubble(role, text){
+function iaAppendBubble(role, text, withActions = true){
   const log = document.getElementById('iaChatLog');
   const bubble = document.createElement('div');
-  bubble.style.cssText = `align-self:${role==='user'?'flex-end':'flex-start'}; max-width:85%; background:${role==='user'?'var(--gold)':'var(--panel)'}; color:${role==='user'?'#1a1305':'var(--text)'}; border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-size:12px; line-height:1.4; white-space:pre-wrap;`;
+  bubble.className = 'ia-bubble ' + (role === 'user' ? 'user' : 'ai');
   bubble.textContent = text;
+  if(role !== 'user' && withActions) bubble.appendChild(iaActions(text));
   log.appendChild(bubble);
-  log.scrollTop = log.scrollHeight;
+  iaUpdateView();
+  iaScrollToBottom();
 }
+
+// Micro-boutons sous la réponse de l'IA : emplacement discret pour de futures actions (copier, etc.)
+function iaActions(text){
+  const wrap = document.createElement('div');
+  wrap.className = 'ia-actions';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  copy.className = 'ia-act-btn';
+  copy.textContent = '⧉ Copier';
+  copy.setAttribute('title', 'Copier la réponse');
+  copy.addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(text); toast('Réponse copiée'); }
+    catch(e){ toast('Copie impossible', true); }
+  });
+  wrap.appendChild(copy);
+  return wrap;
+}
+function renderIaSources(sources){
+  const box = document.createElement('div');
+  box.className = 'ia-sources';
+  const title = document.createElement('div');
+  title.className = 'ia-sources-title';
+  title.textContent = 'Sources web';
+  box.appendChild(title);
+  sources.slice(0, 6).forEach((s)=>{
+    const el = document.createElement('div');
+    el.className = 'ia-src';
+    const icon = document.createElement('span');
+    icon.textContent = '🔗';
+    const link = document.createElement('a');
+    link.href = s.uri;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = s.title || s.uri;
+    el.appendChild(icon);
+    el.appendChild(link);
+    box.appendChild(el);
+  });
+  return box;
+}
+
+// Indicateur de frappe discret (emplacement préparé pour un futur affichage "…")
+let iaTypingEl = null;
+function iaShowTyping(){
+  const log = document.getElementById('iaChatLog');
+  iaTypingEl = document.createElement('div');
+  iaTypingEl.className = 'ia-bubble ai ia-typing';
+  iaTypingEl.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  log.appendChild(iaTypingEl);
+  iaScrollToBottom(true);
+}
+function iaHideTyping(){ if(iaTypingEl){ iaTypingEl.remove(); iaTypingEl = null; } }
+
+// Auto-scroll intelligent : suit le bas tant que l'utilisateur n'a pas remonté manuellement
+let iaNearBottom = true;
+function iaOnLogScroll(){
+  const log = document.getElementById('iaChatLog');
+  iaNearBottom = (log.scrollHeight - log.scrollTop - log.clientHeight) < 80;
+}
+function iaScrollToBottom(force = false){
+  const log = document.getElementById('iaChatLog');
+  if(force || iaNearBottom){ log.scrollTop = log.scrollHeight; iaNearBottom = true; }
+}
+
+// Défilement fluide et intelligent : n'interrompt jamais la lecture si l'utilisateur
+// a remonté pour lire l'historique (tolérance de 50px avant de forcer le bas).
+function scrollToBottomChat(){
+  const container = document.getElementById('iaChatLog');
+  if(!container) return;
+  const dist = container.scrollHeight - container.scrollTop - container.clientHeight;
+  if(dist <= 50){
+    container.scroll({ top: container.scrollHeight, behavior: 'smooth' });
+  }
+}
+
+// Basculer entre l'écran d'accueil (conversation vide) et la discussion plein écran
+function iaUpdateView(){
+  const empty = document.getElementById('iaEmpty');
+  const log = document.getElementById('iaChatLog');
+  const hasChat = log.children.length > 0;
+  empty.classList.toggle('hidden', hasChat);
+  log.classList.toggle('hidden', !hasChat);
+  if(hasChat){ log.scrollTop = log.scrollHeight; iaNearBottom = true; }
+  const empName = document.getElementById('iaEmpName');
+  if(empName && typeof profile !== 'undefined' && profile && profile.full_name){
+    empName.textContent = profile.full_name.split(' ')[0];
+  }
+}
+
+// Barre de saisie auto-extensible : Entrée = envoyer, Maj+Entrée = nouvelle ligne
+function iaAutosize(){
+  const t = document.getElementById('iaMsgInput');
+  t.style.height = 'auto';
+  t.style.height = Math.min(t.scrollHeight, 120) + 'px';
+  t.style.overflowY = t.scrollHeight > 120 ? 'auto' : 'hidden';
+}
+
+// ================== HISTORIQUE DES CONVERSATIONS ==================
+let iaHistoryConvs = [];
+function openIaConversation(conv){
+  const log = document.getElementById('iaChatLog');
+  log.innerHTML = '';
+  iaNearBottom = true;
+  iaConvId = conv.conversation_id || newIaConvId();
+  iaThread = conv.msgs.map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', text: m.content }));
+  conv.msgs.forEach(m=> iaAppendBubble(m.role, m.content));
+  iaUpdateView();
+  closeIaHistory();
+  document.getElementById('iaMsgInput').focus();
+}
+function closeIaHistory(){ document.getElementById('iaHistoryPanel').classList.add('hidden'); }
+async function openIaHistory(){
+  const panel = document.getElementById('iaHistoryPanel');
+  panel.classList.remove('hidden');
+  const listEl = document.getElementById('iaHistoryList');
+  listEl.innerHTML = '<div class="empty" style="padding:40px 0;">Chargement…</div>';
+  const { data, error } = await sb.from('ia_messages')
+    .select('role, content, created_at, conversation_id')
+    .order('created_at', { ascending:false }).limit(250);
+  if(error){ toast(error.message, true); return; }
+  iaHistoryConvs = segmentIa([...(data || [])].reverse()).slice(-15).reverse();
+  if(!iaHistoryConvs.length){
+    listEl.innerHTML = '<div class="empty" style="padding:40px 0;">Aucune conversation pour le moment.</div>';
+    return;
+  }
+  listEl.innerHTML = iaHistoryConvs.map((c, i)=>{
+    const first = c.msgs.find(m=>m.role==='user') || c.msgs[0];
+    let q = first && first.content ? String(first.content) : '';
+    q = q.length > 60 ? q.slice(0, 60) + '…' : q;
+    const start = c.msgs[0] && c.msgs[0].created_at ? new Date(c.msgs[0].created_at) : null;
+    const dateLabel = start ? start.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'short' }) : '—';
+    const timeLabel = start ? start.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '—';
+    const label = c.msgs.length > 1 ? c.msgs.length + ' messages' : '1 message';
+    return `<div class="hist-item" data-hi="${i}">
+      <div class="q">${esc(q || '(question vide)')}</div>
+      <div class="meta"><span>${esc(dateLabel)} · ${esc(timeLabel)}</span><b>${label}</b></div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('iaHistoryOpen').addEventListener('click', openIaHistory);
+document.getElementById('iaHistoryClose').addEventListener('click', closeIaHistory);
+document.getElementById('iaHistoryList').addEventListener('click', (e)=>{
+  const item = e.target.closest('[data-hi]');
+  if(!item) return;
+  const conv = iaHistoryConvs[Number(item.dataset.hi)];
+  if(conv) openIaConversation(conv);
+});
 
 async function loadIaHistory(){
-  const { data, error } = await sb.from('ia_messages').select('role, content').order('created_at', { ascending:false }).limit(30);
+  const { data, error } = await sb.from('ia_messages')
+    .select('role, content, created_at, conversation_id')
+    .order('created_at', { ascending:false }).limit(200);
   document.getElementById('iaChatLog').innerHTML = '';
-  const msgs = [...(data||[])].reverse();
-  iaThread = msgs.map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', text: m.content }));
-  msgs.forEach(m=> iaAppendBubble(m.role, m.content));
-  if(error){ document.getElementById('iaFileName').textContent = 'Historique indisponible : ' + error.message; }
+  iaNearBottom = true;
+  if(error){
+    iaThread = [];
+    iaUpdateView();
+    document.getElementById('iaFileName').textContent = 'Historique indisponible : ' + error.message;
+    return;
+  }
+  const convs = segmentIa([...(data || [])].reverse());
+  const latest = convs[convs.length - 1] || null;
+  if(latest){
+    iaConvId = latest.conversation_id || newIaConvId();
+    iaThread = latest.msgs.map(m=>({ role: m.role==='assistant' ? 'assistant' : 'user', text: m.content }));
+    latest.msgs.forEach(m=> iaAppendBubble(m.role, m.content));
+  } else {
+    iaThread = [];
+    newIaConvId();
+  }
+  iaUpdateView();
 }
 
+// Convertit toute image lisible en PNG (canvas) pour qu'elle soit analysable par le conseiller,
+// quel que soit le format (gif, svg, bmp, tiff, ico, avif, heic…). En cas d'échec, envoie tel quel.
+function fileToPng(dataUrl){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const canvas = document.createElement('canvas');
+        const MAX = 1600;
+        const scale = Math.min(1, MAX / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+        canvas.width = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+        canvas.height = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/png'));
+      }catch(e){ resolve(dataUrl); }
+    };
+    img.onerror = ()=> resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 document.getElementById('iaAttachBtn').addEventListener('click', ()=> document.getElementById('iaFileInput').click());
 document.getElementById('iaFileInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  if(!/\.(txt|csv|md)$/i.test(file.name)){ document.getElementById('iaFileName').textContent = "Formats acceptés : txt, csv, md."; e.target.value=''; return; }
-  if(file.size > 300000){ document.getElementById('iaFileName').textContent = "Fichier trop volumineux (max ~300 Ko)."; return; }
-  iaPendingFile = await file.text().catch(()=>null);
-  document.getElementById('iaFileName').textContent = iaPendingFile ? `Joint : ${file.name}` : "Impossible de lire ce fichier.";
+  iaPendingFile = null; iaPendingImage = null;
+  const isImg = /^image\//.test(file.type) || /\.(png|jpe?g|webp|gif|bmp|tiff?|svg|avif|heic|heif|ico|jfif|pjpeg)$/i.test(file.name);
+  if(isImg){
+    if(file.size > 8*1024*1024){ document.getElementById('iaFileName').textContent = "Image trop volumineuse (max ~8 Mo)."; e.target.value=''; return; }
+    const dataUrl = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>res(null); r.readAsDataURL(file); });
+    if(!dataUrl){ document.getElementById('iaFileName').textContent = "Impossible de lire cette image."; return; }
+    iaPendingImage = await fileToPng(dataUrl);
+    document.getElementById('iaFileName').textContent = `Image jointe : ${file.name}`;
+  } else {
+    if(!/\.(txt|csv|md|json)$/i.test(file.name)){ document.getElementById('iaFileName').textContent = "Formats acceptés : txt, csv, md, json ou une image (tous formats)."; e.target.value=''; return; }
+    if(file.size > 300000){ document.getElementById('iaFileName').textContent = "Fichier trop volumineux (max ~300 Ko)."; return; }
+    iaPendingFile = await file.text().catch(()=>null);
+    document.getElementById('iaFileName').textContent = iaPendingFile ? `Fichier joint : ${file.name}` : "Impossible de lire ce fichier.";
+  }
 });
 
 async function sendIaMessage(){
   const input = document.getElementById('iaMsgInput');
   const msg = input.value.trim();
   if(!msg) return;
+  if(!iaConvId) newIaConvId();
+  const log = document.getElementById('iaChatLog');
   iaAppendBubble('user', msg);
+  scrollToBottomChat();
   input.value = '';
+  input.style.height = 'auto';
   const btn = document.getElementById('iaSendBtn'); btn.disabled = true; btn.textContent = '…';
+  iaShowTyping();
+  const result = { ok:false, text:'' };
   try{
     const { data: sessionData } = await sb.auth.getSession();
     const res = await fetch(SUPABASE_URL + '/functions/v1/ia-conseiller', {
       method: 'POST',
       headers: { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + sessionData.session.access_token },
-      body: JSON.stringify({ message: msg, fileText: iaPendingFile, history: iaThread.slice(-12) })
+      body: JSON.stringify({ message: msg, fileText: iaPendingFile, fileImage: iaPendingImage, history: iaThread.slice(-8) })
     });
-    const out = await res.json();
-    const reply = out.reply || ("⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide du serveur"));
-    iaAppendBubble('assistant', reply);
-    iaThread.push({ role:'user', text:msg }, { role:'assistant', text:reply });
-    const saved = await sb.from('ia_messages').insert([
-      { role:'user', content:msg },
-      { role:'assistant', content:reply }
-    ]);
-    if(saved.error){ toast("Discussion non enregistrée : " + saved.error.message, true); }
+    const ctype = res.headers.get('Content-Type') || '';
+    if(!res.ok || !ctype.includes('text/event-stream')){
+      iaHideTyping();
+      const out = await res.json().catch(()=>({}));
+      result.text = "⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide du serveur");
+      iaAppendBubble('assistant', result.text, false);
+    } else {
+      iaHideTyping();
+      const bubble = document.createElement('div');
+      bubble.className = 'ia-bubble ai';
+      bubble.textContent = '…';
+      log.appendChild(bubble);
+      iaScrollToBottom(true);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let partial = '';
+      const sources = [];
+      while(true){
+        const { done, value } = await reader.read();
+        if(done) break;
+        partial += dec.decode(value, { stream:true });
+        const lines = partial.split(/\r?\n/);
+        partial = lines.pop() || '';
+        for(const line of lines){
+          if(!line.startsWith('data:')) continue;
+          const p = line.slice(5).trim();
+          if(!p || p === '[DONE]') continue;
+          try{
+            const o = JSON.parse(p);
+            if(typeof o.t === 'string' && o.t){
+              result.text += o.t;
+              bubble.textContent = result.text;
+              iaScrollToBottom();
+            }
+            if(Array.isArray(o.s)){
+              for(const s of o.s){ if(s && s.uri) sources.push(s); }
+            }
+          }catch{}
+        }
+      }
+      if(!result.text){
+        result.text = "Aucune réponse reçue du conseiller pour le moment.";
+        bubble.remove();
+        iaAppendBubble('assistant', result.text, false);
+      } else {
+        result.ok = true;
+        bubble.appendChild(iaActions(result.text));
+        const uniq = [];
+        const seen = new Set();
+        for(const s of sources){ if(!seen.has(s.uri)){ seen.add(s.uri); uniq.push(s); } }
+        if(uniq.length) bubble.appendChild(renderIaSources(uniq));
+      }
+    }
+    scrollToBottomChat();
+    if(result.ok){
+      iaThread.push({ role:'user', text:msg }, { role:'assistant', text:result.text });
+      const uid = sessionData && sessionData.session ? sessionData.session.user.id : null;
+      if(uid){
+        const saved = await sb.from('ia_messages').insert([
+          { user_id: uid, role:'user', content:msg, conversation_id: iaConvId },
+          { user_id: uid, role:'assistant', content:result.text, conversation_id: iaConvId }
+        ]);
+        if(saved.error){ toast("Discussion non enregistrée : " + saved.error.message, true); }
+      }
+    }
   }catch(err){
-    iaAppendBubble('assistant', "Impossible de joindre le conseiller pour le moment.");
+    iaHideTyping();
+    iaAppendBubble('assistant', "Impossible de joindre le conseiller pour le moment.", false);
   }
   iaPendingFile = null;
+  iaPendingImage = null;
   document.getElementById('iaFileName').textContent = '';
   document.getElementById('iaFileInput').value = '';
-  btn.disabled = false; btn.textContent = 'Envoyer';
+  btn.disabled = false; btn.textContent = '➤';
 }
 document.getElementById('iaSendBtn').addEventListener('click', sendIaMessage);
-document.getElementById('iaClearBtn').addEventListener('click', async ()=>{
-  if(!confirm("Effacer toute la discussion ? Cette action est définitive.")) return;
-  const { error } = await sb.from('ia_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-  if(error){ toast(error.message, true); return; }
-  iaThread = [];
-  document.getElementById('iaChatLog').innerHTML = '';
-  toast('Discussion effacée');
+document.getElementById('iaFreshBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('iaFreshBtn');
+  btn.textContent = '⏳ Mise à jour…';
+  try{
+    await loadEverything();
+    await loadIaHistory();
+    toast('Conseiller à jour');
+  }catch(ex){ toast('Mise à jour impossible : ' + ex.message, true); }
+  btn.textContent = '🔄 Mettre à jour';
 });
-document.getElementById('iaMsgInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendIaMessage(); });
+document.querySelectorAll('.ia-suggest').forEach(b=> b.addEventListener('click', ()=>{
+  document.getElementById('iaMsgInput').value = b.getAttribute('data-q');
+  sendIaMessage();
+}));
+document.getElementById('iaClearBtn').addEventListener('click', async ()=>{
+  iaThread = [];
+  newIaConvId();
+  document.getElementById('iaChatLog').innerHTML = '';
+  iaNearBottom = true;
+  iaHideTyping();
+  renderIA();
+  iaUpdateView();
+  document.getElementById('iaMsgInput').focus();
+  toast('Nouvelle conversation — la précédente reste dans l\'historique');
+});
+document.getElementById('iaMsgInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendIaMessage();
+  }
+});
+document.getElementById('iaMsgInput').addEventListener('input', iaAutosize);
+document.getElementById('iaChatLog').addEventListener('scroll', iaOnLogScroll);
 
 // ================== SETTINGS ==================
 document.getElementById('logoutRow').addEventListener('click', async ()=>{
@@ -2305,6 +2763,31 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='settings'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav==='settings'));
 });
+
+// ---- Changer l'e-mail de connexion (Supabase auth updateUser + resend emailChange) ----
+const changeEmailInput = document.getElementById('changeEmailInput');
+const changeEmailErr = document.getElementById('changeEmailErr');
+const changeEmailBtn = document.getElementById('changeEmailBtn');
+const changeEmailResendBtn = document.getElementById('changeEmailResendBtn');
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+async function sendEmailChangeLink(resend){
+  const newEmail = changeEmailInput.value.trim();
+  if(!EMAIL_RE.test(newEmail)){ changeEmailErr.textContent = "Adresse e-mail invalide."; return; }
+  const { data:{ user } } = await sb.auth.getUser();
+  if(user && user.email === newEmail){ changeEmailErr.textContent = "C'est déjà votre e-mail de connexion actuel."; changeEmailInput.focus(); return; }
+  changeEmailErr.textContent = "";
+  changeEmailBtn.disabled = true; changeEmailBtn.textContent = "Envoi…";
+  const { error } = resend
+    ? await sb.auth.resend({ type:'emailChange', email: newEmail })
+    : await sb.auth.updateUser({ email: newEmail });
+  changeEmailBtn.disabled = false; changeEmailBtn.textContent = "Recevoir le lien de confirmation";
+  if(error){ changeEmailErr.textContent = error.message; toast(error.message, true); return; }
+  changeEmailResendBtn.classList.remove('hidden');
+  changeEmailErr.textContent = "Ouvrez votre boîte " + newEmail + " et cliquez le lien reçu pour confirmer.";
+  toast("Lien de confirmation envoyé à " + newEmail);
+}
+changeEmailBtn.addEventListener('click', ()=> sendEmailChangeLink(false));
+changeEmailResendBtn.addEventListener('click', ()=> sendEmailChangeLink(true));
 
 // ================== RAPPORTS ==================
 let reportPeriod = '30';
@@ -2555,6 +3038,29 @@ document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
   w.document.write(html); w.document.close();
   setTimeout(()=>{ w.focus(); w.print(); }, 300);
 });
+// Nettoie un texte pour en faire un nom de feuille sûr (interdit : \ / : * ? " < > |)
+function sheetNameDetail(text){
+  return String(text||'').replace(/[\\/:*?"<>|]/g,' ').replace(/\s+/g,' ').trim().slice(0, 60);
+}
+const REPORT_TYPE_LABEL = {
+  synthese:'Synthèse globale (vue d\'ensemble)',
+  clients:'Clients (fichier, zones, sources)',
+  ventes:'Ventes & achats',
+  devis:'Devis',
+  creances:'Créances (dettes clients)',
+  interactions:'Interactions & rendez-vous',
+  tasks:'Tâches',
+  produits:'Produits & services',
+  reseaux:'Réseaux sociaux (publications)'
+};
+function currentSheetDetail(){
+  if(reportType==='autre'){
+    const prompt = sheetNameDetail(document.getElementById('reportAutre').value);
+    return 'Rapport' + (prompt ? ' : ' + prompt : (reportAutreText ? ' : généré par l\'assistant' : ' personnel'));
+  }
+  const periode = reportPeriod==='all' ? 'historique' : reportPeriod + ' jours';
+  return (REPORT_TYPE_LABEL[reportType] || 'Rapport') + ' ' + periode;
+}
 // ==== Export Google Sheets du rapport courant ====
 document.getElementById('gsExportBtn2').addEventListener('click', async ()=>{
   if(!reportData && reportType!=='autre') return loadReports();
@@ -2567,26 +3073,61 @@ document.getElementById('gsExportBtn2').addEventListener('click', async ()=>{
   } else {
     rows = currentExportRows();
   }
-  // 1) backend par espace
-  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
-    try{
-      const { data:{ session } } = await sb.auth.getSession();
-      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-        body: JSON.stringify({ action:'export', rows, fileName:'Rapport MAYELA ' + localDateStr() })
-      });
-      const out = await r.json();
-      if(out && out.ok){ toast('Export envoyé dans Google Sheets.'); window.open(out.url,'_blank'); return; }
-      throw new Error((out&&out.error)||"Export en échec côté espace.");
-    }catch(ex){ /* backend seul */ }
+  // 1) backend par espace — on tente l'export et on affiche la vraie erreur du serveur
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'export', rows, fileName: sheetFileName(currentSheetDetail()) })
+    });
+    const out = await r.json();
+    if(out && out.ok){ toast('Export envoyé dans Google Sheets.'); window.open(out.url,'_blank'); return; }
+    errEl.textContent = (out && out.error) || "Export en échec côté serveur.";
+  }catch(ex){
+    errEl.textContent = "Export indisponible : " + ex.message;
   }
-  errEl.textContent = "Google Sheets non connecté côté serveur : ouvrez l'onglet Réseaux et connectez-vous à Google.";
 });
 </script>
 <script>
+// Mise à jour de l'app installée (Android/PWA) : relecture du service worker à chaque
+// ouverture ET à chaque retour au premier plan (visibilitychange/pageshow), avec
+// updateViaCache:'none' pour ne jamais servir un sw.js mis en cache par le navigateur.
+// Quand une version plus récente s'installe, un bandeau propose de recharger : sans cela,
+// l'app installée gardait l'ancien écran tant qu'elle n'était pas complètement relancée.
 if('serviceWorker' in navigator && (location.protocol === 'https:' || ['localhost','127.0.0.1'].includes(location.hostname))){
-  addEventListener('load', ()=>{ navigator.serviceWorker.register('./sw.js').catch(()=>{}); });
+  addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg)=>{
+      const check = ()=>{ if(navigator.onLine) reg.update().catch(()=>{}); };
+      check();
+      document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') check(); });
+      addEventListener('pageshow', (e)=>{ if(e.persisted) check(); });
+      let notified = false;
+      reg.addEventListener('updatefound', ()=>{
+        const w = reg.installing;
+        if(!w) return;
+        w.addEventListener('statechange', ()=>{
+          if(w.state === 'installed' && navigator.serviceWorker.controller && !notified){
+            notified = true;
+            showUpdateBanner();
+          }
+        });
+      });
+    }).catch(()=>{});
+  });
+}
+function showUpdateBanner(){
+  var b = document.getElementById('swUpdateBanner');
+  if(b) return;
+  b = document.createElement('div');
+  b.id = 'swUpdateBanner';
+  b.setAttribute('role','status');
+  b.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;align-items:center;gap:10px;background:#1D3B33;border:1px solid rgba(217,164,65,.55);color:#F3EDE0;font-family:"Work Sans",sans-serif;font-size:13px;padding:10px 14px;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.45);max-width:92vw;';
+  b.innerHTML = '<span>Nouvelle version disponible</span><button type="button">Recharger</button>';
+  var btn = b.querySelector('button');
+  btn.style.cssText = 'background:#D9A441;color:#0D1F17;border:none;border-radius:8px;padding:6px 12px;font-weight:700;font-family:"Work Sans",sans-serif;cursor:pointer;';
+  btn.addEventListener('click', ()=>{ location.reload(); });
+  document.body.appendChild(b);
 }
 </script>
 </body>
