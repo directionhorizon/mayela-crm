@@ -775,8 +775,8 @@
             <span id="gsStatus" class="pill" style="background:rgba(193,80,46,0.18); color:#E8926F; border-color:rgba(193,80,46,0.35);">Non connecté</span>
           </div>
           <div class="meta" style="color:var(--sage); font-size:11px; line-height:1.5;">
-            Configurez ici votre app Google (OAuth) pour autoriser l'export des données vers Google Sheets.
-            Le Client Secret est enregistré et conservé de façon sécurisée côté serveur : il n'est jamais visible après enregistrement.
+            Autorisez l'export des données vers Google Sheets. Si l'administration a fourni une app Google par défaut, seule la connexion est requise ici (les identifiants restent côté serveur).
+            Sinon, configurez ci-dessous votre propre app Google (OAuth) : le Client Secret est enregistré côté serveur et n'est jamais visible après enregistrement.
           </div>
           <div id="gsForm">
             <input class="field" id="gsClientId" placeholder="Client ID Google (se termine par .apps.googleusercontent.com)" autocomplete="off">
@@ -787,8 +787,10 @@
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button class="btn" id="gsSaveBtn" style="flex:1 1 100%;">💾 Enregistrer</button>
-              <button class="btn" id="gsConnectBtn" style="flex:1 1 100%;">🔗 Se connecter à Google</button>
             </div>
+          </div>
+          <div id="gsConnectRow">
+            <button class="btn" id="gsConnectBtn" style="width:100%;">🔗 Se connecter à Google</button>
           </div>
           <div id="gsConnectedBox" class="hidden">
             <div class="meta" style="color:var(--gold); font-size:12.5px; margin:2px 0 8px;">Connecté avec <b id="gsConnectedName">—</b></div>
@@ -1605,12 +1607,18 @@ async function gsBackendAvailable(){
     });
     if(!r.ok) return false;
     const out = await r.json();
-    return window.ls_gs_backend_ok = (out && typeof out.connected === 'boolean');
+    if(out && typeof out.connected === 'boolean'){
+      window.gs_default = !!out.default_configured;
+      if(out.client_id) window.gs_client_id = out.client_id;
+      return window.ls_gs_backend_ok = true;
+    }
+    return false;
   }catch(_e){ return false; }
 }
 async function gsRefreshStatus(){
   const statusEl = document.getElementById('gsStatus');
   const formEl = document.getElementById('gsForm');
+  const connectEl = document.getElementById('gsConnectRow');
   const boxEl = document.getElementById('gsConnectedBox');
   const backend = await gsBackendAvailable();
   if(backend){
@@ -1621,20 +1629,29 @@ async function gsRefreshStatus(){
         body: JSON.stringify({ action:'status' })
       });
       const out = await r.json();
+      window.gs_default = !!out.default_configured;
+      window.gs_client_id = out.client_id || window.gs_client_id || '';
       if(out.connected){
         statusEl.style.background='rgba(122,205,168,0.16)'; statusEl.style.color='#9FE0C0'; statusEl.style.borderColor='rgba(122,205,168,0.4)';
         statusEl.innerHTML = '✓ Connecté (espace)';
         formEl.classList.add('hidden');
+        if(connectEl) connectEl.classList.add('hidden');
         boxEl.classList.remove('hidden');
         document.getElementById('gsConnectedName').textContent = out.display_name || 'compte Google';
         return;
       }
       statusEl.style.background='rgba(193,80,46,0.18)'; statusEl.style.color='#E8926F'; statusEl.style.borderColor='rgba(193,80,46,0.35)';
-      statusEl.innerHTML = '<span style="color:var(--clay);">Non connecté — configuration requise</span>';
-      formEl.classList.remove('hidden');
+      formEl.classList.add('hidden');
+      if(connectEl) connectEl.classList.remove('hidden');
       boxEl.classList.add('hidden');
-      const cidEl = document.getElementById('gsClientId');
-      if(out.client_id && cidEl && !cidEl.value.trim()) cidEl.value = out.client_id;
+      if(window.gs_default){
+        statusEl.innerHTML = '<span style="color:var(--clay);">Non connecté — connectez le compte Google</span>';
+      } else {
+        statusEl.innerHTML = '<span style="color:var(--clay);">Non connecté — configuration requise</span>';
+        formEl.classList.remove('hidden');
+        const cidEl = document.getElementById('gsClientId');
+        if(out.client_id && cidEl && !cidEl.value.trim()) cidEl.value = out.client_id;
+      }
       return;
     }catch(_e){}
   }
@@ -1645,12 +1662,14 @@ async function gsConnect(){
   const errEl = document.getElementById('gsErr');
   errEl.textContent = '';
   const cidEl = document.getElementById('gsClientId');
-  const cid = cidEl ? cidEl.value.trim() : '';
   const backend = window.ls_gs_backend_ok || await gsBackendAvailable();
   if(!backend){
-    errEl.textContent = "Le service Google Sheets n'est pas configuré côté serveur (espace). Veuillez enregistrer le Client ID / Secret de votre app Google dans l'administration.";
+    errEl.textContent = "Le service Google Sheets n'est pas disponible côté serveur. Réessayez dans un instant.";
     return;
   }
+  // Client ID : soit celui saisi dans le formulaire (app de l'espace), soit l'app Google par défaut fournie par l'administration.
+  let cid = cidEl ? cidEl.value.trim() : '';
+  if(!cid && window.gs_client_id) cid = window.gs_client_id;
   if(!cid){
     errEl.textContent = "Renseignez le Client ID Google (public, il sert à construire l'URL d'autorisation). Le Secret reste côté serveur.";
     return;

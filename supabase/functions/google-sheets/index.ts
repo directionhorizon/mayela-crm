@@ -12,8 +12,12 @@
 // integrations_oauth.config (provider = "google_sheets"). Les tokens Google
 // sont stockés dans integrations_oauth.config côté serveur, jamais au navigateur.
 //
-// NB : cette table integrations_oauth n'existe pas encore (migration V2 bloquée).
-// Un fallback 100% côté navigateur est fourni dans l'UI tant que la table manque.
+// Un Client ID / Secret PAR DÉFAUT (app Google commune à tous les espaces) peut
+// être fourni par l'équipe HORIZON via les secrets d'env de la fonction :
+//   GS_DEFAULT_CLIENT_ID / GS_DEFAULT_CLIENT_SECRET
+// Si un espace n'a pas enregistré ses propres identifiants, la fonction retombe
+// sur ce défaut ; chaque espace ne fait alors que sa propre connexion OAuth
+// (son propre token Google), ce qui reste cohérent avec des comptes différents.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -72,23 +76,26 @@ Deno.serve(async (req: Request) => {
     .eq("provider", "google_sheets")
     .maybeSingle();
 
+const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
+  const DEFAULT_CLIENT_SECRET = Deno.env.get("GS_DEFAULT_CLIENT_SECRET")?.trim() || "";
+  const HAS_DEFAULT = !!(DEFAULT_CLIENT_ID && DEFAULT_CLIENT_SECRET);
+
   const cfg = (acc?.config ?? {}) as Record<string, unknown>;
-  const clientId = cfg?.client_id as string | undefined;
-  const clientSecret = cfg?.client_secret as string | undefined;
+  const clientId = String(cfg?.client_id ?? "").trim() || (HAS_DEFAULT ? DEFAULT_CLIENT_ID : "");
+  const clientSecret = String(cfg?.client_secret ?? "").trim() || (HAS_DEFAULT ? DEFAULT_CLIENT_SECRET : "");
 
   // ---- ACTION: status ----
   if (action === "status") {
-    if (!acc) return json({ connected: false, missing: ["client_id", "client_secret"] });
     const missing: string[] = [];
     if (!clientId) missing.push("client_id");
     if (!clientSecret) missing.push("client_secret");
     const hasToken = Boolean(cfg?.access_token);
     if (hasToken && missing.length === 0) {
       const exp = Number(cfg?.expires_at ?? 0);
-      return json({ connected: true, display_name: acc.display_name, expires_at: exp, client_id: clientId });
+      return json({ connected: true, display_name: acc?.display_name, expires_at: exp, client_id: clientId, default_configured: HAS_DEFAULT && !String(cfg?.client_id ?? "").trim() });
     }
     if (!hasToken) missing.push("access_token");
-    return json({ connected: false, missing, client_id: clientId || undefined });
+    return json({ connected: false, missing, client_id: clientId || undefined, default_configured: HAS_DEFAULT && !String(cfg?.client_id ?? "").trim() });
   }
 
   // ---- ACTION: disconnect (retirer les jetons Google, garder les identifiants) ----
@@ -138,7 +145,7 @@ Deno.serve(async (req: Request) => {
     // S'il ne correspond pas à celui stocké côté serveur, Google refuse l'échange.
     if (clientIdInput && clientIdInput !== clientId) {
       return json({
-        error: "Le Client ID saisi diffère de celui enregistré côté serveur : Google refuse l'échange. Corrigez le Client ID dans l'app puis cliquez « Enregistrer » avant de reconnecter."
+        error: "Le Client ID utilisé pour la connexion diffère de celui côté serveur : Google refuse l'échange. Utilisez le Client ID enregistré (ou l'app Google par défaut) puis reconnectez l'espace."
       }, 400);
     }
 

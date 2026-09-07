@@ -110,6 +110,7 @@ Vérification : relancez la requête `GET /rest/v1/social_accounts?select=id&lim
 2. **Create API key** → copiez la clé (commence par `AIza...`)
 3. Dashboard Supabase → **Edge Functions** → onglet **Secrets** → **Add secret**
    - Name : `GEMINI_API_KEY` — Value : votre clé
+   - (Optionnel, mode A Google Sheets) Name : `GS_DEFAULT_CLIENT_ID` / `GS_DEFAULT_CLIENT_SECRET`
 
 Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 
@@ -413,9 +414,12 @@ e-mail + code à 6 chiffres.
 ### Fonctionnement
 - L'export (bouton « Exporter vers Google Sheets » dans l'onglet **Rapports**) crée une **nouvelle
   feuille de calcul** sur votre Google Drive, puis y écrit les lignes (entêtes + données).
-- La connexion est **par espace** : chaque espace renseigne son propre Client ID/Secret dans
-  l'onglet **Réseaux → Google Sheets**. Les tokens OAuth restent côté serveur (table
-  `integrations_oauth`), jamais exposés au navigateur.
+- La connexion est **par espace** : chaque espace connecte son propre compte Google. Les tokens OAuth
+  restent côté serveur (table `integrations_oauth`), jamais exposés au navigateur.
+- **App Google par défaut (optionnel)** : l'équipe HORIZON peut fournir des identifiants communs à tous
+  les espaces via les secrets de la fonction `GS_DEFAULT_CLIENT_ID` / `GS_DEFAULT_CLIENT_SECRET`.
+  L'app ne demande alors plus que la **connexion Google** (plus de saisie Client ID/Secret par espace),
+  chaque espace gardant son propre jeton. Voir « App Google par défaut » plus bas.
 - Fonction backend : `google-sheets` (actions `exchange`, `refresh`, `status`, `export`).
 
 ### Étape 1 — Créer l'app OAuth chez Google
@@ -429,10 +433,24 @@ e-mail + code à 6 chiffres.
      `https://mayela-crm.vercel.app/mayela-crm.html`
    - Notez le **Client ID** et le **Client Secret**.
 
-### Étape 2 — Renseigner dans MAYELA
-1. App MAYELA → onglet **Réseaux** → carte **Google Sheets**.
+### Étape 2 — App Google par défaut (recommandé) ou par espace
+
+Deux modes possibles :
+
+**Mode A — App par défaut fournie par HORIZON (recommandé)** :
+1. Créer une fois l'app OAuth Google (Étape 1). Son Client ID / Secret sont partagés par tous les espaces.
+2. Dashboard Supabase → **Edge Functions** → onglet **Secrets** → ajouter :
+   - `GS_DEFAULT_CLIENT_ID` = le Client ID
+   - `GS_DEFAULT_CLIENT_SECRET` = le Client Secret
+3. Redéployer la fonction `google-sheets` (voir Étape 3).
+4. Côté app, dans Réglages → Intégrations → **Google Sheets**, le formulaire Client ID/Secret est
+   masqué (remplacé par « connectez le compte Google »). Chaque espace clique simplement
+   **Connecter** et autorise son propre compte Google.
+
+**Mode B — Par espace** (chaque espace a sa propre app Google) :
+1. App MAYELA → Réglages → Intégrations → carte **Google Sheets**.
 2. Collez le **Client ID** puis le **Client Secret** → Enregistrer.
-3. Cliquez **Connecter** → autorisez l'accès Google.
+3. Pour un espace : cliquez **Connecter** → autorisez l'accès Google.
 4. Onglet **Rapports** → sélectionnez une période → **Exporter vers Google Sheets** :
    une nouvelle feuille est créée dans votre Drive et ouverte.
 
