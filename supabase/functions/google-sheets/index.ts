@@ -92,10 +92,10 @@ const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
     const hasToken = Boolean(cfg?.access_token);
     if (hasToken && missing.length === 0) {
       const exp = Number(cfg?.expires_at ?? 0);
-      return json({ connected: true, display_name: acc?.display_name, expires_at: exp, client_id: clientId, default_configured: HAS_DEFAULT && !String(cfg?.client_id ?? "").trim() });
+      return json({ connected: true, display_name: acc?.display_name, expires_at: exp, client_id: clientId, default_configured: HAS_DEFAULT });
     }
     if (!hasToken) missing.push("access_token");
-    return json({ connected: false, missing, client_id: clientId || undefined, default_configured: HAS_DEFAULT && !String(cfg?.client_id ?? "").trim() });
+    return json({ connected: false, missing, client_id: clientId || undefined, default_configured: HAS_DEFAULT });
   }
 
   // ---- ACTION: disconnect (retirer les jetons Google, garder les identifiants) ----
