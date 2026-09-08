@@ -1167,7 +1167,7 @@ document.body.addEventListener('click', (e)=>{
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
-  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
+  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); }
   if(target === 'reports') loadReports();
 });
 async function loadProduits(){
@@ -2069,7 +2069,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-51498cc58a';
+const APP_VERSION = 'mayela-crm-3ca69a22ec';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2900,6 +2900,7 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
   document.getElementById('appShell').classList.remove('hidden');
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id==='settings'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav==='settings'));
+  if(typeof refreshVersionInfo==='function') refreshVersionInfo();
 });
 
 // ---- Changer l'e-mail de connexion (Supabase auth updateUser + resend emailChange) ----
