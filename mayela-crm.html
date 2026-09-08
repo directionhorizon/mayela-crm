@@ -204,6 +204,8 @@
   .tab-row::-webkit-scrollbar{ display:none; }
   .tab-btn{ flex-shrink:0; white-space:nowrap; font-size:11px; padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--sage); cursor:pointer; font-family:'Work Sans';}
   .tab-btn.active{ background:var(--panel-2); color:var(--text); border-color:var(--gold); }
+  .ia-suggest{ flex-shrink:0; white-space:nowrap; font-size:11px; padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--sage); cursor:pointer; font-family:'Work Sans'; }
+  .ia-suggest:hover{ background:var(--panel-2); color:var(--text); border-color:var(--gold); }
   .tab-panel{ display:none; padding:0 20px 8px; }
   .tab-panel.active{ display:block; }
   .mini-row{ display:flex; justify-content:space-between; font-size:12px; padding:9px 0; border-bottom:1px solid var(--line); }
@@ -546,9 +548,9 @@
             <div class="stitle" style="margin:0;">Bonjour <span id="iaEmpName"></span> — que puis-je faire pour vous ?</div>
             <div style="color:var(--sage); font-size:12px; text-align:center; line-height:1.5;">Posez une question sur vos clients, vos relances, vos ventes, ou démarrez depuis une suggestion :</div>
             <div id="iaSuggestRow" style="display:flex; gap:6px; padding:2px 0 4px; flex-wrap:wrap; justify-content:center;">
-              <button type="button" class="tab-btn ia-suggest" data-q="Que dois-je faire aujourd'hui avec mes clients ?">🎯 Que faire aujourd'hui ?</button>
-              <button type="button" class="tab-btn ia-suggest" data-q="Qui sont mes clients inactifs à relancer ?">📞 Qui relancer ?</button>
-              <button type="button" class="tab-btn ia-suggest" data-q="Analyse mes ventes des 30 derniers jours.">📊 Mes ventes</button>
+              <button type="button" class="ia-suggest" data-q="Que dois-je faire aujourd'hui avec mes clients ?">🎯 Que faire aujourd'hui ?</button>
+              <button type="button" class="ia-suggest" data-q="Qui sont mes clients inactifs à relancer ?">📞 Qui relancer ?</button>
+              <button type="button" class="ia-suggest" data-q="Analyse mes ventes des 30 derniers jours.">📊 Mes ventes</button>
             </div>
             <div style="display:flex; align-items:center; gap:10px; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--sage); padding:4px 0;">
               <div style="flex:1; height:1px; background:var(--line);"></div>Recommandations actuelles<div style="flex:1; height:1px; background:var(--line);"></div>
@@ -1469,7 +1471,7 @@ async function loadOperationalImpact(){
       [ca !== '–' ? ca : '—', 'Achats (30j, FCFA)']
     ];
     const per = ['whatsapp','tiktok','facebook','appel','visite'].map(k=>{
-      const label = k==='whatsapp'?'WhatsApp':k==='tiktok'?'TikTok':k==='facebook'?'Facebook':k==='appel'?'Appels':'Visites';
+      const label = INTERACTION_TYPE_LABEL[k] || k;
       const c = counts[k]||0;
       return `<span style="display:inline-block;background:var(--panel-2);border-radius:20px;padding:3px 10px;font-size:11px;margin:2px;">${label} : ${c}</span>`;
     }).join(' ');
@@ -1732,43 +1734,6 @@ async function gsConnect(){
     gsRefreshStatus();
   })();
 })();
-async function gsExport(){
-  const errEl = document.getElementById('gsErr');
-  errEl.textContent = '';
-  // Construit les lignes : entêtes + données (clients, achats, devis)
-  const rows = [['Type','Client','Montant (FCFA)','Date','Libellé']];
-  const { data: achats } = await sb.from('achats').select('*, client_id, montant, achat_date');
-  for(const a of (achats||[])){
-    const c = clientsCache.find(x=>x.id===a.client_id);
-    rows.push(['Achat', c ? c.name : '', a.montant ?? '', a.achat_date ? String(a.achat_date).slice(0,10) : '', '']);
-  }
-  const { data: devis } = await sb.from('devis').select('*, client_id, montant, devis_date');
-  for(const d of (devis||[])){
-    const c = clientsCache.find(x=>x.id===d.client_id);
-    rows.push(['Devis', c ? c.name : '', d.montant ?? '', d.devis_date ? String(d.devis_date).slice(0,10) : '', '']);
-  }
-
-  // 1) backend par espace — on tente l'export et on affiche la vraie erreur du serveur
-  if(window.ls_gs_backend_ok || await gsBackendAvailable()){
-    try{
-      const { data:{ session } } = await sb.auth.getSession();
-      const r = await fetch(SUPABASE_URL + '/functions/v1/google-sheets', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-        body: JSON.stringify({ action:'export', rows, fileName: sheetFileName('Données CRM (achats + devis)') })
-      });
-      const out = await r.json();
-      if(out && out.ok){
-        toast('Export envoyé dans Google Sheets.');
-        window.open(out.url, '_blank');
-        return;
-      }
-      errEl.textContent = (out && out.error) || "Export en échec côté serveur.";
-      return;
-    }catch(ex){ errEl.textContent = "Export indisponible : " + ex.message; return; }
-  }
-  errEl.textContent = "Google Sheets non configuré côté serveur : ouvrez l'onglet Réseaux et enregistrez le Client ID / Secret de votre app Google.";
-}
 document.addEventListener('DOMContentLoaded', ()=>{ gsSetupStatus(); });
 document.getElementById('gsConnectBtn').addEventListener('click', ()=>gsConnect());
 document.getElementById('gsDisconnectBtn').addEventListener('click', async ()=>{
@@ -1830,7 +1795,7 @@ document.body.addEventListener('click', async (e)=>{
     const acc = socialCache.find(a=>a.platform===disc.dataset.discSocial);
     if(acc){ const { error } = await sb.from('social_accounts').delete().eq('id', acc.id); if(error){ toast(error.message, true); } }
     insightsData = null;
-    document.getElementById('socialInsightsBody').innerHTML = '<div class="empty">Connectez votre Page Facebook pour analyser votre audience.</div>';
+    document.getElementById('socialInsightsBody').innerHTML = '<div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div>';
     loadSocial();
   }
 });
@@ -2068,7 +2033,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-c09bcd968d';
+const APP_VERSION = 'mayela-crm-cb1ed740a5';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2223,7 +2188,7 @@ async function openFiche(id){
   const produitNom = (pid)=> produitsCache.find(p=>p.id===pid)?.nom || null;
 
   document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>`
-    <div class="mini-row"><div><div class="t1">${esc(i.type)}</div><div class="t2">${esc(i.note||'')}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
+    <div class="mini-row"><div><div class="t1">${esc(INTERACTION_TYPE_LABEL[i.type] || i.type)}</div><div class="t2">${esc(i.note||'')}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
 
   document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>`
     <div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
@@ -2285,6 +2250,7 @@ document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
   if(!montant){ return; }
   const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId });
   if(error){ toast(error.message, true); return; }
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newAchatMontant').value = '';
   document.getElementById('achatProduitSelect').value = '';
   openFiche(currentClientId);
@@ -2307,6 +2273,7 @@ document.getElementById('addCreanceBtn').addEventListener('click', async ()=>{
   if(!montant){ return; }
   const { error } = await sb.from('creances').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, statut:'due' });
   if(error){ toast(error.message, true); return; }
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newCreanceMontant').value = '';
   document.getElementById('creanceProduitSelect').value = '';
   openFiche(currentClientId);
@@ -2315,6 +2282,7 @@ document.body.addEventListener('click', async (e)=>{
   const pay = e.target.closest('[data-pay-creance]'); if(!pay) return;
   const { error } = await sb.from('creances').update({ statut:'payee' }).eq('id', pay.dataset.payCreance);
   if(error){ toast(error.message, true); }
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
@@ -2331,6 +2299,7 @@ document.getElementById('addTaskBtn').addEventListener('click', async ()=>{
   const { data:{ user } } = await sb.auth.getUser();
   const { error } = await sb.from('tasks').insert({ client_id: currentClientId, due_date: due, libelle: libelle||null, created_by: user.id });
   if(error){ toast(error.message, true); return; }
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newTaskDate').value = '';
   document.getElementById('newTaskLabel').value = '';
   openFiche(currentClientId);
@@ -2366,6 +2335,7 @@ document.getElementById('addDevisBtn').addEventListener('click', async ()=>{
   const { data:{ user } } = await sb.auth.getUser();
   const { error } = await sb.from('devis').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, created_by: user.id });
   if(error){ toast(error.message, true); return; }
+  await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newDevisMontant').value = '';
   document.getElementById('devisProduitSelect').value = '';
   openFiche(currentClientId);
@@ -2950,13 +2920,13 @@ function reportSummaryText(d){
       t=`${clients.length} client(s) au total. Répartition par zone : ${zoneTxt||'aucune zone renseignée'}.`;
       break;
     case 'ventes':
-      t=`${achats.length} vente(s) sur la période, pour un total de ${fmtFCFA(rev)} FCFA. Panier moyen : ${fmtFCFA(achats.length?Math.round(rev/achats.length):0)} FCFA.`;
+      t=`${achats.length} vente(s) sur la période, pour un total de ${fmtFCFA(rev)}. Panier moyen : ${fmtFCFA(achats.length?Math.round(rev/achats.length):0)}.`;
       break;
     case 'devis':
-      t=`${devis.length} devis, montant total de ${fmtFCFA(dev)} FCFA.`;
+      t=`${devis.length} devis, montant total de ${fmtFCFA(dev)}.`;
       break;
     case 'creances':
-      t=`${creances.length} créance(s) en attente, pour un total de ${fmtFCFA(due)} FCFA.`;
+      t=`${creances.length} créance(s) en attente, pour un total de ${fmtFCFA(due)}.`;
       break;
     case 'interactions':
       t=`${interactions.length} interaction(s) & rendez-vous enregistrés sur la période.`;
@@ -2971,7 +2941,7 @@ function reportSummaryText(d){
       t=`${posts.length} publication(s) réseaux sociaux sur la période.`;
       break;
     default:
-      t=`${clients.length} clients · ${achats.length} ventes (${fmtFCFA(rev)} FCFA) · ${devis.length} devis · ${fmtFCFA(due)} FCFA de créances en attente. Zones : ${zoneTxt||'non renseignées'}.`;
+      t=`${clients.length} clients · ${achats.length} ventes (${fmtFCFA(rev)}) · ${devis.length} devis · ${fmtFCFA(due)} de créances en attente. Zones : ${zoneTxt||'non renseignées'}.`;
   }
   return t;
 }
@@ -3134,8 +3104,34 @@ document.getElementById('rpGenerateIaBtn').addEventListener('click', async ()=>{
       headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + session.access_token },
       body: JSON.stringify({ message: 'Rapport personnalisé demandé : ' + prompt, fileText:'' })
     });
-    const out = await res.json();
-    const text = out.reply || ("⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide"));
+    const ctype = res.headers.get('Content-Type') || '';
+    let text;
+    if(!res.ok || !ctype.includes('text/event-stream')){
+      const out = await res.json().catch(()=>({}));
+      text = "⚠️ Erreur " + res.status + " : " + (out.error || "réponse vide du serveur");
+    } else {
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let partial = '', acc = '';
+      const handleSseLine = (line)=>{
+        if(!line.startsWith('data:')) return;
+        const p = line.slice(5).trim();
+        if(!p || p === '[DONE]') return;
+        try{ const o = JSON.parse(p); if(typeof o.t === 'string' && o.t) acc += o.t; }catch{}
+      };
+      while(true){
+        const { done, value } = await reader.read();
+        if(done) break;
+        partial += dec.decode(value, { stream:true });
+        const lines = partial.split(/\r?\n/);
+        partial = lines.pop() || '';
+        for(const line of lines) handleSseLine(line);
+      }
+      partial += dec.decode();
+      for(const line of partial.split(/\r?\n/)) handleSseLine(line);
+      if(!acc) throw new Error("réponse vide du serveur");
+      text = acc;
+    }
     renderReportPreview(null, text);
     reportAutreText = text;
     document.getElementById('reportDataIa').textContent = text;
@@ -3149,15 +3145,6 @@ document.getElementById('rpGenerateIaBtn').addEventListener('click', async ()=>{
 let reportAutreText = '';
 
 // ==== Téléchargements ====
-function downloadFile(name, blob){
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = name;
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 300);
-}
-function csvString(rows){
-  return rows.map(r=>r.map(c=>{ const s=String(c??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }).join(',')).join('\r\n');
-}
 function currentExportRows(){
   if(reportType==='autre'){
     return [['Rapport personnalisé'],[reportAutreText||'']];
@@ -3180,6 +3167,7 @@ document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
 function sheetNameDetail(text){
   return String(text||'').replace(/[\\/:*?"<>|]/g,' ').replace(/\s+/g,' ').trim().slice(0, 60);
 }
+const INTERACTION_TYPE_LABEL = { appel:'Appel', whatsapp:'WhatsApp', visite:'Visite', tiktok:'TikTok', facebook:'Facebook', autre:'Autre' };
 const REPORT_TYPE_LABEL = {
   synthese:'Synthèse globale (vue d\'ensemble)',
   clients:'Clients (fichier, zones, sources)',

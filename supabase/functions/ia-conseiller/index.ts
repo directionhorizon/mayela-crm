@@ -1,7 +1,8 @@
 // Edge Function "ia-conseiller" — MAYELA CRM
 // Appel : POST /functions/v1/ia-conseiller  (Authorization: Bearer <access_token>)
-// Body  : { message: string, fileText?: string, fileImage?: "data:image/*;base64,..." }
-// Retour: { reply: string }
+// Body  : { message: string, fileText?: string, fileImage?: "data:image/*;base64,...", filePdf?: string, history?: Array<{role,text}> }
+// Retour: flux SSE (Server-Sent Events) : `data: {"t": "texte généré"}` puis `data: {"s": ["source…"]}` et `data: [DONE]`
+//         en cas d'erreur : JSON `{ error: string }`
 //
 // Secret requis : GEMINI_API_KEY (Dashboard → Edge Functions → Secrets)
 

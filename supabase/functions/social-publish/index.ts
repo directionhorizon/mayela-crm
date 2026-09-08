@@ -22,7 +22,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const GRAPH = "https://graph.facebook.com/v21.0";
-const OPEN_API = "https://open.tiktokapis.com/v1.3";
+const OPEN_API = "https://open.tiktokapis.com/v2";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
         config: {
           ...cfg,
           access_token: accessToken,
-          refresh_token: tout.refresh_token,
+          refresh_token: tout.refresh_token ?? cfg.refresh_token,
           expires_at: Date.now() + Number(tout.expires_in ?? 86400) * 1000 - 60_000,
         },
       }).eq("id", acc.id);

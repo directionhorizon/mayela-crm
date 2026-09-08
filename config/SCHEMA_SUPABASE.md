@@ -116,7 +116,7 @@ libelle       text           -- libellé de la tâche (optionnel)
 created_by    uuid
 created_at    timestamptz NOT NULL
 ```
-Balayé quotidiennement (07h00) par le cron `task-expiry-alerts-daily` → Edge Function `task-expiry-alerts`.
+Les tâches en échéance sont suivies côté app (tableau de bord / relances manuelles) ; aucune tâche planifiée (pg_cron) n'est requise.
 
 ## `audit_log`
 ```
@@ -228,13 +228,11 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
 
 ## Edge Functions déployées
 
+Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles réellement utilisées par l'app :
+
 | Fonction | JWT requis | Déclencheur / usage |
 |---|---|---|
-| `notify-new-devis` | oui | Trigger DB sur INSERT `devis` |
-| `task-expiry-alerts` | oui | pg_cron quotidien 07h00 |
-| `horizon-leads-webhook` | non | Webhook entrant Make.com |
-| `horizon-send-email` | oui | Appel manuel (staff) |
-| `check-password-pwned` | non | Legacy, non utilisée (auth 100% OTP) |
+| `ia-conseiller` | oui | Chat & rapport personnalisé IA (Gemini, flux SSE) |
 | `social-publish` | oui | Publie une offre (Facebook Graph / TikTok Content Posting) |
 | `social-tiktok` | oui | Flux OAuth TikTok (échange du code / refresh) |
 | `social-insights` | oui | Analyse d'audience (Facebook + TikTok) |
@@ -243,4 +241,4 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
 | `adjust-events` | oui | (inactive) Coquille MMP Adjust/Branch |
 | `google-sheets` | oui | Google Sheets export par espace : exchange/refresh (OAuth), status, export |
 
-**Secrets non configurés à ce jour** (401 attendus tant que non fait) : `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `ALERT_EMAIL_FROM`, clé Brevo.
+**Secrets requis** (à configurer Dashboard Supabase → Edge Functions → Secrets) : `GEMINI_API_KEY` (conseiller IA), `GS_DEFAULT_CLIENT_ID` + `GS_DEFAULT_CLIENT_SECRET` (export Google Sheets par défaut).
