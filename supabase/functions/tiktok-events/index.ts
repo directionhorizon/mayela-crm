@@ -78,12 +78,14 @@ Deno.serve(async (req: Request) => {
 
   // Pixel ID + Access Token Events API de l'org courante (isolation par RLS)
   const { data: acc, error: accErr } = await sb.from("social_accounts")
-    .select("id, config")
+    .select("id, org_id, config")
     .eq("platform", "tiktok")
     .maybeSingle();
 
   if (accErr) return json({ error: accErr.message }, 500);
   if (!acc) return json({ error: "compte TikTok non connecté" }, 404);
+
+  const orgId = acc.org_id;
 
   const cfg = (acc.config ?? {}) as Record<string, unknown>;
   const pixelId = cfg?.pixel_id as string | undefined;
@@ -129,7 +131,7 @@ Deno.serve(async (req: Request) => {
   const log = async (status: "sent" | "failed", error?: string) => {
     try {
       await sb.from("social_events_log").insert({
-        org_id: cfg?.org_id ?? (await sb.from("profiles").select("org_id").eq("id", user.id).single()).data?.org_id,
+        org_id: orgId,
         platform: "tiktok",
         event,
         pixel_id: pixelId,

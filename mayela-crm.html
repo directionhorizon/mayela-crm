@@ -370,6 +370,7 @@
       <div class="pin-dots" id="pinDots"><span></span><span></span><span></span><span></span></div>
       <div class="err-msg" id="pinError"></div>
       <div class="keypad" id="keypad"></div>
+      <span class="link-sm" id="lockLogout" style="margin-top:8px;">← Se déconnecter</span>
     </div>
 
     <!-- ONBOARDING: ORG -->
@@ -995,10 +996,9 @@ document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
   const errEl = document.getElementById('authEmailErr');
   errEl.textContent = "";
 
-  if(!fullName){ errEl.textContent = "Entrez votre nom complet."; return; }
-  if(!jobTitle){ errEl.textContent = "Entrez votre fonction."; return; }
-  if(!company){ errEl.textContent = "Entrez votre entreprise."; return; }
-  if(!phone){ errEl.textContent = "Entrez votre numéro de téléphone."; return; }
+  // Le formulaire (nom, fonction, entreprise, téléphone) sert à l'enrichissement du profil
+  // lors de la PREMIÈRE connexion. Pour un utilisateur déjà inscrit, ces champs sont
+  // optionnels : les exiger à chaque envoi obligerait à tout re-saisir à chaque connexion.
   if(!email || !email.includes('@')){ errEl.textContent = "Entrez un e-mail valide."; return; }
 
   pendingEmail = email;
@@ -1044,11 +1044,17 @@ async function afterLogin(){
     const ins = await sb.from('profiles').insert({ id:user.id }).select().single();
     prof = ins.data;
   }
-  // Enregistre les infos saisies à l'écran d'inscription (nom, fonction, entreprise, téléphone)
-  if(pendingProfile.full_name){
+  // Enregistre les infos saisies à l'écran d'inscription (nom, fonction, entreprise, téléphone).
+  // Ne pousse que les champs réellement renseignés : un utilisateur déjà inscrit qui laisse le
+  // formulaire vide ne verra pas son profil écrasé de valeurs vides.
+  const patch = {};
+  if(pendingProfile.full_name) patch.full_name = pendingProfile.full_name;
+  if(pendingProfile.job_title) patch.job_title = pendingProfile.job_title;
+  if(pendingProfile.company) patch.company = pendingProfile.company;
+  if(pendingProfile.phone) patch.phone = pendingProfile.phone;
+  if(Object.keys(patch).length){
     const { data: updated } = await sb.from('profiles')
-      .update({ full_name: pendingProfile.full_name, job_title: pendingProfile.job_title, company: pendingProfile.company, phone: pendingProfile.phone })
-      .eq('id', user.id).select().single();
+      .update(patch).eq('id', user.id).select().single();
     if(updated) prof = updated;
     pendingProfile = {};
   } else if(!prof.full_name){
@@ -1166,6 +1172,17 @@ document.body.addEventListener('click', (e)=>{
   const target = nav.dataset.nav;
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id===target));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
+  if(target === 'dashboard'){
+    // Rafraîchit le cache clients à chaque retour Accueil : sans cela, la liste « À relancer »
+    // et les KPIs restent figés depuis le dernier loadEverything() (interactions ajoutées entre-temps).
+    sb.from('clients').select('*').order('created_at', { ascending:false }).then(({ data: clients })=>{
+      clientsCache = clients || [];
+      document.getElementById('clientCount').textContent = clientsCache.length;
+      renderDashboardKpis();
+      renderRelances();
+      renderClients();
+    });
+  }
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
@@ -2033,7 +2050,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-cb1ed740a5';
+const APP_VERSION = 'mayela-crm-7901737ca5';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2145,6 +2162,7 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   const clientOwner = isSolo ? { owner_user_id: user.id } : { org_id: profile.org_id };
   const { error } = await sb.from('clients').insert({
     name, zone: zone||null, phone: phone||null, stage_override: stage,
+    updated_at: new Date().toISOString(),
     ...clientOwner
   });
   if(error){ errEl.textContent = error.message; return; }
@@ -2829,7 +2847,9 @@ document.getElementById('iaMsgInput').addEventListener('input', iaAutosize);
 document.getElementById('iaChatLog').addEventListener('scroll', iaOnLogScroll);
 
 // ================== SETTINGS ==================
-document.getElementById('logoutRow').addEventListener('click', async ()=>{
+// Déconnexion : réutilisée depuis Réglages ET depuis l'écran lock (PIN oublié / 30 min de blocage).
+// Le PIN est un verrou local de confort ; l'authentification réelle reste l'e-mail + code.
+async function doLogout(){
   await sb.auth.signOut();
   profile = null; clientsCache = []; currentClientId = null; pendingProfile = {}; pendingEmail = "";
   document.getElementById('appShell').classList.add('hidden');
@@ -2837,7 +2857,9 @@ document.getElementById('logoutRow').addEventListener('click', async ()=>{
   document.getElementById('fullNameInput').value=''; document.getElementById('jobTitleInput').value='';
   document.getElementById('companyInput').value=''; document.getElementById('phoneRegInput').value='';
   showScreen('authEmail');
-});
+}
+document.getElementById('logoutRow').addEventListener('click', doLogout);
+document.getElementById('lockLogout').addEventListener('click', doLogout);
 document.getElementById('renameOrgRow').addEventListener('click', async ()=>{
   if(!currentOrg){ toast("Aucun espace à renommer.", true); return; }
   const { data:{ user } } = await sb.auth.getUser();
@@ -3007,7 +3029,7 @@ function renderReportPreview(rows, text){
   const head = rows[0];
   document.getElementById('reportPreviewHead').innerHTML = head.map(h=>'<th style="padding:6px;border-bottom:1px solid var(--line);color:var(--gold);text-align:left;white-space:nowrap;">'+esc(String(h))+'</th>').join('');
   document.getElementById('reportPreviewBody').innerHTML = rows.slice(1).map(r=>
-    '<tr>'+r.map((c,ci)=>{ const editable = ci!==0 ? ' contenteditable="true"' : ''; return '<td'+editable+' style="padding:6px;border-bottom:1px solid var(--line);white-space:nowrap;">'+esc(String(c??''))+'</td>'; }).join('')+'</tr>'
+    '<tr>'+r.map((c,ci)=>'<td style="padding:6px;border-bottom:1px solid var(--line);white-space:nowrap;">'+esc(String(c??''))+'</td>').join('')+'</tr>'
   ).join('');
 }
 
@@ -3151,8 +3173,12 @@ function currentExportRows(){
   }
   return reportData ? reportRows(reportData) : [['']];
 }
-document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
-  if(!reportData) return loadReports();
+document.getElementById('exportPdfBtn').addEventListener('click', async ()=>{
+  if(!reportData){
+    // L'utilisateur a cliqué avant le premier chargement : on le déclenche puis on exporte.
+    await loadReports();
+  }
+  if(!reportData) return; // le chargement a échoué (message déjà affiché)
   const rows = currentExportRows();
   let html = '<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;font-size:12px;}h1{font-size:18px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #999;padding:5px;text-align:left;white-space:pre-wrap;}</style></head><body>';
   html += '<h1>Rapport CRM — ' + (reportPeriod==='all'?'Tout l\u2019historique':reportPeriod+' jours') + '</h1>';
