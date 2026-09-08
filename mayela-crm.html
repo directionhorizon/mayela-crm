@@ -801,10 +801,12 @@
         </div>
         <div class="section-title">À propos</div>
         <div class="set-block">
-          <div class="set-row"><div class="lbl">Version installée<small>La version qui tourne sur cet appareil</small></div><span class="val" id="verInstalled">–</span></div>
-          <div class="set-row"><div class="lbl">Version publiée<small>La dernière version mise en ligne</small></div><span class="val" id="verPublished">–</span></div>
-          <div class="set-row hidden" id="verOutdatedRow" style="cursor:pointer;" onclick="location.reload();"><div class="lbl" style="color:var(--gold)">Mise à jour disponible<small>Une version plus récente est en ligne</small></div><span class="val">Recharger →</span></div>
-          <div class="set-row hidden" id="verUpToDateRow"><div class="lbl" style="color:var(--success)">À jour<small>L'app installée correspond à la version publiée</small></div><span class="val">✓</span></div>
+          <div class="set-row"><div class="lbl">Version installée<small>Version qui tourne sur cet appareil</small></div><span class="val" id="verInstalled">–</span></div>
+          <div class="set-row"><div class="lbl">Version publiée<small>Dernière version mise en ligne</small></div><span class="val" id="verPublished">–</span></div>
+          <div class="set-row hidden" id="verDiffRow"><div class="lbl" style="color:var(--gold)">Mise à jour disponible<small>Une version plus récente est en ligne</small></div><span class="val" id="verDiffVal">→</span></div>
+          <div class="set-row" style="border-bottom:none;">
+            <button class="btn" id="verUpdateBtn" style="width:100%;" onclick="forceUpdate()">⟳ Mettre à jour</button>
+          </div>
         </div>
       </div>
 
@@ -2065,18 +2067,25 @@ async function loadEverything(){
   else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
 }
 
-// Comparaison version installée (cache du service worker local) vs version publiée (sw.js servi
-// par Vercel). Affiche la ligne « À jour » ou « Mise à jour disponible » dans Réglages → À propos.
+// Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
+// service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
+const APP_VERSION = 'mayela-crm-51498cc58a';
+
+// Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
+// Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
 async function refreshVersionInfo(){
   const iEl = document.getElementById('verInstalled');
   const pEl = document.getElementById('verPublished');
-  const outRow = document.getElementById('verOutdatedRow');
-  const upRow = document.getElementById('verUpToDateRow');
-  let installed = null, published = null;
+  const diffRow = document.getElementById('verDiffRow');
+  const btn = document.getElementById('verUpdateBtn');
+  let installed = APP_VERSION && APP_VERSION !== 'mayela-crm-0000000000' ? APP_VERSION.replace('mayela-crm-','') : null;
+  let published = null;
   try{
-    const keys = await caches.keys();
-    const c = keys.find(k=>/^mayela-crm-/.test(k));
-    installed = c ? c.replace('mayela-crm-','') : null;
+    if(!installed){
+      const keys = await caches.keys();
+      const c = keys.find(k=>/^mayela-crm-/.test(k));
+      if(c) installed = c.replace('mayela-crm-','');
+    }
   }catch(e){}
   try{
     const r = await fetch('./sw.js?v=' + Date.now());
@@ -2086,10 +2095,21 @@ async function refreshVersionInfo(){
   }catch(e){}
   iEl.textContent = installed || '—';
   pEl.textContent = published || '—';
-  if(outRow) outRow.classList.add('hidden');
-  if(upRow) upRow.classList.add('hidden');
-  if(installed && published && installed !== published && outRow) outRow.classList.remove('hidden');
-  else if(installed && published && installed === published && upRow) upRow.classList.remove('hidden');
+  const outdated = installed && published && installed !== published;
+  if(diffRow) diffRow.classList.toggle('hidden', !outdated);
+  if(btn) btn.textContent = outdated ? '⟳ Mettre à jour' : '✓ À jour';
+}
+
+// Bouton « Mettre à jour » : force la relecture du service worker, puis recharge l'app pour
+// que l'écran affiché corresponde à la dernière version publiée.
+async function forceUpdate(){
+  const b = document.getElementById('verUpdateBtn');
+  if(b){ b.disabled = true; b.textContent = 'Mise à jour…'; }
+  try{
+    const reg = await navigator.serviceWorker.getRegistration();
+    if(reg) await reg.update();
+  }catch(e){}
+  location.reload();
 }
 
 async function renderDashboardKpis(){
