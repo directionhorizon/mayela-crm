@@ -1234,9 +1234,9 @@ document.body.addEventListener('click', async (e)=>{
 
 // ================== RÉSEAUX SOCIAUX ==================
 const PLATFORM_META = {
-  facebook: { icon:'📘', label:'Page Facebook', hint:"Publication directe d'offres sur votre Page." },
-  whatsapp: { icon:'💬', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
-  tiktok:   { icon:'🎵', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
+  facebook: { icon:'📘', img:'./icons/facebook.png', label:'Page Facebook', hint:"Publication directe d'offres sur votre Page." },
+  whatsapp: { icon:'💬', img:'', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
+  tiktok:   { icon:'🎵', img:'./icons/tiktok.jpg', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
 };
 let socialCache = [];
 // Ne conserve jamais les secrets côté client. La publication, le tracking et le rafraîchissement
@@ -1283,11 +1283,10 @@ async function loadSocial(){
     const connected = !!(acc && acc.connected);
     const accent = { facebook:'#1877F2', whatsapp:'#25D366', tiktok:'#27E1E8' }[pl] || 'var(--gold)';
     const st = `<span class="sc-status ${connected ? 'ok' : 'no'}">${connected ? 'Connecté' : 'Non connecté'}</span>`;
-    return `<div class="social-card"><div class="sc-icon" style="border-color:${accent}44; background:${accent}14;"><span style="color:${accent};">${meta.icon}</span></div><div style="min-width:0; flex:1;"><div class="name">${meta.label}</div><div class="meta">${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}${connected ? '' : ' ' + esc(meta.hint)}</div>${st}</div><div class="sc-action">${action}</div></div>`;
+    return `<div class="social-card"><div class="sc-icon" style="border-color:${accent}44; background:${accent}14;">${meta.img ? `<img src="${meta.img}" alt="" style="width:26px;height:26px;object-fit:contain;">` : `<span style="color:${accent};">${meta.icon}</span>`}</div><div style="min-width:0; flex:1;"><div class="name">${meta.label}</div><div class="meta">${acc && acc.display_name ? ' — ' + esc(acc.display_name) : ''}${connected ? '' : ' ' + esc(meta.hint)}</div>${st}</div><div class="sc-action">${action}</div></div>`;
   }).join('');
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${p.id}" data-img="${p.image_url||''}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
-  document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`
-    <div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.icon || ''} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
+  document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`<div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.img ? `<img src="${PLATFORM_META[p.platform].img}" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:4px;">` : (PLATFORM_META[p.platform]?.icon||'')} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
   loadSocialTopClients();
   loadSocialHealth();
   if(socialCache.some(a=>a.platform==='facebook')){
@@ -1350,8 +1349,8 @@ function renderInsights(d){
 // ---- État des intégrations (diagnostic automatisé, Edge Function social-health) ----
 let healthCache = null;
 const HEALTH_META = {
-  facebook:{ icon:'📘', label:'Page Facebook' },
-  tiktok:  { icon:'🎵', label:'TikTok Business' }
+  facebook:{ icon:'📘', img:'./icons/facebook.png', label:'Page Facebook' },
+  tiktok:  { icon:'🎵', img:'./icons/tiktok.jpg', label:'TikTok Business' }
 };
 function renderSocialHealth(platforms){
   const rows = (platforms||[]).map(p=>{
@@ -1371,7 +1370,7 @@ function renderSocialHealth(platforms){
     const notes = (p.notes||[]).map(esc);
     return `<div class="relance-card">
       <div style="min-width:0;">
-        <div class="name">${meta.icon||''} ${meta.label||esc(p.platform)} <span style="color:${badgeColor};font-weight:600;">· ${badge}</span></div>
+        <div class="name">${meta.img ? `<img src="${meta.img}" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:4px;">` : (meta.icon||'')} ${meta.label||esc(p.platform)} <span style="color:${badgeColor};font-weight:600;">· ${badge}</span></div>
         <div class="meta">${detail.length ? detail.join(' · ') : (p.state==='absent' ? 'Aucune configuration. Utilisez « Connecter ».' : 'Prêt pour la publication.')}</div>
         ${notes.length ? `<div class="meta">${notes.join('<br>')}</div>` : ''}
       </div>
@@ -2069,7 +2068,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-3ca69a22ec';
+const APP_VERSION = 'mayela-crm-6d22b69d47';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».

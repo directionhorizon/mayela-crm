@@ -1,11 +1,13 @@
 /* MAYELA CRM - service worker : app shell en cache, réseau direct pour tout le reste */
-const CACHE = 'mayela-crm-3ca69a22ec';
+const CACHE = 'mayela-crm-6d22b69d47';
 const PRECACHE = [
   './',
   './mayela-crm.html',
   './manifest.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './icons/facebook.png',
+  './icons/tiktok.jpg'
 ];
 
 self.addEventListener('install', (event) => {

@@ -7,7 +7,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Le hash reflète TOUS les fichiers du PRECACHE de sw.js (le './' = index.html), hors sw.js
 // lui-même qui est lu par le navigateur pour la détection de mise à jour (inclus dans son
 // propre hash, ce serait cyclique). Les fichiers sont lus en Buffer (les PNG sont binaires).
-const CACHE_FILES = ['./index.html', './mayela-crm.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE_FILES = ['./index.html', './mayela-crm.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/facebook.png', './icons/tiktok.jpg'];
 
 // La version embarquée (const APP_VERSION) dans mayela-crm.html est normalisée en placeholder
 // avant hachage : sinon le hash dépendrait de la version écrite -> circularité (chaque run
