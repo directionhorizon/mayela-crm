@@ -1235,7 +1235,7 @@ document.body.addEventListener('click', async (e)=>{
 // ================== RÉSEAUX SOCIAUX ==================
 const PLATFORM_META = {
   facebook: { icon:'📘', img:'./icons/facebook.png', label:'Page Facebook', hint:"Publication directe d'offres sur votre Page." },
-  whatsapp: { icon:'💬', img:'', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
+  whatsapp: { icon:'💬', img:'./icons/whatsapp.png', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
   tiktok:   { icon:'🎵', img:'./icons/tiktok.jpg', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
 };
 let socialCache = [];
@@ -2068,7 +2068,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-6d22b69d47';
+const APP_VERSION = 'mayela-crm-c09bcd968d';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
