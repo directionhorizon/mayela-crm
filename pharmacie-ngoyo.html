@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0D1F17">
+<meta name="description" content="Pharmacie NGOYO — Pointe-Noire, Congo. Votre pharmacie de quartier : conseils, médicaments, produits et services de santé. En diagonale de la station PUMA, quartier NGOYO.">
+<meta property="og:title" content="Pharmacie NGOYO — Pointe-Noire">
+<meta property="og:description" content="Votre pharmacie de confiance à Pointe-Noire. En diagonale de la station PUMA, quartier NGOYO.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mayela-crm.vercel.app/pharmacie-ngoyo.html">
+<title>Pharmacie NGOYO — Pointe-Noire, Congo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0D1F17;
+    --panel:#16302B;
+    --panel-2:#1D3B33;
+    --green:#3FBF7F;
+    --gold:#D9A441;
+    --sage:#9CAB9F;
+    --text:#F3EDE0;
+    --line:rgba(243,237,224,0.12);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{
+    font-family:'Work Sans', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color:var(--text);
+    background: radial-gradient(ellipse at 50% -10%, #14251c 0%, #060d09 70%) fixed;
+    line-height:1.65;
+  }
+  a{ color:var(--green); text-decoration:none; }
+  a:hover{ text-decoration:underline; }
+  .wrap{ max-width:1020px; margin:0 auto; padding:0 24px; }
+  .brand-row{ display:flex; align-items:center; gap:10px; }
+  .cross{
+    width:34px; height:34px; border-radius:9px; flex-shrink:0;
+    background:var(--green); position:relative;
+  }
+  .cross::before, .cross::after{
+    content:""; position:absolute; background:#0D1F17; border-radius:3px;
+  }
+  .cross::before{ width:18px; height:8px; top:13px; left:8px; }
+  .cross::after{ width:8px; height:18px; top:8px; left:13px; }
+  .brand-row b{ font-family:'Sora',sans-serif; font-weight:800; font-size:17px; letter-spacing:.02em; color:var(--green); }
+  .brand-row span{ color:var(--sage); font-size:12px; }
+
+  header.site{ display:flex; align-items:center; justify-content:space-between; padding:22px 0; }
+
+  .hero{ padding:52px 0 40px; }
+  .hero h1{ font-family:'Sora',sans-serif; font-weight:800; font-size:clamp(30px, 5vw, 48px); line-height:1.12; }
+  .hero h1 em{ font-style:normal; color:var(--green); }
+  .hero .tag{ font-family:'Sora',sans-serif; font-weight:600; color:var(--green); margin-bottom:10px; font-size:15px; }
+  .hero p.lead{ color:#D9D0BE; font-size:17px; max-width:620px; margin:16px 0 22px; }
+  .cta-row{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--green); color:#0D1F17; font-weight:700;
+    padding:12px 22px; border-radius:999px; font-size:15px;
+  }
+  .btn:hover{ text-decoration:none; filter:brightness(1.08); }
+  .btn.ghost{ background:transparent; color:var(--green); border:1px solid var(--green); }
+  .fine{ color:var(--sage); font-size:13px; margin-top:14px; }
+
+  section{ padding:38px 0; border-top:1px solid var(--line); }
+  .sec-title{ font-family:'Sora',sans-serif; font-size:22px; font-weight:700; margin-bottom:8px; }
+  .sec-sub{ color:var(--sage); font-size:14.5px; margin-bottom:26px; max-width:720px; }
+
+  .cards{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px;
+  }
+  .card h3{ font-family:'Sora',sans-serif; font-size:15.5px; font-weight:700; display:flex; gap:8px; align-items:center; }
+  .card h3 .dot{ color:var(--green); flex-shrink:0; }
+  .card p{ color:#D9D0BE; font-size:14px; margin-top:8px; }
+
+  .contact-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:16px; }
+  .contact-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:20px;
+  }
+  .contact-card b{ display:block; font-family:'Sora',sans-serif; font-size:13px; color:var(--sage); margin-bottom:6px; }
+  .contact-card span{ font-size:15px; color:var(--text); word-break:break-word; }
+
+  footer.site{
+    border-top:1px solid var(--line); margin-top:30px; padding:30px 0 46px;
+    color:var(--sage); font-size:13.5px;
+  }
+  .coming{ color:var(--sage); font-size:13.5px; font-style:italic; }
+  @media (max-width:640px){
+    header.site .brand-row span{ display:none; }
+    .hero{ padding-top:32px; }
+    .hero h1{ font-size:30px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="site">
+    <div class="brand-row">
+      <div class="cross" aria-hidden="true"></div>
+      <b>Pharmacie NGOYO</b>
+      <span>Pointe-Noire · République du Congo</span>
+    </div>
+  </header>
+
+  <section class="hero" style="border-top:none; padding-top:16px;">
+    <div class="tag">Votre pharmacie de quartier</div>
+    <h1>Santé et conseils au cœur du quartier <em>NGOYO</em>.</h1>
+    <p class="lead">
+      Pharmacie NGOYO vous accueille en diagonale de la station PUMA, à côté de l'hôtel BIMOKO,
+      à Pointe-Noire. Médicaments, produits de santé et conseils de votre pharmacien.
+    </p>
+    <div class="cta-row">
+      <a class="btn" href="tel:+242064749678">📞 +242 06 474 96 78</a>
+      <a class="btn ghost" href="mailto:pharmazen24@gmail.com">✉️ pharmazen24@gmail.com</a>
+    </div>
+    <div class="fine">Ouvert pour vous servir — horaires à découvrir bientôt.</div>
+  </section>
+
+  <section>
+    <div class="sec-title">Nous trouver</div>
+    <div class="sec-sub">En diagonale de la station PUMA, à côté de l'hôtel BIMOKO — quartier NGOYO, Pointe-Noire, République du Congo.</div>
+    <div class="contact-grid">
+      <div class="contact-card">
+        <b>📍 Adresse</b>
+        <span>NGOYO (Entrée), en diagonale de la station PUMA</span>
+      </div>
+      <div class="contact-card">
+        <b>📞 Téléphone</b>
+        <a href="tel:+242064749678" style="color:var(--text);">+242 06 474 96 78</a>
+      </div>
+      <div class="contact-card">
+        <b>✉️ E-mail</b>
+        <a href="mailto:pharmazen24@gmail.com">pharmazen24@gmail.com</a>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title">Services</div>
+    <div class="sec-sub">Nos services et produits se complètent progressivement ici.</div>
+    <div class="cards">
+      <div class="card"><h3><span class="dot">●</span> Médicaments</h3><p>Disponibilités adaptées à vos besoins, conseils à l'ordonnance.</p></div>
+      <div class="card"><h3><span class="dot">●</span> Conseil pharmaceutique</h3><p>Un pharmacien à votre écoute pour chaque question de santé.</p></div>
+      <div class="card"><h3><span class="dot">●</span> Produits de santé</h3><p>Soins, premiers secours et bien-être — à compléter.</p></div>
+    </div>
+  </section>
+
+  <section style="border-top:none; padding-top:8px;">
+    <div class="sec-title">À venir</div>
+    <p class="coming">Horaires d'ouverture, livraison et services détaillés seront annoncés ici prochainement.</p>
+  </section>
+
+  <footer class="site">
+    <div>© 2026 Pharmacie NGOYO — Pointe-Noire, République du Congo.</div>
+  </footer>
+
+</div>
+</body>
+</html>
