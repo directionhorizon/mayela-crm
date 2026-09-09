@@ -116,15 +116,15 @@ const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
     if (!clientIdInput || !clientSecretInput) {
       return json({ error: "Renseignez le Client ID et le Client Secret de l'app Google." }, 400);
     }
-    const { data: prof } = await sb.from("profiles").select("org_id").eq("id", user.id).single();
-    if (!prof?.org_id) return json({ error: "Impossible de déterminer l'espace." }, 400);
+    const { data: prof } = await sb.from("profiles").select("org_id, active_org_id").eq("id", user.id).single();
+    if (!prof?.org_id && !prof?.active_org_id) return json({ error: "Impossible de déterminer l'espace." }, 400);
     const newConfig = { ...cfg, client_id: clientIdInput, client_secret: clientSecretInput };
     if (acc) {
       const { error } = await sb.from("integrations_oauth").update({ config: newConfig }).eq("id", acc.id);
       if (error) return json({ error: error.message }, 500);
     } else {
       const { error } = await sb.from("integrations_oauth").insert({
-        org_id: prof.org_id,
+        org_id: prof?.active_org_id ?? prof?.org_id,
         provider: "google_sheets",
         display_name: "Google Sheets",
         config: newConfig,
@@ -183,7 +183,7 @@ const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
       if (u?.name) displayName = String(u.name);
     } catch (_e) { /* non bloquant */ }
 
-    const { data: prof } = await sb.from("profiles").select("org_id").eq("id", user.id).single();
+    const { data: prof } = await sb.from("profiles").select("org_id, active_org_id").eq("id", user.id).single();
     if (acc) {
       const { error } = await sb.from("integrations_oauth").update({
         config: newConfig,
@@ -193,7 +193,7 @@ const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";
       if (error) return json({ error: error.message }, 500);
     } else {
       const { error } = await sb.from("integrations_oauth").insert({
-        org_id: prof?.org_id,
+        org_id: prof?.active_org_id ?? prof?.org_id,
         provider: "google_sheets",
         display_name: displayName,
         config: newConfig,

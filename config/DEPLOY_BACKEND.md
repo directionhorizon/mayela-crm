@@ -365,7 +365,7 @@ ne transitent jamais par le navigateur.
 2. Dans le pixel → onglet **Settings/Official Events** :
    - Activez **Server-side API** (Events API).
    - Générez / copiez l'**Access Token** (une seule fois, il n'est pas ré-affichable).
-3. Dans l'app MAYELA → onglet **Réseaux** → section **Configuration Tracking** :
+3. Dans l'app MAYELA → onglet **Réglages** → section **Configuration Tracking** :
    - collez le **Pixel ID** (23 chiffres),
    - collez le **Events API Access Token** → **Enregistrer le tracking**.
 4. Lors de la publication d'une offre, choisissez l'**événement TikTok** à associer

@@ -59,7 +59,7 @@ Dernière mise à jour : 2026-08-29
 
 | Tâche | Fichier | Statut |
 |---|---|---|
-| Section "Configuration Tracking" dans onglet Réseaux | `mayela-crm.html` | ✅ Fait (2026-08-27) |
+| Section "Configuration Tracking" dans onglet Réglages | `mayela-crm.html` | ✅ Fait (2026-09-09) |
 | Champs : Pixel ID, Events API Token | — | ✅ Fait |
 | Champs : Adjust App Token, S2S Token (placeholder) | — | ✅ Fait |
 | Sélecteur d'événement TikTok dans formulaire Offre | `mayela-crm.html` | ✅ Fait |

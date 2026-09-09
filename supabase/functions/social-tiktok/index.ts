@@ -118,9 +118,10 @@ Deno.serve(async (req: Request) => {
       }).eq("id", acc.id);
       if (error) return json({ error: error.message }, 500);
     } else {
-      const { data: prof } = await sb.from("profiles").select("org_id").eq("id", user.id).single();
+      const { data: prof } = await sb.from("profiles").select("org_id, active_org_id").eq("id", user.id).single();
+      const orgId = prof?.active_org_id ?? prof?.org_id;
       const { error } = await sb.from("social_accounts").insert({
-        org_id: prof?.org_id,
+        org_id: orgId,
         platform: "tiktok",
         display_name: nickname || "Compte TikTok",
         config: newConfig,

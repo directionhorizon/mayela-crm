@@ -56,12 +56,13 @@ Deno.serve(async (req: Request) => {
   const ctx: Record<string, any> = {};
   try {
     const { data: prof } = await sb.from("profiles")
-      .select("full_name, org_id").eq("id", user.id).single();
+      .select("full_name, org_id, active_org_id").eq("id", user.id).single();
     ctx.utilisateur = prof?.full_name ?? null;
 
-    if (prof?.org_id) {
+    const ctxOrgId = prof?.active_org_id ?? prof?.org_id;
+    if (ctxOrgId) {
       const { data: org } = await sb.from("organizations")
-        .select("name").eq("id", prof.org_id).maybeSingle();
+        .select("name").eq("id", ctxOrgId).maybeSingle();
       ctx.entreprise = org?.name ?? null;
     }
 

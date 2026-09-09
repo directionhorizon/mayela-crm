@@ -19,6 +19,18 @@ created_at    timestamptz NOT NULL
 members_can_rename boolean NOT NULL DEFAULT false   -- autorise l'équipe à renommer l'espace
 ```
 
+## `org_members` (appartenances multi-espaces, EVO-001)
+```
+user_id     uuid NOT NULL  -- FK profiles (= auth.users.id)
+org_id      uuid NOT NULL  -- FK organizations
+role        text NOT NULL  -- 'admin' | 'membre'
+created_at  timestamptz NOT NULL
+-- primary key (user_id, org_id) : un compte appartient à N espaces.
+-- Insertions UNIQUEMENT via create_organization / join_organization (SECURITY DEFINER).
+```
+Un même utilisateur peut appartenir à plusieurs espaces et basculer avec `switch_org(uuid)`
+(espace actif = `profiles.active_org_id`, sinon `profiles.org_id`).
+
 ## `profiles` (1 ligne par utilisateur `auth.users`)
 ```
 id                  uuid NOT NULL   -- = auth.users.id
@@ -26,6 +38,7 @@ full_name           text
 phone               text
 workspace_type      text NOT NULL  -- 'solo' | 'org'
 org_id              uuid           -- FK organizations, NULL si pas encore rejoint/créé
+active_org_id       uuid           -- FK organizations, espace ACTIVELLEMENT sélectionné (EVO-001) ; NULL = org_id
 role                text
 created_at          timestamptz NOT NULL
 pin_hash            text           -- NULL tant que le PIN n'est pas défini

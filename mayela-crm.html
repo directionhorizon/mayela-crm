@@ -17,7 +17,13 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://ymqdmfsqtkmlmwffqskt.supabase.co wss://ymqdmfsqtkmlmwffqskt.supabase.co https://accounts.google.com https://apis.google.com https://sheets.googleapis.com; img-src 'self' data: https://ymqdmfsqtkmlmwffqskt.supabase.co https://accounts.google.com https://ssl.gstatic.com https://lh3.googleusercontent.com; frame-src https://accounts.google.com https://apis.google.com; base-uri 'none'; form-action 'self' https://accounts.google.com; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://accounts.google.com https://apis.google.com https://analytics.tiktok.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://ymqdmfsqtkmlmwffqskt.supabase.co wss://ymqdmfsqtkmlmwffqskt.supabase.co https://accounts.google.com https://apis.google.com https://sheets.googleapis.com https://analytics.tiktok.com; img-src 'self' data: https://ymqdmfsqtkmlmwffqskt.supabase.co https://accounts.google.com https://ssl.gstatic.com https://lh3.googleusercontent.com; frame-src https://accounts.google.com https://apis.google.com; base-uri 'none'; form-action 'self' https://accounts.google.com; object-src 'none'">
+<!-- TikTok Pixel Code Start -->
+<script>
+!function (w, d, t) {  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};n=document.createElement("script");n.type="text/javascript",n.async=!0,n.src=r+"?sdkid="+e+"&lib="+t;e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e)};  ttq.load('DAGRTSRC77UC8FLJV020');  ttq.page();}(window, document, 'ttq');
+</script>
+<script>window.__ttqPixel='DAGRTSRC77UC8FLJV020';</script>
+<!-- TikTok Pixel Code End -->
 <title>MAYELA CRM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -44,6 +50,7 @@
     color:var(--text);
     padding:32px 16px;
   }
+  html, body{ overflow:hidden; height:100%; }
   .stage{ display:flex; flex-direction:column; align-items:center; gap:14px; max-height:100dvh; overflow:hidden; }
   .brand-row{ display:flex; align-items:center; gap:10px; color:var(--sage); font-size:13px; letter-spacing:.04em;}
   .brand-row b{ color:var(--gold); font-family:'Sora',sans-serif; font-weight:700; }
@@ -65,10 +72,10 @@
   /* Téléphones ET tablettes : l'app remplit l'écran, pas de cadre mockup */
   @media (max-width: 1024px){
     body{ padding:0; align-items:stretch; }
-    .stage{ width:100%; height:100dvh; gap:0; }
+    .stage{ width:100%; height:100vh; height:100dvh; gap:0; }
     .brand-row{ display:none; }
     .phone{
-      width:100%; height:100dvh; max-width:none;
+      width:100%; height:100vh; height:100dvh; max-width:none;
       border-radius:0; border:none; box-shadow:none;
       padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
     }
@@ -83,9 +90,9 @@
   /* PC / Mac : panneau confortable, plein hauteur, sans le bezel "maquette téléphone" */
   @media (min-width: 1025px){
     body{ padding:20px 16px; overflow:hidden; }
-    .stage{ gap:12px; height:100dvh; }
+    .stage{ gap:12px; height:100vh; height:100dvh; }
     .phone{
-      width:min(520px, calc(100vw - 32px)); height:min(760px, calc(100dvh - 76px));
+      width:min(520px, calc(100vw - 32px)); height:min(760px, calc(100vh - 76px)); height:min(760px, calc(100dvh - 76px));
       border-radius:24px;
     }
   }
@@ -115,7 +122,7 @@
     .actions-row .action-btn{ flex:1 1 30%; min-width:30%; }
   }
 
-.screen{ flex:1; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-width:none; }
+.screen{ flex:1; min-height:0; display:none; flex-direction:column; overflow-y:auto; padding-bottom:8px; scrollbar-width:none; }
   .screen.active{ display:flex; }
   .screen > *{ flex-shrink:0; }
   .screen::-webkit-scrollbar{ display:none; }
@@ -222,7 +229,7 @@
   .set-row .lbl small{ color:var(--sage); font-size:10.5px; margin-top:2px; }
   .set-row .val{ color:var(--gold); font-family:'IBM Plex Mono'; font-size:12px; }
 
-  .navbar{ display:flex; border-top:1px solid var(--line); background:rgba(13,31,23,0.9); backdrop-filter:blur(6px); padding:8px 6px calc(14px + env(safe-area-inset-bottom)); }
+  .navbar{ display:flex; flex-shrink:0; border-top:1px solid var(--line); background:rgba(13,31,23,0.9); backdrop-filter:blur(6px); padding:8px 6px calc(14px + env(safe-area-inset-bottom)); }
   .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--sage); font-size:9.5px; font-family:'Work Sans'; cursor:pointer;}
   .nav-btn.active{ color:var(--gold); }
   .nav-btn .ic{ font-size:18px; }
@@ -655,20 +662,6 @@
           <canvas id="offerCanvas" class="hidden"></canvas>
           <div class="err-msg" id="manualOfferErr"></div>
         </div>
-        <div class="section-title">Configuration Tracking</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">TikTok · Événements (server-side)</span><span class="pill" style="background:rgba(76,154,107,0.14); color:#7BC79A; border-color:rgba(76,154,107,0.3);">Actif</span></div>
-          <div class="meta" style="color:var(--sage); line-height:1.5;">Suit les conversions (leads, devis, ventes…). Laissez vide pour ne pas renvoyer d'événements.</div>
-          <input class="field" id="ttPixelId" placeholder="Pixel ID TikTok" autocomplete="off">
-          <input class="field" id="ttPixelToken" placeholder="Events API Access Token" type="password" autocomplete="off">
-          <div style="height:4px; border-top:1px solid var(--line);"></div>
-          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--sage);">Adjust / Branch (MMP)</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Optionnel</span></div>
-          <div class="meta" style="color:var(--sage); line-height:1.5;">À renseigner après l'activation du compte pro.</div>
-          <input class="field" id="mmpAppToken" placeholder="Adjust App Token (optionnel)" autocomplete="off">
-          <input class="field" id="mmpS2SToken" placeholder="Adjust S2S Token (optionnel)" autocomplete="off">
-          <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
-          <div class="err-msg" id="trackingErr"></div>
-        </div>
         <div class="section-title">État des intégrations</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">Réseaux connectés</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Vérif.</span></div>
@@ -752,6 +745,8 @@
         <div class="topbar"><h1>Réglages</h1></div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
+          <div class="set-row" id="switchOrgRow" style="cursor:pointer;"><div class="lbl">Changer d'espace<small>Basculer vers un autre business (TikTok/Facebook/Google Sheets suivent)</small></div><span class="val">→</span></div>
+          <div id="switchOrgList" class="hidden" style="display:flex; flex-direction:column; gap:6px; padding:0 20px 10px;"></div>
           <div class="set-row" id="renameOrgRow" style="cursor:pointer;"><div class="lbl">Renommer l'espace</div><span class="val">→</span></div>
           <div class="set-row hidden" id="allowTeamRenameRow" style="cursor:pointer;"><div class="lbl">Autoriser l'équipe à renommer<small>Sinon, seul vous pouvez le faire</small></div><span class="val" id="allowTeamRenameVal">→</span></div>
           <div class="set-row"><div class="lbl">Code d'invitation<small>À partager avec votre équipe</small></div><span class="val" id="setOrgCode">–</span></div>
@@ -802,6 +797,20 @@
           <div class="err-msg" id="gsErr"></div>
           <div class="meta" style="color:var(--sage); font-size:10.5px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
         </div>
+        <div class="section-title">Configuration Tracking</div>
+        <div class="info-block" style="margin:0 20px 12px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">TikTok · Événements (server-side)</span><span class="pill" style="background:rgba(76,154,107,0.14); color:#7BC79A; border-color:rgba(76,154,107,0.3);">Actif</span></div>
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Suit les conversions (leads, devis, ventes…). Laissez vide pour ne pas renvoyer d'événements.</div>
+          <input class="field" id="ttPixelId" placeholder="Pixel ID TikTok" autocomplete="off">
+          <input class="field" id="ttPixelToken" placeholder="Events API Access Token" type="password" autocomplete="off">
+          <div style="height:4px; border-top:1px solid var(--line);"></div>
+          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--sage);">Adjust / Branch (MMP)</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Optionnel</span></div>
+          <div class="meta" style="color:var(--sage); line-height:1.5;">À renseigner après l'activation du compte pro.</div>
+          <input class="field" id="mmpAppToken" placeholder="Adjust App Token (optionnel)" autocomplete="off">
+          <input class="field" id="mmpS2SToken" placeholder="Adjust S2S Token (optionnel)" autocomplete="off">
+          <button class="btn-ghost" id="saveTrackingBtn">💾 Enregistrer le tracking</button>
+          <div class="err-msg" id="trackingErr"></div>
+        </div>
         <div class="section-title">À propos</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Version installée<small>Version qui tourne sur cet appareil</small></div><span class="val" id="verInstalled">–</span></div>
@@ -848,6 +857,9 @@ let pinBuffer = "";
 let pinMode = "verify"; // 'verify' | 'set'
 
 // ================== UTIL ==================
+// Espace ACTIVEMENT sélectionné (multi-espaces, EVO-001). Chute sur profiles.org_id
+// pour les comptes "mono-espace" existants : aucune régression.
+function activeOrgId(){ return profile && profile.active_org_id ? profile.active_org_id : (profile ? profile.org_id : null); }
 // Échappement HTML systématique pour toute donnée insérée dans un template innerHTML.
 // Les noms clients, zones, notes, produits… sont saisis par des humains : sans ceci,
 // une valeur comme <img src=x onerror=...> s'exécuterait chez tous les membres de l'org (XSS stocké).
@@ -1131,7 +1143,7 @@ function onVerifyPinDigit(k){
   }
 }
 async function afterPinOk(){
-  if(!profile.org_id){ showScreen('onboard'); return; }
+  if(!activeOrgId()){ showScreen('onboard'); return; }
   const shell = document.getElementById('appShell');
   if(shell) shell.classList.remove('hidden');
   showScreen('dashboard');
@@ -1186,7 +1198,7 @@ document.body.addEventListener('click', (e)=>{
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
-  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); }
+  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); loadTrackingConfig(); }
   if(target === 'reports') loadReports();
 });
 async function loadProduits(){
@@ -1224,13 +1236,13 @@ document.getElementById('addProduitBtn').addEventListener('click', async ()=>{
     if(imgFile){
       if(!/^image\//.test(imgFile.type)) throw new Error("Le fichier doit être une image.");
       const blob = await resizeImage(imgFile);
-      const path = profile.org_id + '/' + crypto.randomUUID() + '.jpg';
+      const path = activeOrgId() + '/' + crypto.randomUUID() + '.jpg';
       const { error: upErr } = await sb.storage.from('produits').upload(path, blob, { contentType:'image/jpeg' });
       if(upErr) throw new Error("Image : " + upErr.message);
       imageUrl = sb.storage.from('produits').getPublicUrl(path).data.publicUrl;
     }
     const { data:{ user } } = await sb.auth.getUser();
-    const { error } = await sb.from('produits_services').insert({ nom, description:desc, image_url:imageUrl, prix_defaut:prix||null, owner_user_id:user.id, org_id:profile.org_id });
+    const { error } = await sb.from('produits_services').insert({ nom, description:desc, image_url:imageUrl, prix_defaut:prix||null, owner_user_id:user.id, org_id:activeOrgId() });
     if(error) throw new Error(error.message);
     document.getElementById('newProduitNom').value=''; document.getElementById('newProduitDesc').value=''; document.getElementById('newProduitPrix').value='';
     document.getElementById('newProduitImage').value=''; document.getElementById('produitImgName').textContent='Aucune image';
@@ -1275,6 +1287,23 @@ function sanitizeSocialAccount(acc){
   clean.has_pixel_token = hasPixel;
   return { ...acc, connected, config: clean };
 }
+function fillTrackingForm(){
+  const ttAcc = socialCache.find(a=>a.platform==='tiktok');
+  const ttCfg = (ttAcc && ttAcc.config) || {};
+  // Les jetons/secrets ne sont JAMAIS ré-injectés dans le DOM : le Pixel ID (public) suffit à
+  // savoir que le tracking est configuré. Indicateur si le token est déjà enregistré côté serveur.
+  const pixelTokenSet = !!(ttAcc && ttAcc.config && ttAcc.config.pixel_id && ttCfg.has_pixel_token);
+  document.getElementById('ttPixelId').value = ttCfg.pixel_id || '';
+  document.getElementById('ttPixelToken').value = '';
+  document.getElementById('ttPixelToken').placeholder = pixelTokenSet ? '✓ Token déjà configuré (serveur)' : 'Events API Access Token';
+  document.getElementById('mmpAppToken').value = '';
+  document.getElementById('mmpS2SToken').value = '';
+}
+async function loadTrackingConfig(){
+  const { data } = await sb.from('social_accounts_safe').select('*');
+  if(data) socialCache = data.map(sanitizeSocialAccount);
+  fillTrackingForm();
+}
 async function loadSocial(){
   const [accRes, prodRes, postRes] = await Promise.all([
     sb.from('social_accounts_safe').select('*'),
@@ -1283,16 +1312,9 @@ async function loadSocial(){
   ]);
   socialCache = (accRes.data || []).map(sanitizeSocialAccount);
   fireTikTokPixel();
+  fillTrackingForm();
   const ttAcc = socialCache.find(a=>a.platform==='tiktok');
   const ttCfg = (ttAcc && ttAcc.config) || {};
-  document.getElementById('ttPixelId').value = ttCfg.pixel_id || '';
-  // Les jetons/secrets ne sont JAMAIS ré-injectés dans le DOM : le Pixel ID (public) suffit à
-  // savoir que le tracking est configuré. Indicateur si le token est déjà enregistré côté serveur.
-  const pixelTokenSet = !!(ttAcc && ttAcc.config && ttAcc.config.pixel_id && ttCfg.has_pixel_token);
-  document.getElementById('ttPixelToken').value = '';
-  document.getElementById('ttPixelToken').placeholder = pixelTokenSet ? '✓ Token déjà configuré (serveur)' : 'Events API Access Token';
-  document.getElementById('mmpAppToken').value = '';
-  document.getElementById('mmpS2SToken').value = '';
   document.getElementById('socialAccounts').innerHTML = ['facebook','whatsapp','tiktok'].map(pl=>{
     const meta = PLATFORM_META[pl];
     const acc = socialCache.find(a=>a.platform===pl);
@@ -1600,7 +1622,7 @@ async function connectTikTokFromSetup(){
   const { data: existing } = await sb.from('social_accounts').select('id').eq('platform','tiktok').maybeSingle();
   const { error } = existing
     ? await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id)
-    : await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
+    : await sb.from('social_accounts').insert({ org_id:activeOrgId(), platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
   if(error){ errEl.textContent = error.message; return; }
   closeTikTokSetup();
   await startTikTokAuth();
@@ -1837,7 +1859,7 @@ document.body.addEventListener('click', async (e)=>{
     const token = prompt("Access Token de la Page (généré via developers.facebook.com — voir le guide MAYELA) :");
     if(!token) return;
     const { data:{ user } } = await sb.auth.getUser();
-    const { error } = await sb.from('social_accounts').insert({ org_id:profile.org_id, platform:'facebook', display_name:'Page Facebook', config:{ page_id:pageId.trim(), access_token:token.trim() }, connected_by:user.id });
+    const { error } = await sb.from('social_accounts').insert({ org_id:activeOrgId(), platform:'facebook', display_name:'Page Facebook', config:{ page_id:pageId.trim(), access_token:token.trim() }, connected_by:user.id });
     if(error){ toast(error.message, true); } else { toast('Page Facebook connectée'); insightsData = null; }
     loadSocial();
     return;
@@ -1890,12 +1912,12 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
       });
       const out = await r.json();
       if(!r.ok) throw new Error(out.error || "Échec de la publication.");
-      await sb.from('social_posts').insert({ org_id:profile.org_id, platform:pl, content:full, image_url:imgUrl, status:'sent', external_post_id:String(out.external_post_id||''), posted_by:user.id });
+      await sb.from('social_posts').insert({ org_id:activeOrgId(), platform:pl, content:full, image_url:imgUrl, status:'sent', external_post_id:String(out.external_post_id||''), posted_by:user.id });
       toast('Offre publiée sur ' + PLATFORM_META[pl].label);
     }catch(ex){
       errors.push(PLATFORM_META[pl].label.replace(' Business','') + ' : ' + ex.message);
       try{
-        await sb.from('social_posts').insert({ org_id:profile.org_id, platform:pl, content:text, image_url:imgUrl, status:'failed', error:String(ex.message), posted_by:user.id });
+        await sb.from('social_posts').insert({ org_id:activeOrgId(), platform:pl, content:text, image_url:imgUrl, status:'failed', error:String(ex.message), posted_by:user.id });
       }catch(_e){}
     }
   }
@@ -1905,7 +1927,7 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   if(trackEvent && errors.length < targets.length && socialCache.some(a=>a.platform==='tiktok' && a.config && a.config.pixel_id)){
     try{
       const { data:{ session: s2 } } = await sb.auth.getSession();
-      const cid = profile.org_id + ':' + Date.now();
+      const cid = activeOrgId() + ':' + Date.now();
       const r2 = await fetch(SUPABASE_URL + '/functions/v1/tiktok-events', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + s2.access_token },
@@ -2030,8 +2052,8 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('trackingErr');
   errEl.textContent = '';
   const { data:{ user } } = await sb.auth.getUser();
-  const { data: prof } = await sb.from('profiles').select('org_id').eq('id', user.id).single();
-  if(!prof?.org_id){ errEl.textContent = "Impossible de déterminer votre organisation."; return; }
+  const curOrg = activeOrgId();
+  if(!curOrg){ errEl.textContent = "Impossible de déterminer votre organisation."; return; }
   const existing = socialCache.find(a=>a.platform==='tiktok');
   const prevCfg = (existing && existing.config) || {};
   const cfg = Object.assign({}, prevCfg, {
@@ -2049,7 +2071,7 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
       const { error } = await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id);
       if(error) throw error;
     } else {
-      const { error } = await sb.from('social_accounts').insert({ org_id:prof.org_id, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
+      const { error } = await sb.from('social_accounts').insert({ org_id:curOrg, platform:'tiktok', display_name:'App TikTok', config:cfg, connected_by:user.id });
       if(error) throw error;
     }
     toast('Tracking enregistré.');
@@ -2072,7 +2094,7 @@ async function loadEverything(){
   renderIA();
   document.getElementById('setEmail').textContent = (await sb.auth.getUser()).data.user.email;
   document.getElementById('setOrgName').textContent = 'Chargement…';
-  const { data: org } = await sb.from('organizations').select('*').eq('id', profile.org_id).maybeSingle();
+  const { data: org } = await sb.from('organizations').select('*').eq('id', activeOrgId()).maybeSingle();
   currentOrg = org || null;
   if(org){
     document.getElementById('setOrgName').textContent = org.name; document.getElementById('setOrgCode').textContent = org.join_code;
@@ -2084,9 +2106,42 @@ async function loadEverything(){
   else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
 }
 
+// ---- Multi-espaces (EVO-001) : liste des espaces + bascule ----
+async function loadOrgMembers(){
+  const listEl = document.getElementById('switchOrgList');
+  const { data: mem } = await sb.from('org_members').select('org_id, role');
+  if(!mem || !mem.length){ listEl.innerHTML = '<div class="meta" style="color:var(--sage);font-size:11px;">Un seul espace pour ce compte.</div>'; return; }
+  const ids = mem.map(m=>m.org_id);
+  const { data: orgs } = await sb.from('organizations').select('id, name').in('id', ids);
+  const byId = Object.fromEntries((orgs||[]).map(o=>[o.id, o]));
+  const cur = activeOrgId();
+  listEl.innerHTML = mem.map(m=>{
+    const o = byId[m.org_id];
+    const active = m.org_id === cur;
+    return `<div class="set-row" data-switch-org="${m.org_id}" style="cursor:pointer; ${active ? 'background:rgba(217,164,65,0.10);' : ''}"><div class="lbl">${esc(o ? o.name : 'Espace sans nom')}<small>${m.role === 'admin' ? 'Admin' : 'Membre'}${active ? ' · actuel' : ''}</small></div><span class="val">${active ? '✓' : '→'}</span></div>`;
+  }).join('');
+}
+document.getElementById('switchOrgRow').addEventListener('click', async ()=>{
+  const listEl = document.getElementById('switchOrgList');
+  const willShow = listEl.classList.contains('hidden');
+  listEl.classList.toggle('hidden', !willShow);
+  if(willShow) await loadOrgMembers();
+});
+document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
+  const row = e.target.closest('[data-switch-org]'); if(!row) return;
+  const orgId = row.dataset.switchOrg;
+  if(orgId === activeOrgId()){ document.getElementById('switchOrgList').classList.add('hidden'); return; }
+  const { error } = await sb.rpc('switch_org', { org_id: orgId });
+  if(error){ toast(error.message, true); return; }
+  await refreshProfile();
+  document.getElementById('switchOrgList').classList.add('hidden');
+  toast('Espace changé.');
+  await loadEverything();
+});
+
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-c353c9df99';
+const APP_VERSION = 'mayela-crm-45a6adec70';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2194,8 +2249,8 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('addClientErr');
   if(!name){ errEl.textContent = "Le nom est obligatoire."; return; }
   const { data:{ user } } = await sb.auth.getUser();
-  const isSolo = !profile.org_id;
-  const clientOwner = isSolo ? { owner_user_id: user.id } : { org_id: profile.org_id };
+  const isSolo = !activeOrgId();
+  const clientOwner = isSolo ? { owner_user_id: user.id } : { org_id: activeOrgId() };
   const { error } = await sb.from('clients').insert({
     name, zone: zone||null, phone: phone||null, stage_override: stage,
     updated_at: new Date().toISOString(),
