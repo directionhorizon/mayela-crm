@@ -1282,6 +1282,7 @@ async function loadSocial(){
     sb.from('social_posts').select('*').order('created_at', { ascending:false }).limit(20)
   ]);
   socialCache = (accRes.data || []).map(sanitizeSocialAccount);
+  fireTikTokPixel();
   const ttAcc = socialCache.find(a=>a.platform==='tiktok');
   const ttCfg = (ttAcc && ttAcc.config) || {};
   document.getElementById('ttPixelId').value = ttCfg.pixel_id || '';
@@ -1501,6 +1502,41 @@ async function loadOperationalImpact(){
     body.innerHTML = '<div class="empty">Suivi opérationnel indisponible.</div>';
   }
 }
+// ---- TikTok Pixel (événements navigateur, opt-in par espace) ----
+// Pixel basé sur le code TikTok Pixel officiel (Client-side). L'identifiant est celui du pixel
+// configuré pour l'espace actif (Réglages → Configuration Tracking → Pixel ID) ; à défaut, on
+// utilise le pixel par défaut intégré. Un seul pixel est chargé par session/espace actif.
+function tiktokPixelId(){
+  const acc = socialCache && socialCache.find(a=>a.platform==='tiktok');
+  const configured = acc && acc.config && acc.config.pixel_id;
+  return (configured || 'DAGRTSRC77UC8FLJV020');
+}
+function bootTikTokPixel(){
+  if(window.ttq) return;
+  window.TiktokAnalyticsObject='t'; var t='ttq';
+  var ttq=window[t]=window[t]||[];
+  ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"];
+  ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)));};};
+  for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);
+  ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e;};
+  ttq.load=function(e,n){
+    var r="https://analytics.tiktok.com/i18n/pixel/events.js",o=n&&n.partner;
+    ttq._i=ttq._i||{};ttq._i[e]=[];ttq._i[e]._u=r;ttq._t=ttq._t||{};ttq._t[e]=+new Date;ttq._o=ttq._o||{};ttq._o[e]=n||{};
+    n=document.createElement("script");n.type="text/javascript";n.async=!0;n.src=r+"?sdkid="+e+"&lib="+t;
+    e=document.getElementsByTagName("script")[0];e.parentNode.insertBefore(n,e);
+  };
+}
+function fireTikTokPixel(){
+  try{
+    bootTikTokPixel();
+    const pid = tiktokPixelId();
+    if(window.__ttqPixel === pid) return;
+    window.__ttqPixel = pid;
+    window.ttq.load(pid);
+    window.ttq.page();
+  }catch(_e){}
+}
+
 // ---- Connexion TikTok (OAuth Login Kit) ----
 function tiktokRedirectUri(){
   return /mayela-crm\.html$/.test(location.pathname)
@@ -2050,7 +2086,7 @@ async function loadEverything(){
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-7901737ca5';
+const APP_VERSION = 'mayela-crm-c353c9df99';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
