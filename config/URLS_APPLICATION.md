@@ -37,3 +37,13 @@
 - L'espace (`org_id`), les clients et les connexions OAuth (Google Sheets) sont conservés ;
   seul change l'e-mail de connexion (OTP).
 - Aucune intervention admin nécessaire.
+
+## Espaces — bascule = reconnexion gmail
+
+- **Réglages → Changer d'espace** liste chaque espace avec le compte qui le gère
+  (`RPC my_spaces` : `owner_email` = e-mail du créateur de l'espace).
+- Cliquer un espace **dont le gmail diffère** du gmail connecté → confirmation →
+  déconnexion du compte courant → envoi d'un code sur le gmail de l'espace →
+  à la connexion, rebascule automatiquement sur cet espace (`pendingSwitchOrg`).
+- Cliquer un espace **géré par le même gmail** → bascule immédiate (comme avant).
+- Rien n'est supprimé : les espaces restent tous membres de leurs comptes respectifs.
