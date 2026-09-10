@@ -1084,6 +1084,17 @@ async function afterLogin(){
     }
   }
   profile = prof;
+  // Bascule espace = reconnexion gmail : une fois le nouveau compte connecté,
+  // rebascule automatiquement sur l'espace choisi juste avant la déconnexion.
+  const pendingSwitch = sessionStorage.getItem('pendingSwitchOrg');
+  if(pendingSwitch){
+    sessionStorage.removeItem('pendingSwitchOrg');
+    const { error: swErr } = await sb.rpc('switch_org', { org_id: pendingSwitch });
+    if(!swErr){
+      const { data: refreshed } = await sb.from('profiles').select('*').eq('id', user.id).single();
+      if(refreshed) profile = refreshed;
+    }
+  }
   if(profile.pin_hash){
     buildKeypad('keypad', onVerifyPinDigit);
     showScreen('lock');
@@ -2155,9 +2166,9 @@ async function loadEverything(){
 // ---- Multi-espaces (EVO-001) : liste des espaces + bascule ----
 async function loadOrgMembers(){
   const listEl = document.getElementById('switchOrgList');
-  const memRes = await sb.from('org_members').select('org_id, role');
-  if(memRes.error){ listEl.innerHTML = '<div class="meta" style="color:#e88;font-size:11px;">Erreur de chargement : ' + esc(memRes.error.message) + '</div>'; return; }
-  const mem = memRes.data || [];
+  const { data: spaces, error } = await sb.rpc('my_spaces');
+  if(error){ listEl.innerHTML = '<div class="meta" style="color:#e88;font-size:11px;">Erreur de chargement : ' + esc(error.message) + '</div>'; return; }
+  const mem = spaces || [];
   if(!mem.length){
     const cur = activeOrgId();
     let curName = '';
@@ -2168,14 +2179,14 @@ async function loadOrgMembers(){
     listEl.innerHTML = '<div class="meta" style="color:var(--sage);font-size:11px;">' + (curName ? 'Seul espace lié à ce compte : <b>' + esc(curName) + '</b>.' : 'Aucun espace pour ce compte.') + '</div>';
     return;
   }
-  const ids = mem.map(m=>m.org_id);
-  const { data: orgs } = await sb.from('organizations').select('id, name').in('id', ids);
-  const byId = Object.fromEntries((orgs||[]).map(o=>[o.id, o]));
+  const { data: { user } } = await sb.auth.getUser();
+  const me = ((user && user.email) || '').toLowerCase();
   const cur = activeOrgId();
   listEl.innerHTML = mem.map(m=>{
-    const o = byId[m.org_id];
-    const active = m.org_id === cur;
-    return `<div class="set-row" data-switch-org="${m.org_id}" style="cursor:pointer; ${active ? 'background:rgba(217,164,65,0.10);' : ''}"><div class="lbl">${esc(o ? o.name : 'Espace sans nom')}<small>${m.role === 'admin' ? 'Admin' : 'Membre'}${active ? ' · actuel' : ''}</small></div><span class="val">${active ? '✓' : '→'}</span></div>`;
+    const active = m.id === cur;
+    const ownerDiff = m.owner_email && m.owner_email.toLowerCase() !== me;
+    const sub = (m.role === 'admin' ? 'Admin' : 'Membre') + (active ? ' · actuel' : '') + (ownerDiff ? ' · via ' + m.owner_email : '');
+    return `<div class="set-row" data-switch-org="${m.id}" data-owner-email="${esc(m.owner_email || '')}" style="cursor:pointer; ${active ? 'background:rgba(217,164,65,0.10);' : ''}"><div class="lbl">${esc(m.name)}<small>${esc(sub)}</small></div><span class="val">${active ? '✓' : '→'}</span></div>`;
   }).join('');
 }
 document.getElementById('switchOrgRow').addEventListener('click', async ()=>{
@@ -2187,7 +2198,33 @@ document.getElementById('switchOrgRow').addEventListener('click', async ()=>{
 document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
   const row = e.target.closest('[data-switch-org]'); if(!row) return;
   const orgId = row.dataset.switchOrg;
+  const ownerEmail = row.dataset.ownerEmail || '';
   if(orgId === activeOrgId()){ document.getElementById('switchOrgList').classList.add('hidden'); return; }
+  // Bascule espace = reconnexion gmail : chaque espace est géré par son compte
+  // (espace = compte MAYELA CRM). Si le gmail de l'espace diffère du gmail connecté,
+  // on se déconnecte du compte courant puis on envoie un code sur le gmail de l'espace.
+  if(ownerEmail){
+    const { data: { user } } = await sb.auth.getUser();
+    const me = ((user && user.email) || '').toLowerCase();
+    if(ownerEmail.toLowerCase() !== me){
+      if(!window.confirm('Cet espace est géré par le compte « ' + ownerEmail + ' ».\nBasculer dessus en reconnectant avec ' + ownerEmail + ' ?')){
+        return;
+      }
+      sessionStorage.setItem('pendingSwitchOrg', orgId);
+      profile = null; pendingProfile = {}; pendingEmail = "";
+      document.getElementById('appShell').classList.add('hidden');
+      document.getElementById('otpInput').value = '';
+      document.getElementById('fullNameInput').value = '';
+      document.getElementById('jobTitleInput').value = '';
+      document.getElementById('companyInput').value = '';
+      document.getElementById('phoneRegInput').value = '';
+      await sb.auth.signOut();
+      document.getElementById('emailInput').value = ownerEmail;
+      showScreen('authEmail');
+      document.getElementById('sendOtpBtn').click();
+      return;
+    }
+  }
   const { error } = await sb.rpc('switch_org', { org_id: orgId });
   if(error){ toast(error.message, true); return; }
   await refreshProfile();
@@ -2216,7 +2253,7 @@ document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-3f7a02e94b';
+const APP_VERSION = 'mayela-crm-0ac17b2d4c';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
