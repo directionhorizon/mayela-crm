@@ -2149,8 +2149,19 @@ async function loadEverything(){
 // ---- Multi-espaces (EVO-001) : liste des espaces + bascule ----
 async function loadOrgMembers(){
   const listEl = document.getElementById('switchOrgList');
-  const { data: mem } = await sb.from('org_members').select('org_id, role');
-  if(!mem || !mem.length){ listEl.innerHTML = '<div class="meta" style="color:var(--sage);font-size:11px;">Un seul espace pour ce compte.</div>'; return; }
+  const memRes = await sb.from('org_members').select('org_id, role');
+  if(memRes.error){ listEl.innerHTML = '<div class="meta" style="color:#e88;font-size:11px;">Erreur de chargement : ' + esc(memRes.error.message) + '</div>'; return; }
+  const mem = memRes.data || [];
+  if(!mem.length){
+    const cur = activeOrgId();
+    let curName = '';
+    if(cur){
+      const orgRes = await sb.from('organizations').select('name').eq('id', cur).maybeSingle();
+      if(!orgRes.error && orgRes.data) curName = String(orgRes.data.name || '');
+    }
+    listEl.innerHTML = '<div class="meta" style="color:var(--sage);font-size:11px;">' + (curName ? 'Seul espace lié à ce compte : <b>' + esc(curName) + '</b>.' : 'Aucun espace pour ce compte.') + '</div>';
+    return;
+  }
   const ids = mem.map(m=>m.org_id);
   const { data: orgs } = await sb.from('organizations').select('id, name').in('id', ids);
   const byId = Object.fromEntries((orgs||[]).map(o=>[o.id, o]));
@@ -2181,7 +2192,7 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-43aaf4e670';
+const APP_VERSION = 'mayela-crm-064aac61bf';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
