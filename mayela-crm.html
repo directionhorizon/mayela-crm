@@ -236,6 +236,7 @@
   #ia::-webkit-scrollbar{ display:none; }
   #iaChatLog::-webkit-scrollbar{ display:none; }
   .hidden{ display:none !important; }
+  .change-code-step{ display:flex; flex-direction:column; gap:8px; }
   .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
   .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
   .toast{ position:absolute; bottom:100px; left:16px; right:16px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px; padding:10px 14px; font-size:12px; z-index:99; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.4); }
@@ -757,11 +758,19 @@
         <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
           <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
-            <div class="lbl">Changer l'e-mail de connexion<small>Un lien est envoyé à votre nouvel e-mail ; l'espace, les clients et les connexions (Google Sheets) sont conservés</small></div>
+            <div class="lbl">Changer l'e-mail de connexion<small>Un code de vérification est envoyé à votre nouvel e-mail ; l'espace, les clients et les connexions (Google Sheets) sont conservés</small></div>
             <input class="field" id="changeEmailInput" type="email" placeholder="Nouvel e-mail" autocomplete="off">
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <button class="btn" id="changeEmailBtn" style="flex:1 1 100%;">Recevoir le lien de confirmation</button>
-              <button class="btn btn-ghost hidden" id="changeEmailResendBtn" style="flex:1 1 100%;">Renvoyer le lien</button>
+              <button class="btn" id="changeEmailBtn" style="flex:1 1 100%;">Envoyer le code</button>
+            </div>
+            <div class="change-code-step hidden" id="changeCodeStep">
+              <div class="lbl" id="changeCodeSentTo"></div>
+              <input class="field" id="changeCodeInput" type="text" inputmode="numeric" placeholder="Code reçu (6 à 8 chiffres)" autocomplete="off" maxlength="8">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn" id="changeCodeConfirmBtn" style="flex:1 1 100%;">Confirmer le changement</button>
+                <button class="btn btn-ghost" id="changeEmailResendBtn" style="flex:1 1 48%;">Renvoyer le code</button>
+                <button class="btn btn-ghost" id="changeEmailCancelBtn" style="flex:1 1 48%;">Annuler</button>
+              </div>
             </div>
             <div class="err-msg" id="changeEmailErr"></div>
           </div>
@@ -2254,7 +2263,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-e2f1a9bb75';
+const APP_VERSION = 'mayela-crm-def206b68e';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -3097,30 +3106,107 @@ document.getElementById('backFromSetPin').addEventListener('click', ()=>{
   if(typeof refreshVersionInfo==='function') refreshVersionInfo();
 });
 
-// ---- Changer l'e-mail de connexion (Supabase auth updateUser + resend emailChange) ----
+// ---- Changer l'e-mail de connexion (code OTP 2 étapes) ----
 const changeEmailInput = document.getElementById('changeEmailInput');
 const changeEmailErr = document.getElementById('changeEmailErr');
 const changeEmailBtn = document.getElementById('changeEmailBtn');
+const changeCodeStep = document.getElementById('changeCodeStep');
+const changeCodeSentTo = document.getElementById('changeCodeSentTo');
+const changeCodeInput = document.getElementById('changeCodeInput');
+const changeCodeConfirmBtn = document.getElementById('changeCodeConfirmBtn');
 const changeEmailResendBtn = document.getElementById('changeEmailResendBtn');
+const changeEmailCancelBtn = document.getElementById('changeEmailCancelBtn');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-async function sendEmailChangeLink(resend){
+
+let emailChangeOriginalUserId = null;
+let emailChangeNewEmail = "";
+
+function resetEmailChangeUI(){
+  changeCodeStep.classList.add('hidden');
+  changeEmailBtn.classList.remove('hidden');
+  changeEmailInput.disabled = false;
+  changeEmailInput.value = "";
+  changeCodeInput.value = "";
+  changeEmailErr.textContent = "";
+  emailChangeOriginalUserId = null;
+  emailChangeNewEmail = "";
+}
+
+async function sendEmailChangeCode(resend){
   const newEmail = changeEmailInput.value.trim();
   if(!EMAIL_RE.test(newEmail)){ changeEmailErr.textContent = "Adresse e-mail invalide."; return; }
   const { data:{ user } } = await sb.auth.getUser();
   if(user && user.email === newEmail){ changeEmailErr.textContent = "C'est déjà votre e-mail de connexion actuel."; changeEmailInput.focus(); return; }
+
   changeEmailErr.textContent = "";
-  changeEmailBtn.disabled = true; changeEmailBtn.textContent = "Envoi…";
-  const { error } = resend
-    ? await sb.auth.resend({ type:'emailChange', email: newEmail })
-    : await sb.auth.updateUser({ email: newEmail });
-  changeEmailBtn.disabled = false; changeEmailBtn.textContent = "Recevoir le lien de confirmation";
+  if(!resend){ changeEmailBtn.disabled = true; changeEmailBtn.textContent = "Envoi…"; }
+
+  // L'ID original est sauvegardé AVANT le changement de session (verifyOtp)
+  emailChangeOriginalUserId = user.id;
+  emailChangeNewEmail = newEmail;
+
+  const { error } = await sb.auth.signInWithOtp({ email: newEmail });
+  changeEmailBtn.disabled = false; changeEmailBtn.textContent = "Envoyer le code";
   if(error){ changeEmailErr.textContent = error.message; toast(error.message, true); return; }
-  changeEmailResendBtn.classList.remove('hidden');
-  changeEmailErr.textContent = "Ouvrez votre boîte " + newEmail + " et cliquez le lien reçu pour confirmer.";
-  toast("Lien de confirmation envoyé à " + newEmail);
+
+  changeCodeSentTo.textContent = "Code envoyé à " + newEmail;
+  changeCodeInput.value = "";
+  changeEmailErr.textContent = "";
+  changeCodeStep.classList.remove('hidden');
+  changeEmailBtn.classList.add('hidden');
+  changeEmailInput.disabled = true;
+
+  // Cooldown 60 secondes sur le bouton "Renvoyer"
+  changeEmailResendBtn.disabled = true;
+  setTimeout(()=>{ changeEmailResendBtn.disabled = false; }, 60000);
+  toast("Code de vérification envoyé à " + newEmail);
 }
-changeEmailBtn.addEventListener('click', ()=> sendEmailChangeLink(false));
-changeEmailResendBtn.addEventListener('click', ()=> sendEmailChangeLink(true));
+
+async function confirmEmailChange(){
+  const token = changeCodeInput.value.trim();
+  changeEmailErr.textContent = "";
+  if(token.length < 6){ changeEmailErr.textContent = "Code trop court (6 à 8 chiffres)."; return; }
+  if(!emailChangeOriginalUserId || !emailChangeNewEmail) return;
+
+  const btn = changeCodeConfirmBtn;
+  btn.disabled = true; btn.textContent = "Confirmation…";
+
+  // 1. Vérifie le code OTP → Supabase crée un user temporaire et nous connecte
+  const { error: verifyErr } = await sb.auth.verifyOtp({ email: emailChangeNewEmail, token, type:'email' });
+  if(verifyErr){
+    btn.disabled = false; btn.textContent = "Confirmer le changement";
+    changeEmailErr.textContent = "Code incorrect ou expiré.";
+    return;
+  }
+
+  // 2. Finalise via Edge Function : supprime le user temporaire + met à jour l'e-mail
+  let confirmFailed = false;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/confirm-email-change', {
+      method: 'POST',
+      headers:{ Authorization:'Bearer ' + (session && session.access_token), 'Content-Type':'application/json' },
+      body: JSON.stringify({ original_user_id: emailChangeOriginalUserId, new_email: emailChangeNewEmail })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Erreur lors du changement.");
+    if(!out.ok) throw new Error(out.error || "Erreur lors du changement.");
+  }catch(e){
+    confirmFailed = true;
+    const msg = e.message || "Erreur lors du changement d'e-mail.";
+    changeEmailErr.textContent = msg;
+    toast(msg, true);
+  }
+  // La session est désormais celle du user temporaire (verifyOtp) — inutilisable :
+  // on se déconnecte proprement dans tous les cas (succès OU échec).
+  await doLogout();
+  if(confirmFailed){ toast("Échec du changement. Reconnectez-vous avec votre ancien e-mail et réessayez.", true); return; }
+  toast("E-mail changé. Connectez-vous avec " + emailChangeNewEmail);
+}
+changeEmailBtn.addEventListener('click', ()=> sendEmailChangeCode(false));
+changeEmailResendBtn.addEventListener('click', ()=> sendEmailChangeCode(true));
+changeCodeConfirmBtn.addEventListener('click', confirmEmailChange);
+changeEmailCancelBtn.addEventListener('click', resetEmailChangeUI);
 
 // ================== RAPPORTS ==================
 let reportPeriod = '30';

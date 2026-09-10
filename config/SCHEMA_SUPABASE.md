@@ -253,5 +253,35 @@ Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles r�
 | `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
 | `adjust-events` | oui | (inactive) Coquille MMP Adjust/Branch |
 | `google-sheets` | oui | Google Sheets export par espace : exchange/refresh (OAuth), status, export |
+| `confirm-email-change` | oui | Finalise le changement d'e-mail : supprime le user temporaire OTP + met à jour l'e-mail via Admin API |
 
 **Secrets requis** (à configurer Dashboard Supabase → Edge Functions → Secrets) : `GEMINI_API_KEY` (conseiller IA), `GS_DEFAULT_CLIENT_ID` + `GS_DEFAULT_CLIENT_SECRET` (export Google Sheets par défaut).
+
+---
+
+## Flux de changement d'e-mail (validation par code OTP)
+
+Le changement d'adresse e-mail de connexion passe par une validation en 2 étapes, sans lien
+de confirmation ni service e-mail tiers :
+
+```
+1. User saisit le nouvel e-mail dans Réglages → clique "Envoyer le code"
+2. Frontend sauvegarde l'ID de l'utilisateur original (user A), puis appelle
+   signInWithOtp({ email })  → Supabase envoie un code à 6-8 chiffres au nouvel e-mail
+3. User saisit le code → clique "Confirmer le changement"
+4. Frontend appelle  verifyOtp({ email, token, type:'email' })  → Supabase vérifie le code
+   et crée/se connecte sur un user TEMPORAIRE (user B) portant le nouvel e-mail
+5. Frontend appelle  confirm-email-change  avec { original_user_id: user A, new_email }
+6. confirm-email-change (service_role) :
+   - Vérifie que la session appelante (user B) porte bien le nouvel e-mail
+   - Trouve le user temporaire (créé il y a < 15 min) et le SUPPRIME (+ son profil orphelin)
+   - Met à jour l'e-mail de user A via  admin.updateUserById()
+7. Frontend se déconnecte → l'utilisateur se reconnecte avec le nouvel e-mail
+```
+
+Sécurité :
+- Une session non conforme (= un autre compte) est rejetée (`403`)
+- Un user temporaire de plus de 15 minutes n'est jamais supprimé (`409`) — protection
+  contre la suppression accidentelle d'un compte réel
+- Le code OTP expire selon la configuration Supabase (10 min par défaut)
+- Rate limit client : bouton "Renvoyer" désactivé 60 s après l'envoi

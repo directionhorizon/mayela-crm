@@ -139,12 +139,17 @@
 | 6 | Reviens à Réglages → "Se déconnecter" | Reviens à écran "Connexion à MAYELA CRM" |
 | 7 | Re-tape l'e-mail, reçois le code, le rentre | Back au lock screen |
 | 8 | Tape le NOUVEAU PIN ("2222") | Accès accordé |
+| 9 | Réglages → "Changer l'e-mail de connexion" → saisit un nouvel e-mail → "Envoyer le code" | « Code envoyé à <nouvel e-mail> » + champ de code affiché |
+| 10 | Reçoit le code (6-8 chiffres) sur le nouvel e-mail → le saisit → "Confirmer le changement" | Déconnexion automatique + toast « E-mail changé » |
+| 11 | Se reconnecte avec le NOUVEL e-mail | Même espace, mêmes clients, PIN toujours actif |
 
 **Conditions de passage** ✓
 - [ ] PIN changeable sans créer nouveau compte
 - [ ] Ancienne PIN ne marche plus après changement
 - [ ] Logout efface la session Supabase
 - [ ] Login après logout redemande email/code/PIN
+- [ ] E-mail de connexion changeable via code OTP (sans lien)
+- [ ] Espace, clients et PIN conservés après le changement d'e-mail
 
 ---
 

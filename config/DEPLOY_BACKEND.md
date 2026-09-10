@@ -114,6 +114,12 @@ Vérification : relancez la requête `GET /rest/v1/social_accounts?select=id&lim
 
 Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 
+> **Note** : la fonction `confirm-email-change` n'exige **aucun secret supplémentaire** :
+> `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` et `SUPABASE_ANON_KEY`
+> sont fournis automatiquement aux Edge Functions par l'environnement Supabase.
+> La clé `service_role` sert uniquement côté serveur (refusée par les policies RLS côté client)
+> pour finaliser le changement d'e-mail.
+
 ---
 
 ## Étape 3 — Déployer les Edge Functions
@@ -123,8 +129,9 @@ Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 `supabase/functions/social-tiktok/index.ts`,
 `supabase/functions/social-insights/index.ts`,
 `supabase/functions/tiktok-events/index.ts`,
-`supabase/functions/google-sheets/index.ts` (export Google Sheets OAuth) et
-`supabase/functions/adjust-events/index.ts` (coquille MMP, inactive).
+`supabase/functions/google-sheets/index.ts` (export Google Sheets OAuth),
+`supabase/functions/confirm-email-change/index.ts` (changement d'e-mail : finalisation)
+et `supabase/functions/adjust-events/index.ts` (coquille MMP, inactive).
 
 ### Option A — Dashboard (sans CLI)
 1. Dashboard Supabase → **Edge Functions** → **Create a new function** / **Create function**
@@ -135,7 +142,8 @@ Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 6. Refaire : nom `social-health` → contenu de `supabase/functions/social-health/index.ts` → **Deploy**
 7. Refaire : nom `tiktok-events` → contenu de `supabase/functions/tiktok-events/index.ts` → **Deploy**
 8. Refaire : nom `google-sheets` → contenu de `supabase/functions/google-sheets/index.ts` → **Deploy**
-9. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
+9. Refaire : nom `confirm-email-change` → contenu de `supabase/functions/confirm-email-change/index.ts` → **Deploy**
+10. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
 
 ### Option B — CLI (si installé)
 ```bash
@@ -146,6 +154,7 @@ supabase functions deploy social-insights --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy social-health --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy tiktok-events --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy google-sheets --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy confirm-email-change --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy adjust-events --project-ref ymqdmfsqtkmlmwffqskt
 ```
 
@@ -487,3 +496,6 @@ Deux modes possibles :
 | Analyse d'audience : chiffres TikTok absents | Compte TikTok non connecté, ou fonction `social-insights` déployée avant sa mise à jour TikTok → redéployer |
 | Événement TikTok non envoyé à la publication | Section Configuration Tracking vide (Pixel ID / token manquants), fonction `tiktok-events` non déployée, ou token Events API expiré → vérifier dans la table `social_events_log` le statut `failed` |
 | Le bouton « Continuer avec Google » échoue | Fournisseur Google non activé dans Supabase (Authentication → Providers), ou URI de redirection absente chez Google |
+| Changer l'e-mail : « Fonction non déployée » ou erreur réseau | Fonction `confirm-email-change` non déployée → voir Étape 3 ci-dessus |
+| Changer l'e-mail : « Code incorrect ou expiré » | Le code OTP a une validité limitée (~10 min) et est à usage unique ; renvoyer un nouveau code avec le bouton « Renvoyer le code » |
+| Changer l'e-mail : « cette adresse e-mail est déjà utilisée par un compte existant » | L'adresse cible appartient à un autre compte confirmé (plus de 15 min) → choisir une autre adresse |
