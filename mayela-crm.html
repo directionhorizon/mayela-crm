@@ -1558,6 +1558,49 @@ function fireTikTokPixel(){
     window.ttq.page();
   }catch(_e){}
 }
+async function sendServerTikTokEvent(event, props){
+  const acc = socialCache && socialCache.find(a=>a.platform==='tiktok');
+  if(!acc || !acc.config || !acc.config.pixel_id) return null;
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return null;
+  const body = { event, external_id: props.external_id||'', properties:{ page_url: location.href, ...props.properties || {} } };
+  if(props.phone) body.phone = String(props.phone);
+  if(props.email) body.email = String(props.email);
+  const r = await fetch(SUPABASE_URL + '/functions/v1/tiktok-events', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+    body: JSON.stringify(body)
+  });
+  let out = null; try{ out = await r.json(); }catch(_e){}
+  return { ok:r.ok, out };
+}
+async function trackTikTokPurchase(clientId, sale){
+  try{
+    if(!clientId || !sale) return;
+    const client = (clientsCache||[]).find(c=>c.id===clientId);
+    if(!client) return;
+    let prod = (produitsCache||[]).find(p=>p.id===sale.produitId) || null;
+    if(!prod && sale.produitId){
+      try{ const { data } = await sb.from('produits_services').select('*').eq('id', sale.produitId).maybeSingle(); prod = data || null; }catch(_e){}
+    }
+    const value = Number(sale.montant) || 0;
+    if(!value) return;
+    const r = await sendServerTikTokEvent('Purchase', {
+      external_id: client.id,
+      phone: client.phone || undefined,
+      properties:{
+        content_id: sale.produitId || undefined,
+        content_type: 'product',
+        content_name: prod ? String(prod.nom||'') : undefined,
+        description: prod ? String(prod.description||'') : undefined,
+        price: prod && Number(prod.prix_defaut) ? Number(prod.prix_defaut) : value,
+        value,
+        currency: 'XAF'
+      }
+    });
+    if(r && !r.ok && r.out && r.out.error) console.warn('[tiktok]', r.out.error);
+  }catch(_e){ /* le tracking ne bloque jamais la vente */ }
+}
 
 // ---- Connexion TikTok (OAuth Login Kit) ----
 function tiktokRedirectUri(){
@@ -1924,17 +1967,14 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   if(errors.length) errEl.textContent = errors.join(' · ');
   btn.disabled = false;
   const trackEvent = document.getElementById('offerTrackEvent').value;
-  if(trackEvent && errors.length < targets.length && socialCache.some(a=>a.platform==='tiktok' && a.config && a.config.pixel_id)){
+  if(trackEvent && errors.length < targets.length){
     try{
-      const { data:{ session: s2 } } = await sb.auth.getSession();
       const cid = activeOrgId() + ':' + Date.now();
-      const r2 = await fetch(SUPABASE_URL + '/functions/v1/tiktok-events', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + s2.access_token },
-        body: JSON.stringify({ event: trackEvent, external_id: cid, properties:{ content_id: prodSel.value || '', page_url: location.href } })
+      const r2 = await sendServerTikTokEvent(trackEvent, {
+        external_id: cid,
+        properties:{ content_id: prodSel.value || '' }
       });
-      const out2 = await r2.json().catch(()=>null);
-      if(!r2.ok) toast('Offre publiée, mais événement TikTok non envoyé : ' + (out2?.error || r2.status), true);
+      if(r2 && !r2.ok) toast('Offre publiée, mais événement TikTok non envoyé : ' + (r2.out?.error || 'erreur'), true);
     }catch(_e){ /* le tracking ne bloque jamais la publication */ }
   }
   if(errors.length < targets.length){
@@ -2141,7 +2181,7 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-33f1eb82da';
+const APP_VERSION = 'mayela-crm-43aaf4e670';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2359,6 +2399,7 @@ document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
   if(!montant){ return; }
   const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId });
   if(error){ toast(error.message, true); return; }
+  trackTikTokPurchase(currentClientId, { montant: Number(montant), produit_id: produitId });
   await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newAchatMontant').value = '';
   document.getElementById('achatProduitSelect').value = '';
