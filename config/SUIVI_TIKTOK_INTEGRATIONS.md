@@ -124,5 +124,21 @@ Dernière mise à jour : 2026-08-29
 | Nouveau lead | SubmitForm | Ajout client |
 | Inscription | CompleteRegistration | Création compte |
 | Demande de devis | Contact | Interaction social |
-| Vente | Purchase | Offre vendue |
+| Vente | Purchase | Enregistrement d'un achat (addAchatBtn) |
 | RDV pris | Schedule | Interaction appel/visite |
+
+### Purchase : paramètres funnel envoyés (à l'enregistrement d'une vente)
+
+Envoi automatique via `tiktok-events` si l'espace a un `pixel_id` configuré (opt-in), avec les paramètres du funnel TikTok :
+
+| Paramètre TikTok | Clé API | Source dans le CRM |
+|---|---|---|
+| id_contenu | content_id | produits_services.id |
+| type_de_contenu | content_type | "product" |
+| description | description | produits_services.description |
+| prix | price | produits_services.prix_defaut |
+| valeur | value | montant de l'achat |
+| nom_du_contenu | content_name | produits_services.nom |
+| devise | currency | "XAF" |
+
+Match utilisateur : `external_id` = client.id et `phone` (hash SHA-256 côté serveur). Le helper client `sendServerTikTokEvent` est aussi réutilisé par la publication d'offre (`offerTrackEvent`).
