@@ -50,7 +50,7 @@
     color:var(--text);
     padding:32px 16px;
   }
-  html, body{ position:fixed; inset:0; overflow:hidden; height:100%; overscroll-behavior:none; }
+  html, body{ height:100%; overflow:hidden; overscroll-behavior:none; }
   .stage{ display:flex; flex-direction:column; align-items:center; gap:14px; max-height:100%; max-height:100dvh; overflow:hidden; }
   .brand-row{ display:flex; align-items:center; gap:10px; color:var(--sage); font-size:13px; letter-spacing:.04em;}
   .brand-row b{ color:var(--gold); font-family:'Sora',sans-serif; font-weight:700; }
@@ -2216,7 +2216,7 @@ document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-572a9c31e8';
+const APP_VERSION = 'mayela-crm-3f7a02e94b';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
