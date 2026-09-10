@@ -747,6 +747,12 @@
           <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
           <div class="set-row" id="switchOrgRow" style="cursor:pointer;"><div class="lbl">Changer d'espace<small>Basculer vers un autre business (TikTok/Facebook/Google Sheets suivent)</small></div><span class="val">→</span></div>
           <div id="switchOrgList" class="hidden" style="display:flex; flex-direction:column; gap:6px; padding:0 20px 10px;"></div>
+          <div class="set-row" id="createOrgRow"><div class="lbl">Créer un espace<small>Nouveau business indépendant — les espaces existants restent</small></div></div>
+          <div id="createOrgList" class="hidden" style="display:flex; flex-direction:column; gap:8px; padding:0 20px 12px;">
+            <input class="field" type="text" id="newSpaceName" placeholder="Nom du nouvel espace">
+            <button class="btn" id="createSpaceBtn">Créer mon espace</button>
+            <div class="err-msg" id="newSpaceErr"></div>
+          </div>
           <div class="set-row" id="renameOrgRow" style="cursor:pointer;"><div class="lbl">Renommer l'espace</div><span class="val">→</span></div>
           <div class="set-row hidden" id="allowTeamRenameRow" style="cursor:pointer;"><div class="lbl">Autoriser l'équipe à renommer<small>Sinon, seul vous pouvez le faire</small></div><span class="val" id="allowTeamRenameVal">→</span></div>
           <div class="set-row"><div class="lbl">Code d'invitation<small>À partager avec votre équipe</small></div><span class="val" id="setOrgCode">–</span></div>
@@ -2189,10 +2195,28 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
   toast('Espace changé.');
   await loadEverything();
 });
+document.getElementById('createOrgRow').addEventListener('click', ()=>{
+  const listEl = document.getElementById('createOrgList');
+  listEl.classList.toggle('hidden');
+});
+document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
+  const inp = document.getElementById('newSpaceName');
+  const errEl = document.getElementById('newSpaceErr');
+  const name = (inp.value || '').trim();
+  if(!name){ errEl.textContent = "Entrez un nom d'entreprise."; return; }
+  errEl.textContent = '';
+  const { data, error } = await sb.rpc('create_organization', { org_name: name });
+  if(error){ errEl.textContent = error.message; return; }
+  inp.value = '';
+  await refreshProfile();
+  await loadEverything();
+  if(!document.getElementById('switchOrgList').classList.contains('hidden')) await loadOrgMembers();
+  toast('Espace « ' + name + ' » créé et activé.');
+});
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-b4d26f0916';
+const APP_VERSION = 'mayela-crm-572a9c31e8';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
