@@ -124,7 +124,7 @@
 
 ---
 
-## ✅ Scénario 5 : Paramètres, changement PIN, déconnexion
+## ✅ Scénario 5 : Paramètres, déconnexion, ouverture directe
 
 **Durée estimée** : 2 min  
 **Compte** : N'importe lequel
@@ -134,22 +134,19 @@
 | 1 | Nav → "Réglages" | Écran avec Espace + Code d'invitation + Email |
 | 2 | Regarde l'email connecté | Affiche l'e-mail utilisé pour login |
 | 3 | Regarde le code d'invitation | Affiche le code pour inviter (si orga créée) |
-| 4 | Clique "Changer le code PIN" | Écran "Créez votre code PIN" |
-| 5 | Tape 4 nouveaux chiffres (ex: "2222") | Nouveau PIN accepté |
-| 6 | Reviens à Réglages → "Se déconnecter" | Reviens à écran "Connexion à MAYELA CRM" |
-| 7 | Re-tape l'e-mail, reçois le code, le rentre | Back au lock screen |
-| 8 | Tape le NOUVEAU PIN ("2222") | Accès accordé |
-| 9 | Réglages → "Changer l'e-mail de connexion" → saisit un nouvel e-mail → "Envoyer le code" | « Code envoyé à <nouvel e-mail> » + champ de code affiché |
-| 10 | Reçoit le code (6-8 chiffres) sur le nouvel e-mail → le saisit → "Confirmer le changement" | Déconnexion automatique + toast « E-mail changé » |
-| 11 | Se reconnecte avec le NOUVEL e-mail | Même espace, mêmes clients, PIN toujours actif |
+| 4 | Clique "Se déconnecter" | Reviens à écran "Connexion à MAYELA CRM" |
+| 5 | Re-tape l'e-mail, reçois le code, le rentre | Accès direct à l'app (Accueil + barre du bas visible) — plus d'écran PIN |
+| 6 | Recharge l'app (mise à jour / PWA) | Accès direct à l'app, barre du bas visible — pas de double saisie |
+| 7 | Réglages → "Changer l'e-mail de connexion" → saisit un nouvel e-mail → "Envoyer le code" | « Code envoyé à <nouvel e-mail> » + champ de code affiché |
+| 8 | Reçoit le code (6-8 chiffres) sur le nouvel e-mail → le saisit → "Confirmer le changement" | Déconnexion automatique + toast « E-mail changé » |
+| 9 | Se reconnecte avec le NOUVEL e-mail | Même espace, mêmes clients conservés |
 
 **Conditions de passage** ✓
-- [ ] PIN changeable sans créer nouveau compte
-- [ ] Ancienne PIN ne marche plus après changement
 - [ ] Logout efface la session Supabase
-- [ ] Login après logout redemande email/code/PIN
+- [ ] Login après logout redemande email/code mais PAS le PIN
+- [ ] Ouverture/rechargement avec session active → accès direct, barre du bas visible
 - [ ] E-mail de connexion changeable via code OTP (sans lien)
-- [ ] Espace, clients et PIN conservés après le changement d'e-mail
+- [ ] Espace et clients conservés après le changement d'e-mail
 
 ---
 

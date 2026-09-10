@@ -1092,12 +1092,9 @@ async function afterLogin(){
       if(refreshed) profile = refreshed;
     }
   }
-  if(profile.pin_hash){
-    buildKeypad('keypad', onVerifyPinDigit);
-    showScreen('lock');
-    return;
-  }
-  // Pas de PIN configuré : accès direct à l'app. Le PIN reste disponible en option dans Réglages.
+  // Accès direct à l'app : le verrou PIN est volontairement ignoré à l'ouverture pour
+  // entrer instantanément. La barre de navigation en bas est alors immédiatement disponible.
+  // (Le PIN reste configurable dans Réglages.)
   await afterPinOk();
 }
 
@@ -2263,7 +2260,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-def206b68e';
+const APP_VERSION = 'mayela-crm-98c6331d6f';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
