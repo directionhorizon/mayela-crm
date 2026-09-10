@@ -102,6 +102,32 @@ Cela ajoute :
 Vérification : relancez la requête `GET /rest/v1/social_accounts?select=id&limit=1` → doit répondre
 200 (et non plus 403).
 
+### 1c — Migration V7 (durcissement sécurité) — À APPLIQUER AVANT de redéployer les fonctions
+1. Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V7_SECURITE.sql`
+3. Cliquez **Run**
+
+Cela ajoute :
+- la table **`email_change_requests`** + RLS (`user_id = auth.uid()` forcé) — le changement
+  d'e-mail ne peut plus cibler qu'un autre compte (anti prise de contrôle) ;
+- le retrait du droit `SELECT(config)` sur `social_accounts` et `integrations_oauth` aux rôles
+  client : les secrets ne sont plus extractibles via l'API REST par un membre ;
+- la vue `social_accounts_safe` bascule en lecture propriétaire + `FORCE ROW LEVEL SECURITY`
+  (le filtrage par espace est conservé, les secrets restent purgés).
+
+⚠️ **Après cette migration, les Edge Functions `social-publish`, `social-tiktok`,
+`social-insights`, `social-health`, `tiktok-events`, `adjust-events`, `google-sheets` et
+`confirm-email-change` doivent être REDÉPLOYÉES** (elles lisent désormais les secrets via
+`service_role`, avec un filtre `org_id` explicite — voir Étape 3). Le front n'est pas touché
+par ce changement (il lit déjà la vue `social_accounts_safe`).
+
+Vérification :
+- `select config from public.social_accounts;` en tant que membre → **permission denied** (attendu)
+- `select platform, connected, has_pixel_token, config from public.social_accounts_safe;` → OK,
+  `config` sans secrets
+- `insert into public.email_change_requests (user_id, new_email)
+   values (auth.uid(), 'x@y.com');` → OK ; avec un `user_id` d'un autre compte → **rejeté**
+
 ---
 
 ## Étape 2 — Clé Gemini + secrets
@@ -123,6 +149,14 @@ Plan gratuit Gemini : suffisant pour un usage PME (~1500 requêtes/jour).
 ---
 
 ## Étape 3 — Déployer les Edge Functions
+
+> ℹ️ **Depuis la migration V7** : les fonctions qui lisent des secrets
+> (`social-publish`, `social-tiktok`, `social-insights`, `social-health`,
+> `tiktok-events`, `adjust-events`, `google-sheets`, `confirm-email-change`) utilisent un
+> client `service_role` et filtrent `org_id` depuis le profil de l'appelant. Elles doivent
+> être redéployées APRÈS avoir appliqué `MIGRATION_V7_SECURITE.sql` (étape 1c). Les secrets
+> `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_URL` / `SUPABASE_ANON_KEY` sont fournis
+> automatiquement aux Edge Functions par l'environnement Supabase.
 
 Les codes sources sont dans `supabase/functions/ia-conseiller/index.ts`,
 `supabase/functions/social-publish/index.ts`,

@@ -26,6 +26,22 @@ const json = (body: unknown, status = 200) =>
 const TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/";
 const OPEN_API = "https://open.tiktokapis.com/v2";
 
+// Org "active" de l'appelant, équivalent côté serveur de current_org_id().
+async function callerOrg(sb: any, userId: string): Promise<string | null> {
+  const { data: prof } = await sb.from("profiles")
+    .select("org_id, active_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!prof?.org_id) return null;
+  if (prof.active_org_id && prof.active_org_id !== prof.org_id) {
+    const { data: mem } = await sb.from("org_members")
+      .select("org_id").eq("user_id", userId).eq("org_id", prof.active_org_id)
+      .maybeSingle();
+    if (mem?.org_id) return mem.org_id;
+  }
+  return prof.org_id;
+}
+
 async function tiktokToken(body: Record<string, string>) {
   const r = await fetch(TOKEN_URL, {
     method: "POST",
@@ -62,10 +78,21 @@ Deno.serve(async (req: Request) => {
     return json({ error: "bad_request" }, 400);
   }
 
-  // Ligne social_accounts de l'org courante pour TikTok (isolation par RLS)
-  const { data: acc } = await sb.from("social_accounts")
+  // Client admin (service_role) : les secrets de config ne sont plus exposés
+  // à la session utilisateur (revoke SELECT(config) — migration V7).
+  const adminSb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Ligne social_accounts de l'org ACTIVE de l'appelant (équivalent RLS, explicite)
+  const orgId = await callerOrg(sb, user.id);
+  if (!orgId) return json({ error: "espace introuvable" }, 400);
+
+  const { data: acc } = await adminSb.from("social_accounts")
     .select("id, config")
     .eq("platform", "tiktok")
+    .eq("org_id", orgId)
     .maybeSingle();
 
   const cfg = (acc?.config ?? {}) as Record<string, unknown>;

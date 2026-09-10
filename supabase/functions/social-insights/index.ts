@@ -56,6 +56,22 @@ function normCities(raw: unknown): { name: string; count: number }[] {
   return list.sort((a, b) => b.count - a.count).slice(0, 6);
 }
 
+// Org "active" de l'appelant, équivalent côté serveur de current_org_id().
+async function callerOrg(sb: any, userId: string): Promise<string | null> {
+  const { data: prof } = await sb.from("profiles")
+    .select("org_id, active_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!prof?.org_id) return null;
+  if (prof.active_org_id && prof.active_org_id !== prof.org_id) {
+    const { data: mem } = await sb.from("org_members")
+      .select("org_id").eq("user_id", userId).eq("org_id", prof.active_org_id)
+      .maybeSingle();
+    if (mem?.org_id) return mem.org_id;
+  }
+  return prof.org_id;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "GET" && req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -70,10 +86,21 @@ Deno.serve(async (req: Request) => {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return json({ error: "unauthorized" }, 401);
 
-  // Compte Facebook de l'org courante (isolation par RLS, comme social-publish)
-  const { data: acc, error: accErr } = await sb.from("social_accounts")
+  // Client admin (service_role) : les secrets de config ne sont plus exposés
+  // à la session utilisateur (revoke SELECT(config) — migration V7).
+  const adminSb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Compte Facebook de l'org ACTIVE de l'appelant (équivalent RLS, explicite)
+  const orgId = await callerOrg(sb, user.id);
+  if (!orgId) return json({ error: "espace introuvable" }, 400);
+
+  const { data: acc, error: accErr } = await adminSb.from("social_accounts")
     .select("config")
     .eq("platform", "facebook")
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (accErr || !acc) return json({ error: "compte non connecté" }, 404);
@@ -141,9 +168,10 @@ Deno.serve(async (req: Request) => {
     video_count: number | null;
   } | null = null;
 
-  const { data: ttAcc } = await sb.from("social_accounts")
+  const { data: ttAcc } = await adminSb.from("social_accounts")
     .select("id, config, display_name")
     .eq("platform", "tiktok")
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (ttAcc) {

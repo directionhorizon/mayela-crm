@@ -36,6 +36,22 @@ const json = (body: unknown, status = 200) =>
 const OAUTH_TOKEN = "https://oauth2.googleapis.com/token";
 const SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets";
 
+// Org "active" de l'appelant, équivalent côté serveur de current_org_id().
+async function callerOrg(sb: any, userId: string): Promise<string | null> {
+  const { data: prof } = await sb.from("profiles")
+    .select("org_id, active_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!prof?.org_id) return null;
+  if (prof.active_org_id && prof.active_org_id !== prof.org_id) {
+    const { data: mem } = await sb.from("org_members")
+      .select("org_id").eq("user_id", userId).eq("org_id", prof.active_org_id)
+      .maybeSingle();
+    if (mem?.org_id) return mem.org_id;
+  }
+  return prof.org_id;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -70,10 +86,21 @@ Deno.serve(async (req: Request) => {
     return json({ error: "bad_request" }, 400);
   }
 
-  // ---- Lecture de la connexion google_sheets de l'org courante (isolation RLS) ----
-  const { data: acc } = await sb.from("integrations_oauth")
+  // Client admin (service_role) : les secrets de config ne sont plus exposés
+  // à la session utilisateur (revoke SELECT(config) — migration V7).
+  const adminSb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Lecture de la connexion google_sheets de l'org ACTIVE de l'appelant
+  const orgId = await callerOrg(sb, user.id);
+  if (!orgId) return json({ error: "espace introuvable" }, 400);
+
+  const { data: acc } = await adminSb.from("integrations_oauth")
     .select("id, config, display_name")
     .eq("provider", "google_sheets")
+    .eq("org_id", orgId)
     .maybeSingle();
 
 const DEFAULT_CLIENT_ID = Deno.env.get("GS_DEFAULT_CLIENT_ID")?.trim() || "";

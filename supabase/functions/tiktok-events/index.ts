@@ -42,6 +42,22 @@ const sha256 = async (value: string) => {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 };
 
+// Org "active" de l'appelant, équivalent côté serveur de current_org_id().
+async function callerOrg(sb: any, userId: string): Promise<string | null> {
+  const { data: prof } = await sb.from("profiles")
+    .select("org_id, active_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!prof?.org_id) return null;
+  if (prof.active_org_id && prof.active_org_id !== prof.org_id) {
+    const { data: mem } = await sb.from("org_members")
+      .select("org_id").eq("user_id", userId).eq("org_id", prof.active_org_id)
+      .maybeSingle();
+    if (mem?.org_id) return mem.org_id;
+  }
+  return prof.org_id;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -76,10 +92,21 @@ Deno.serve(async (req: Request) => {
     return json({ error: "event inconnu" }, 400);
   }
 
-  // Pixel ID + Access Token Events API de l'org courante (isolation par RLS)
-  const { data: acc, error: accErr } = await sb.from("social_accounts")
+  // Client admin (service_role) : les secrets de config ne sont plus exposés
+  // à la session utilisateur (revoke SELECT(config) — migration V7).
+  const adminSb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Pixel ID + Access Token Events API de l'org ACTIVE de l'appelant
+  const orgId = await callerOrg(sb, user.id);
+  if (!orgId) return json({ error: "espace introuvable" }, 400);
+
+  const { data: acc, error: accErr } = await adminSb.from("social_accounts")
     .select("id, org_id, config")
     .eq("platform", "tiktok")
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (accErr) return json({ error: accErr.message }, 500);

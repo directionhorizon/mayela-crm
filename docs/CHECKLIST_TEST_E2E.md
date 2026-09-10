@@ -1,4 +1,4 @@
-# MAYELA CRM — Checklist de test E2E (5 scénarios)
+# MAYELA CRM — Checklist de test E2E (6 scénarios)
 **Pour validation avant présentation du 25 juillet**
 
 ---
@@ -150,15 +150,42 @@
 
 ---
 
+## ✅ Scénario 6 : Durcissement sécurité (migration V7)
+
+**Durée estimée** : 5 min  
+**Compte** : un compte admin de l'orga + un SECOND compte membre de la même orga
+**Prérequis** : `MIGRATION_V7_SECURITE.sql` appliquée + Edge Functions redéployées (étape 1c + 3)
+
+| Étape | Action | ✓ Résultat attendu |
+|---|---|---|
+| 1 | (SQL Editor, en tant que membre) `select config from public.social_accounts;` | **permission denied** (colonne masquée) |
+| 2 | (SQL Editor, en tant que membre) `select platform, connected, has_pixel_token, config from public.social_accounts_safe;` | OK — `config` sans secrets |
+| 3 | (SQL Editor) `insert into public.email_change_requests (user_id, new_email) values (auth.uid(), 'x@y.com');` | OK |
+| 4 | (SQL Editor) même insert MAIS avec un `user_id` d'un autre compte | **Rejeté** (policy `ecr_insert_self`) |
+| 5 | Réglages → "Changer l'e-mail de connexion" → nouvel e-mail → "Envoyer le code" | Code reçu ; annuler avec "Annuler" → aucune demande résiduelle |
+| 6 | Recommencer → confirmer avec le code → déconnexion → reconnexion avec le nouvel e-mail | E-mail changé, espace/clients conservés |
+| 7 | Onglet Réseaux : publier une offre (Facebook/TikTok) et lire l'état (carte) | Fonctionne toujours (fonctions en mode service_role) |
+| 8 | Google Sheets : statut + export | Fonctionne toujours |
+| 9 | Conseiller IA : poser une question | Fonctionne toujours (fonction inchangée) |
+
+**Conditions de passage** ✓
+- [ ] Les secrets `config` ne sont plus lisibles via REST par un membre
+- [ ] La vue `social_accounts_safe` affiche toujours sans erreur (org isolée entre membres)
+- [ ] Le changement d'e-mail exige dorénavant une demande serveur (RLS `user_id = auth.uid()`)
+- [ ] Publication/insights/sheets/IA fonctionnent après le passage en `service_role`
+
+---
+
 ## 🏁 Récapitulatif
 
 | Scénario | Objectif | Status | Notes |
 |---|---|---|---|
-| 1 | Onboarding + créer org | ⬜ À tester | Vérifie OTP et PIN persistance |
+| 1 | Onboarding + créer org | ⬜ À tester | Vérifie OTP et création d'espace |
 | 2 | Rejoindre org existante | ⬜ À tester | Simule un nouvel employé |
 | 3 | CRUD clients + interactions | ⬜ À tester | Le cœur métier — bien valider |
 | 4 | Filtres + KPIs + IA | ⬜ À tester | Montre la valeur de l'app |
-| 5 | Paramètres + PIN + logout | ⬜ À tester | Sécurité et UX de session |
+| 5 | Paramètres + déconnexion + ouverture directe + changement d'e-mail | ⬜ À tester | Session et changement d'e-mail OTP |
+| 6 | Durcissement sécurité (V7) | ⬜ À tester | Secrets masqués + anti détournement e-mail |
 
 ---
 

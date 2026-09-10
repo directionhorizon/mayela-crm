@@ -144,6 +144,19 @@ created_at   timestamptz NOT NULL
 ```
 Rempli automatiquement par un trigger générique (`log_change`) sur les tables sensibles.
 
+## `email_change_requests` (demandes de changement d'e-mail, anti détournement — V7)
+```
+id          uuid NOT NULL
+user_id     uuid NOT NULL           -- l'utilisateur qui initie le changement
+new_email   text NOT NULL
+created_at  timestamptz NOT NULL
+```
+- RLS `ecr_insert_self` : une demande ne peut être créée QUE pour `user_id = auth.uid()`
+  → le compte cible d'un changement d'e-mail ne peut jamais être un autre utilisateur.
+- RLS `ecr_select_self` / `ecr_delete_self` : lecture et annulation réservées à l'auteur.
+- Consommée par la fonction Edge `confirm-email-change` (service_role), qui en lit le
+  `user_id` (compte original) — le client ne fournit plus d'UUID arbitraire.
+
 ## `social_accounts` (comptes réseaux connectés, 1 par espace/plateforme)
 ```
 id            uuid NOT NULL
@@ -238,6 +251,11 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
 - Isolation via `owner_user_id = auth.uid()` OU `org_id = current_org_id()`
 - `current_org_id()` lit `profiles.org_id` via `auth.uid()`
 - Tables enfants (`interactions`, `achats`, `tasks`, `devis`, `creances`) : policy `ALL` vérifiant que le `client_id` référencé appartient bien à l'utilisateur/l'org
+- **Secrets** (V7) : la colonne `config` de `social_accounts` et `integrations_oauth` n'est
+  plus `SELECT`able par `anon`/`authenticated` (`revoke`). Seules les Edge Functions la
+  lisent, via `service_role`. La vue `social_accounts_safe` (lue par le navigateur) est en
+  `security_invoker = false` + `FORCE ROW LEVEL SECURITY` pour conserver le filtrage par
+  espace tout en purgeant les secrets.
 
 ## Edge Functions déployées
 
@@ -253,35 +271,54 @@ Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles r�
 | `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
 | `adjust-events` | oui | (inactive) Coquille MMP Adjust/Branch |
 | `google-sheets` | oui | Google Sheets export par espace : exchange/refresh (OAuth), status, export |
-| `confirm-email-change` | oui | Finalise le changement d'e-mail : supprime le user temporaire OTP + met à jour l'e-mail via Admin API |
+| `confirm-email-change` | oui | Finalise le changement d'e-mail : lit la demande (`email_change_requests`), supprime le user temporaire OTP + met à jour l'e-mail via Admin API |
 
 **Secrets requis** (à configurer Dashboard Supabase → Edge Functions → Secrets) : `GEMINI_API_KEY` (conseiller IA), `GS_DEFAULT_CLIENT_ID` + `GS_DEFAULT_CLIENT_SECRET` (export Google Sheets par défaut).
+
+> **Note sécurité (V7)** : depuis la migration V7, les colonnes `config` de
+> `social_accounts` / `integrations_oauth` ne sont plus lisibles par la session
+> utilisateur. Les fonctions qui lisent ces secrets (`ia-conseiller` non concernée ;
+> `social-publish`, `social-tiktok`, `social-insights`, `social-health`,
+> `tiktok-events`, `adjust-events`, `google-sheets`, `confirm-email-change`) utilisent
+> un client `service_role` et filtrent `org_id` depuis le profil de l'appelant
+> (équivalent de `current_org_id()`). Toutes ont été **redéployées** dans ce mode
+> (voir `config/DEPLOY_BACKEND.md` → Étape 3).
 
 ---
 
 ## Flux de changement d'e-mail (validation par code OTP)
 
 Le changement d'adresse e-mail de connexion passe par une validation en 2 étapes, sans lien
-de confirmation ni service e-mail tiers :
+de confirmation ni service e-mail tiers. Depuis V7, le compte cible n'est plus fourni par
+le client mais lu côté serveur depuis `email_change_requests` (anti détournement) :
 
 ```
 1. User saisit le nouvel e-mail dans Réglages → clique "Envoyer le code"
-2. Frontend sauvegarde l'ID de l'utilisateur original (user A), puis appelle
-   signInWithOtp({ email })  → Supabase envoie un code à 6-8 chiffres au nouvel e-mail
+2. Frontend ENREGISTRE une demande côte serveur :
+     insert into email_change_requests (user_id, new_email)
+     values (auth.uid(), new_email)          -- RLS force user_id = auth.uid()
+   puis appelle  signInWithOtp({ email })  → Supabase envoie un code à 6-8 chiffres
 3. User saisit le code → clique "Confirmer le changement"
 4. Frontend appelle  verifyOtp({ email, token, type:'email' })  → Supabase vérifie le code
    et crée/se connecte sur un user TEMPORAIRE (user B) portant le nouvel e-mail
-5. Frontend appelle  confirm-email-change  avec { original_user_id: user A, new_email }
+5. Frontend appelle  confirm-email-change  avec { new_email } (sans UUID)
 6. confirm-email-change (service_role) :
    - Vérifie que la session appelante (user B) porte bien le nouvel e-mail
-   - Trouve le user temporaire (créé il y a < 15 min) et le SUPPRIME (+ son profil orphelin)
-   - Met à jour l'e-mail de user A via  admin.updateUserById()
+   - Lit la demande côte serveur (table email_change_requests) → user A (aucun UUID client)
+   - Vérifie la fraîcheur de la demande (< 15 min) ET qu'elle est plus ancienne que user B
+   - Supprime le user temporaire (créé il y a < 15 min) + son profil orphelin
+   - Met à jour l'e-mail de user A via  admin.updateUserById(request.user_id, { email })
+   - Purge la demande consommée
 7. Frontend se déconnecte → l'utilisateur se reconnecte avec le nouvel e-mail
 ```
 
 Sécurité :
 - Une session non conforme (= un autre compte) est rejetée (`403`)
-- Un user temporaire de plus de 15 minutes n'est jamais supprimé (`409`) — protection
-  contre la suppression accidentelle d'un compte réel
+- **Anti détournement** : aucune demande ne peut cibler un autre compte (RLS
+  `ecr_insert_self` : `user_id = auth.uid()`). Une demande du user temporaire vers
+  lui-même est ignorée (`request.user_id !== caller.id`).
+- Un user temporaire de plus de 15 minutes, ou antérieur à la demande, n'est jamais
+  supprimé (`409`)
+- Une demande expirée (> 15 min) est rejetée (`409`), le compte réel n'est jamais touché
 - Le code OTP expire selon la configuration Supabase (10 min par défaut)
 - Rate limit client : bouton "Renvoyer" désactivé 60 s après l'envoi

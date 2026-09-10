@@ -24,6 +24,23 @@ const json = (body: unknown, status = 200) =>
 const GRAPH = "https://graph.facebook.com/v21.0";
 const OPEN_API = "https://open.tiktokapis.com/v2";
 
+// Org "active" de l'appelant, équivalent côté serveur de current_org_id().
+// Lue via la session utilisateur (RLS nous-restreinte au profil courant).
+async function callerOrg(sb: any, userId: string): Promise<string | null> {
+  const { data: prof } = await sb.from("profiles")
+    .select("org_id, active_org_id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (!prof?.org_id) return null;
+  if (prof.active_org_id && prof.active_org_id !== prof.org_id) {
+    const { data: mem } = await sb.from("org_members")
+      .select("org_id").eq("user_id", userId).eq("org_id", prof.active_org_id)
+      .maybeSingle();
+    if (mem?.org_id) return mem.org_id;
+  }
+  return prof.org_id;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
@@ -51,10 +68,21 @@ Deno.serve(async (req: Request) => {
   }
   if (!text.trim()) return json({ error: "empty_text" }, 400);
 
-  // Compte social de l'org courante pour cette plateforme
-  const { data: acc, error: accErr } = await sb.from("social_accounts")
+  // Client admin (service_role) : les secrets de config ne sont plus exposés
+  // à la session utilisateur (revoke SELECT(config) — migration V7).
+  const adminSb = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  // Compte social de l'org ACTIVE de l'appelant (équivalent RLS, explicite ici)
+  const orgId = await callerOrg(sb, user.id);
+  if (!orgId) return json({ error: "espace introuvable" }, 400);
+
+  const { data: acc, error: accErr } = await adminSb.from("social_accounts")
     .select("id, config")
     .eq("platform", platform)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (accErr || !acc) return json({ error: "compte non connecté" }, 404);
