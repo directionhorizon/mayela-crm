@@ -330,10 +330,6 @@
       <div class="badge64">📇</div>
       <div class="stitle">Connexion à MAYELA CRM</div>
       <div class="ssub">Aucun mot de passe — un code de connexion vous sera envoyé par e-mail.</div>
-      <input class="field" type="text" id="fullNameInput" placeholder="Nom complet">
-      <input class="field" type="text" id="jobTitleInput" placeholder="Fonction (ex: Gérant, Commercial)">
-      <input class="field" type="text" id="companyInput" placeholder="Entreprise">
-      <input class="field" type="tel" id="phoneRegInput" placeholder="Numéro de téléphone">
       <div class="email-wrap" id="emailWrap">
         <input class="field" type="email" id="emailInput" placeholder="vous@entreprise.cg" autocomplete="off">
         <span class="email-chevron">▽</span>
@@ -772,6 +768,18 @@
           <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
           <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
         </div>
+        <div class="section-title">Profil</div>
+        <div class="set-block">
+          <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div class="lbl">Mes informations<small>Affichées sur vos documents et rapports</small></div>
+            <input class="field" type="text" id="profName" placeholder="Nom complet" autocomplete="off">
+            <input class="field" type="text" id="profJob" placeholder="Fonction (ex: Gérant, Commercial)" autocomplete="off">
+            <input class="field" type="text" id="profCompany" placeholder="Entreprise" autocomplete="off">
+            <input class="field" type="tel" id="profPhone" placeholder="Numéro de téléphone" autocomplete="off">
+            <button class="btn" id="saveProfileBtn" style="width:100%;">Enregistrer</button>
+            <div class="err-msg" id="profErr"></div>
+          </div>
+        </div>
         <div class="section-title">Intégrations</div>
         <div class="info-block" style="margin:0 20px 12px; display:flex; flex-direction:column; gap:10px;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
@@ -1006,21 +1014,13 @@ document.getElementById('oauthGoogleBtn').addEventListener('click', ()=> oauthSi
 
 // ================== AUTH: INSCRIPTION / OTP ==================
 document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
-  const fullName = document.getElementById('fullNameInput').value.trim();
-  const jobTitle = document.getElementById('jobTitleInput').value.trim();
-  const company = document.getElementById('companyInput').value.trim();
-  const phone = document.getElementById('phoneRegInput').value.trim();
   const email = document.getElementById('emailInput').value.trim();
   const errEl = document.getElementById('authEmailErr');
   errEl.textContent = "";
-
-  // Le formulaire (nom, fonction, entreprise, téléphone) sert à l'enrichissement du profil
-  // lors de la PREMIÈRE connexion. Pour un utilisateur déjà inscrit, ces champs sont
-  // optionnels : les exiger à chaque envoi obligerait à tout re-saisir à chaque connexion.
   if(!email || !email.includes('@')){ errEl.textContent = "Entrez un e-mail valide."; return; }
 
   pendingEmail = email;
-  pendingProfile = { full_name: fullName, job_title: jobTitle, company, phone };
+  pendingProfile = {};
 
   // Transition immédiate vers l'écran du code : on n'attend pas la réponse réseau
   // pour changer d'écran, seulement pour confirmer/infirmer l'envoi une fois affiché.
@@ -1062,21 +1062,9 @@ async function afterLogin(){
     const ins = await sb.from('profiles').insert({ id:user.id }).select().single();
     prof = ins.data;
   }
-  // Enregistre les infos saisies à l'écran d'inscription (nom, fonction, entreprise, téléphone).
-  // Ne pousse que les champs réellement renseignés : un utilisateur déjà inscrit qui laisse le
-  // formulaire vide ne verra pas son profil écrasé de valeurs vides.
-  const patch = {};
-  if(pendingProfile.full_name) patch.full_name = pendingProfile.full_name;
-  if(pendingProfile.job_title) patch.job_title = pendingProfile.job_title;
-  if(pendingProfile.company) patch.company = pendingProfile.company;
-  if(pendingProfile.phone) patch.phone = pendingProfile.phone;
-  if(Object.keys(patch).length){
-    const { data: updated } = await sb.from('profiles')
-      .update(patch).eq('id', user.id).select().single();
-    if(updated) prof = updated;
-    pendingProfile = {};
-  } else if(!prof.full_name){
-    // Connexion via Google (formulaire sauté) : on reprend le nom fourni par le fournisseur
+  // Le formulaire d'inscription a été supprimé : le profil se remplit dans Réglages.
+  // Connexion via Google : on reprend le nom fourni par le fournisseur si profil vide.
+  if(!prof.full_name){
     const oauthName = user.user_metadata?.full_name || user.user_metadata?.name || null;
     if(oauthName){
       const { data: updated } = await sb.from('profiles').update({ full_name: oauthName }).eq('id', user.id).select().single();
@@ -2142,6 +2130,8 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
 async function loadEverything(){
   document.getElementById('hello').textContent = 'Bonjour, ' + (profile.full_name || 'vous');
   document.getElementById('pinRowLbl').textContent = profile.pin_hash ? 'Changer le code PIN' : 'Activer un code PIN (optionnel)';
+  const g = id => document.getElementById(id);
+  if(g('profName')){ g('profName').value = profile.full_name || ''; g('profJob').value = profile.job_title || ''; g('profCompany').value = profile.company || ''; g('profPhone').value = profile.phone || ''; }
   const { data: clients } = await sb.from('clients').select('*').order('created_at', { ascending:false });
   clientsCache = clients || [];
   document.getElementById('clientCount').textContent = clientsCache.length;
@@ -2214,10 +2204,6 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
       profile = null; pendingProfile = {}; pendingEmail = "";
       document.getElementById('appShell').classList.add('hidden');
       document.getElementById('otpInput').value = '';
-      document.getElementById('fullNameInput').value = '';
-      document.getElementById('jobTitleInput').value = '';
-      document.getElementById('companyInput').value = '';
-      document.getElementById('phoneRegInput').value = '';
       await sb.auth.signOut();
       document.getElementById('emailInput').value = ownerEmail;
       showScreen('authEmail');
@@ -2250,10 +2236,25 @@ document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
   if(!document.getElementById('switchOrgList').classList.contains('hidden')) await loadOrgMembers();
   toast('Espace « ' + name + ' » créé et activé.');
 });
+document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('profErr');
+  errEl.textContent = '';
+  const patch = {
+    full_name: document.getElementById('profName').value.trim(),
+    job_title: document.getElementById('profJob').value.trim(),
+    company: document.getElementById('profCompany').value.trim(),
+    phone: document.getElementById('profPhone').value.trim()
+  };
+  const { data: updated, error } = await sb.from('profiles').update(patch).eq('id', profile.id).select().single();
+  if(error){ errEl.textContent = error.message; return; }
+  if(updated) profile = updated;
+  document.getElementById('hello').textContent = 'Bonjour, ' + (profile.full_name || 'vous');
+  toast('Profil enregistré.');
+});
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-0ac17b2d4c';
+const APP_VERSION = 'mayela-crm-e2f1a9bb75';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -3058,8 +3059,6 @@ async function doLogout(){
   profile = null; clientsCache = []; currentClientId = null; pendingProfile = {}; pendingEmail = "";
   document.getElementById('appShell').classList.add('hidden');
   document.getElementById('emailInput').value=''; document.getElementById('otpInput').value='';
-  document.getElementById('fullNameInput').value=''; document.getElementById('jobTitleInput').value='';
-  document.getElementById('companyInput').value=''; document.getElementById('phoneRegInput').value='';
   showScreen('authEmail');
 }
 document.getElementById('logoutRow').addEventListener('click', doLogout);
