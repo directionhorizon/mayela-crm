@@ -112,8 +112,6 @@ Deno.serve(async (req: Request) => {
   if (accErr) return json({ error: accErr.message }, 500);
   if (!acc) return json({ error: "compte TikTok non connecté" }, 404);
 
-  const orgId = acc.org_id;
-
   const cfg = (acc.config ?? {}) as Record<string, unknown>;
   const pixelId = cfg?.pixel_id as string | undefined;
   const pixelAccessToken = cfg?.pixel_access_token as string | undefined;
