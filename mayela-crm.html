@@ -404,9 +404,21 @@
         </div>
         <div class="kpi-grid">
           <div class="kpi"><div class="num" id="kpiClients">–</div><div class="lbl">Clients actifs</div></div>
+          <div class="kpi"><div class="num" id="kpiPending" style="color:#E8926F">–</div><div class="lbl">À traiter</div></div>
           <div class="kpi"><div class="num" id="kpiOverdue" style="color:#E8926F">–</div><div class="lbl">Tâches en retard</div></div>
+          <div class="kpi"><div class="num" id="kpiTodaySales">–</div><div class="lbl">Ventes du jour</div></div>
           <div class="kpi"><div class="num" id="kpiDevis">–</div><div class="lbl">Devis (30j)</div></div>
           <div class="kpi"><div class="num" id="kpiCA">–</div><div class="lbl">Achats (30j, FCFA)</div></div>
+        </div>
+        <div id="dashPerfWrap">
+          <div class="section-title">📊 Performance publicitaire</div>
+          <div class="card-list" id="dashPerf">
+            <div id="dashPerfChips" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
+            <div style="padding-top:8px;">
+              <div class="name" style="font-size:12px;">CA attribué par campagne (cumul)</div>
+              <div id="dashCampBar" style="display:flex; flex-direction:column; gap:7px; margin-top:6px;"></div>
+            </div>
+          </div>
         </div>
         <div class="section-title">⏳ À traiter</div>
         <div class="card-list" id="pendingList"></div>
@@ -2297,6 +2309,7 @@ async function loadEverything(){
   clientsCache = clients || [];
   document.getElementById('clientCount').textContent = clientsCache.length;
   await renderDashboardKpis();
+  renderDashboardPerf();
   renderCentreAction();
   renderClients();
   renderIA();
@@ -2415,7 +2428,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-319297e171';
+const APP_VERSION = 'mayela-crm-5e02a29009';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2460,14 +2473,66 @@ async function forceUpdate(){
 
 async function renderDashboardKpis(){
   document.getElementById('kpiClients').textContent = clientsCache.length;
-  const { count: overdueCount } = await sb.from('tasks').select('*', { count:'exact', head:true }).eq('status','a_faire').lt('due_date', localDateStr());
-  document.getElementById('kpiOverdue').textContent = overdueCount ?? 0;
-  const since = localDateStr(new Date(Date.now() - 30*86400000));
-  const { count: devisCount } = await sb.from('devis').select('*', { count:'exact', head:true }).gte('devis_date', since);
-  document.getElementById('kpiDevis').textContent = devisCount ?? 0;
-  const { data: achats30 } = await sb.from('achats').select('montant').gte('achat_date', since);
-  const total = (achats30||[]).reduce((s,a)=>s+Number(a.montant||0),0);
+  const [overRes, devRes, pendRes, todayRes, achRes] = await Promise.all([
+    sb.from('tasks').select('*', { count:'exact', head:true }).eq('status','a_faire').lt('due_date', localDateStr()),
+    sb.from('devis').select('*', { count:'exact', head:true }).gte('devis_date', localDateStr(new Date(Date.now() - 30*86400000))),
+    sb.from('interactions').select('*', { count:'exact', head:true }).eq('statut_traitement','en_attente'),
+    sb.from('achats').select('*', { count:'exact', head:true }).gte('achat_date', localDateStr()),
+    sb.from('achats').select('montant').gte('achat_date', localDateStr(new Date(Date.now() - 30*86400000)))
+  ]);
+  document.getElementById('kpiOverdue').textContent = overRes.count ?? 0;
+  document.getElementById('kpiPending').textContent = pendRes.count ?? 0;
+  document.getElementById('kpiTodaySales').textContent = todayRes.count ?? 0;
+  document.getElementById('kpiDevis').textContent = devRes.count ?? 0;
+  const total = (achRes.data||[]).reduce((s,a)=>s+Number(a.montant||0),0);
   document.getElementById('kpiCA').textContent = new Intl.NumberFormat('fr-FR',{notation:'compact'}).format(total);
+}
+
+// ================== PERFORMANCE PUBLICITAIRE (étape 5) ==================
+// Vue d'ensemble « ce qui va bien » : ROAS, coût par prospect, panier moyen, réachat
+// (cumulés sur toute la durée des campagnes) + répartition du CA attribué par campagne.
+async function renderDashboardPerf(){
+  const wrap = document.getElementById('dashPerfWrap');
+  const [campRes, achRes, cliRes] = await Promise.all([
+    sb.from('campaigns').select('id,nom,depense_reelle'),
+    sb.from('achats').select('client_id,montant,campagne_id'),
+    sb.from('clients').select('campagne_origine').not('campagne_origine','is',null)
+  ]);
+  const campaigns = campRes.data || [];
+  wrap.classList.toggle('hidden', !campaigns.length);
+  if(!campaigns.length) return;
+
+  const sales = (achRes.data || []).filter(a=>a.campagne_id);
+  const spend = campaigns.reduce((s,c)=>s+(Number(c.depense_reelle)||0),0);
+  const ca = sales.reduce((s,a)=>s+(Number(a.montant)||0),0);
+  const perClient = {}, perCamp = {};
+  sales.forEach(a=>{
+    perClient[a.client_id] = (perClient[a.client_id]||0)+1;
+    perCamp[a.campagne_id] = (perCamp[a.campagne_id]||0)+(Number(a.montant)||0);
+  });
+  const buyers = Object.keys(perClient).length;
+  const repeat = Object.values(perClient).filter(n=>n>=2).length;
+  const prospects = (cliRes.data || []).length;
+  const roas = spend>0 ? Math.round((ca/spend)*100)/100 : null;
+  const chip = (lbl,val) => `<div style="background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:8px 10px; min-width:0;"><div style="font-size:15px; font-weight:700; color:var(--gold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${val}</div><div class="meta">${lbl}</div></div>`;
+  const fmtM = v => v===null ? '—' : new Intl.NumberFormat('fr-FR',{notation:'compact'}).format(v)+' FCFA';
+  document.getElementById('dashPerfChips').innerHTML = [
+    chip('ROAS (depense ÷ ventes)', roas===null?'—':roas+'×'),
+    chip('Coût / prospect', prospects? (spend? fmtM(Math.round(spend/prospects)) : '0 FCFA') : '—'),
+    chip('Panier moyen (campagnes)', sales.length? fmtM(Math.round(ca/sales.length)) : '—'),
+    chip('Réachat', buyers? Math.round(repeat/buyers*100)+'%' : '—')
+  ].join('');
+
+  const top = Object.entries(perCamp).filter(([,sum])=>sum>0).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const max = top.length ? top[0][1] : 0;
+  document.getElementById('dashCampBar').innerHTML = top.length ? top.map(([id,sum])=>{
+    const nm = (campaigns.find(c=>c.id===id)||{}).nom || '';
+    const w = max ? Math.round(sum/max*100) : 0;
+    return `<div>
+      <div class="meta" style="display:flex; justify-content:space-between;"><span style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(nm)}</span><span style="padding-left:8px;">${fmtM(Math.round(sum))}</span></div>
+      <div style="height:6px; background:var(--line); border-radius:4px;"><div style="height:6px; width:${w}%; background:linear-gradient(90deg,var(--gold),#e8c877); border-radius:4px;"></div></div>
+    </div>`;
+  }).join('') : '<div class="meta">Aucune vente attribuée pour le moment — ouvrez une fiche client → Ventes pour lier un achat à une campagne.</div>';
 }
 
 // ================== CENTRE D'ACTION (étape 2) ==================
