@@ -507,6 +507,9 @@
             <select id="achatProduitSelect"><option value="">Produit/service…</option></select>
           </div>
           <div class="add-inline">
+            <select id="newAchatCampagne"><option value="">Aucune (vente sans pub)…</option></select>
+          </div>
+          <div class="add-inline">
             <input id="newAchatQte" type="number" min="1" value="1" style="width:54px;" aria-label="Quantité">
             <input id="newAchatMontant" type="number" placeholder="Montant FCFA">
             <button id="addAchatBtn">+</button>
@@ -763,13 +766,15 @@
             <option value="reseaux">Réseaux sociaux (publications)</option>
             <option value="campagnes">Campagnes — Performance</option>
             <option value="entonnoir">Campagnes — Entonnoir de conversion</option>
+            <option value="caattrib">Campagnes — Ventes & CA attribués</option>
+            <option value="roas">Campagnes — Rentabilité (ROAS)</option>
             <option value="autre">Autre… (rapport personnalisé)</option>
           </select>
           <div id="reportAutreWrap" style="display:none; flex-direction:column; gap:6px;">
             <textarea id="reportAutre" class="field" rows="3" placeholder="Décrivez le rapport que vous souhaitez (données, période, style…). L'assistant IA générera le contenu." style="resize:vertical; font-family:'Work Sans';"></textarea>
             <button class="btn" id="rpGenerateIaBtn">✨ Générer avec l'assistant</button>
           </div>
-          <div class="meta" style="color:var(--sage); font-size:11px;">Le résumé et le tableau ci-dessous suivent la catégorie choisie. Pour « Campagnes — Performance » et « Campagnes — Entonnoir », les chiffres couvrent toute la durée des campagnes (la période sélectionnée ne les filtre pas). « Autre » génère un rapport personnalisé avec l'assistant.</div>
+          <div class="meta" style="color:var(--sage); font-size:11px;">Le résumé et le tableau ci-dessous suivent la catégorie choisie. Pour les 4 rapports « Campagnes » (Performance, Entonnoir, Ventes & CA attribués, Rentabilité ROAS), les chiffres couvrent toute la durée des campagnes (la période sélectionnée ne les filtre pas). « Autre » génère un rapport personnalisé avec l'assistant.</div>
           <div class="err-msg" id="reportErr"></div>
         </div>
         <div id="reportExtra" class="kpi-grid"></div>
@@ -2205,13 +2210,17 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
 async function loadCampaigns(){
   const { data } = await sb.from('campaigns').select('*').order('created_at', { ascending:false });
   campaignsCache = data || [];
-  const sel = document.getElementById('newCampagne');
-  if(sel){
+  const options = (emptyLabel)=> '<option value="">'+emptyLabel+'</option>' +
+    campaignsCache.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+  const fill = (id, emptyLabel)=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
     const cur = sel.value;
-    sel.innerHTML = '<option value="">Campagne d\'origine (optionnel)</option>' +
-      campaignsCache.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+    sel.innerHTML = options(emptyLabel);
     if(cur && campaignsCache.some(c=>c.id===cur)) sel.value = cur;
-  }
+  };
+  fill('newCampagne', "Campagne d'origine (optionnel)");
+  fill('newAchatCampagne', 'Aucune (vente sans pub)');
   return campaignsCache;
 }
 async function renderCampaigns(){
@@ -2406,7 +2415,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-92c6613279';
+const APP_VERSION = 'mayela-crm-319297e171';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2630,6 +2639,7 @@ async function openFiche(id){
     sb.from('devis').select('*').eq('client_id', id).order('devis_date', { ascending:false }),
     sb.from('creances').select('*').eq('client_id', id).order('created_at', { ascending:false }),
     sb.from('produits_services').select('*').eq('actif', true).order('nom'),
+    loadCampaigns().catch(()=>[])
   ]);
 
   produitsCache = produits || [];
@@ -2646,7 +2656,8 @@ async function openFiche(id){
 
   document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>{
     const q = Number(a.quantite)||1;
-    return `<div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}${q>1?` <span class="t2" style="font-weight:400;">×${q}</span>`:''}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`;
+    const campNm = a.campagne_id ? (campaignsCache.find(c=>c.id===a.campagne_id)?.nom || null) : null;
+    return `<div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}${q>1?` <span class="t2" style="font-weight:400;">×${q}</span>`:''}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')}${campNm?' <span style="color:var(--gold);">📢 '+esc(campNm)+'</span>':''} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`;
   }).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
 
   document.getElementById('creancesList').innerHTML = (creances&&creances.length) ? creances.map(cr=>`
@@ -2713,13 +2724,15 @@ document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
   const produitId = document.getElementById('achatProduitSelect').value || null;
   if(!montant){ return; }
   const qte = Math.max(1, parseInt(document.getElementById('newAchatQte').value,10) || 1);
-  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, quantite: qte });
+  const campagneId = document.getElementById('newAchatCampagne') ? document.getElementById('newAchatCampagne').value : '';
+  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, quantite: qte, campagne_id: campagneId || null });
   if(error){ toast(error.message, true); return; }
   trackTikTokPurchase(currentClientId, { montant: Number(montant), produit_id: produitId, quantite: qte });
   await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newAchatMontant').value = '';
   document.getElementById('newAchatQte').value = '1';
   document.getElementById('achatProduitSelect').value = '';
+  if(document.getElementById('newAchatCampagne')) document.getElementById('newAchatCampagne').value = '';
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
@@ -3507,6 +3520,33 @@ function campaignFunnel(d){
   const totAch = rows.reduce((s,r)=>s+r.ach,0);
   return { rows, totP, totAch, totalRate: totP ? Math.round((totAch/totP)*100)+'%' : '—' };
 }
+// Étape 4 : attribution du CA et rentabilité par campagne.
+// d.caa = achats liés à une campagne (tout historique). ROAS = CA attribuable ÷ dépense.
+function campaignAttribution(d){
+  const { campaigns=[], caa=[], produits=[] } = d || {};
+  const catOf = pid => (produits.find(p=>p.id===pid)?.categorie) || '';
+  const rows = campaigns.map(camp=>{
+    const sales = (caa||[]).filter(a=>a.campagne_id===camp.id);
+    const n = sales.length;
+    const ca = sales.reduce((s,a)=>s+(Number(a.montant)||0),0);
+    const spend = Number(camp.depense_reelle)||0;
+    const buyers = new Set(sales.map(a=>a.client_id)).size;
+    const cats = [...new Set(sales.map(a=>catOf(a.produit_id)).filter(Boolean))];
+    return {
+      camp, n, ca,
+      avg: n ? Math.round(ca/n) : 0,
+      buyers,
+      spend,
+      roas: spend ? Math.round((ca/spend)*100)/100 : null,
+      cacCost: buyers ? Math.round(spend/buyers) : 0,
+      cats: cats.join(', ')
+    };
+  });
+  const totCa = rows.reduce((s,r)=>s+r.ca,0);
+  const totSpend = rows.reduce((s,r)=>s+r.spend,0);
+  const totSales = rows.reduce((s,r)=>s+r.n,0);
+  return { rows, totCa, totSpend, totSales, totalRoas: totSpend ? Math.round((totCa/totSpend)*100)/100 : null };
+}
 
 // Résumé textuel généré automatiquement pour la catégorie choisie
 function reportSummaryText(d){
@@ -3552,6 +3592,16 @@ function reportSummaryText(d){
     case 'entonnoir': {
       const { totP, totAch, totalRate } = campaignFunnel(d);
       t=`${totP} prospect(s) issus des campagnes, dont ${totAch} acheteur(s) réels (${totalRate} de conversion). Maintenez l'étape de chaque prospect (Contacté, Négociation, Client) et laissez le système calculer la perte d'attention entre les étapes.`;
+      break;
+    }
+    case 'caattrib': {
+      const { totCa, totSales, rows } = campaignAttribution(d);
+      t=`${totSales} vente(s) attribuée(s) aux ${rows.length} campagne(s), soit ${fmtFCFA(totCa)} de CA attribuable. Le panier moyen et les catégories vendues sont détaillés par campagne dans le tableau (calcul sur toute la durée des campagnes).`;
+      break;
+    }
+    case 'roas': {
+      const { totCa, totSpend, totalRoas } = campaignAttribution(d);
+      t=`Dépense totale ${fmtFCFA(totSpend)} · CA attribuable ${fmtFCFA(totCa)} · ROAS global ${totalRoas===null?'non calculable (dépense nulle)':totalRoas+' FCFA gagné(s) par FCFA dépensé'}. À partir de 1, la publicité se rembourse.`;
       break;
     }
     default:
@@ -3624,6 +3674,18 @@ function reportRows(d){
         rows.length ? rows.map(r=>[r.camp.nom||'',''+r.p,''+r.contactes,''+r.negation,''+r.cli,''+r.ach, r.p?Math.round((r.ach/r.p)*100)+'%':'—']) : [['Aucune campagne saisie pour le moment.','','','','','','']]
       );
     }
+    case 'caattrib': {
+      const { rows } = campaignAttribution(d);
+      return [['Campagne','Ventes','CA attribuable (FCFA)','Panier moyen (FCFA)','Clients acheteurs','Catégories vendues']].concat(
+        rows.length ? rows.map(r=>[r.camp.nom||'', ''+r.n, r.ca, r.avg, ''+r.buyers, r.cats||'—']) : [['Aucune campagne saisie pour le moment.','','','','','']]
+      );
+    }
+    case 'roas': {
+      const { rows } = campaignAttribution(d);
+      return [['Campagne','Dépense (FCFA)','CA attribuable (FCFA)','ROAS','Coût d\'acquisition (FCFA)','Clients acheteurs']].concat(
+        rows.length ? rows.map(r=>[r.camp.nom||'', r.spend, r.ca, r.roas===null?'—':''+r.roas, r.cacCost, ''+r.buyers]) : [['Aucune campagne saisie pour le moment.','','','','','']]
+      );
+    }
     default:
       return [['Type','Client','Montant (FCFA)','Date']].concat(
         achats.map(a=>['Achat', nm(a.client_id), Number(a.montant)||0, String(a.achat_date||'').slice(0,10)]),
@@ -3657,22 +3719,23 @@ async function loadReports(){
   document.getElementById('reportCount').textContent = '…';
   try{
     const since = periodSince();
-    const [cl, ac, dv, cr, it, tk, pr, po, ca, achAll] = await Promise.all([
+    const [cl, ac, dv, cr, it, tk, pr, po, ca, achAll, cac] = await Promise.all([
       sb.from('clients').select('id,name,zone,source,stage_override,campagne_origine,created_at'),
       sb.from('achats').select('client_id,montant,produit_id,achat_date').gte('achat_date', since),
       sb.from('devis').select('client_id,montant,produit_id,devis_date').gte('devis_date', since),
       sb.from('creances').select('client_id,montant,produit_id,statut,created_at'),
       sb.from('interactions').select('client_id,type,occurred_at').gte('occurred_at', since),
       sb.from('tasks').select('client_id,libelle,due_date,status').gte('due_date', '1970-01-01'),
-      sb.from('produits_services').select('id,nom,description,prix_defaut,actif'),
+      sb.from('produits_services').select('id,nom,description,prix_defaut,actif,categorie'),
       sb.from('social_posts').select('platform,content,status,created_at').gte('created_at', since),
       sb.from('campaigns').select('*'),
-      sb.from('achats').select('client_id')
+      sb.from('achats').select('client_id'),
+      sb.from('achats').select('client_id,montant,produit_id,achat_date,campagne_id,quantite').not('campagne_id','is',null)
     ]);
     const d = {
       clients: cl.data||[], achats: ac.data||[], devis: dv.data||[],
       creances: cr.data||[], interactions: it.data||[], tasks: tk.data||[],
-      produits: pr.data||[], posts: po.data||[], campaigns: ca.data||[], achAll: achAll.data||[]
+      produits: pr.data||[], posts: po.data||[], campaigns: ca.data||[], achAll: achAll.data||[], caa: cac.data||[]
     };
     reportData = d;
 
@@ -3825,7 +3888,9 @@ const REPORT_TYPE_LABEL = {
   produits:'Produits & services',
   reseaux:'Réseaux sociaux (publications)',
   campagnes:'Campagnes — Performance',
-  entonnoir:'Campagnes — Entonnoir de conversion'
+  entonnoir:'Campagnes — Entonnoir de conversion',
+  caattrib:'Campagnes — Ventes & CA attribués',
+  roas:'Campagnes — Rentabilité (ROAS)'
 };
 function currentSheetDetail(){
   if(reportType==='autre'){
