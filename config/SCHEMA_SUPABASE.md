@@ -4,7 +4,10 @@
 > Ceci est une documentation du schéma réel, pas un dump SQL exécutable.
 > Toute modification de schéma passe par une migration (`config/MIGRATION_V1_1.sql`, `config/MIGRATION_V2.sql`), jamais par édition manuelle de ce fichier.
 >
-> ✔️ **Statut à jour (12/09/2026)** : la migration **V8** (`config/MIGRATION_V8_CAMPAGNES.sql`) a été
+> ✔️ **Statut à jour (13/09/2026)** : la migration **V9** (`config/MIGRATION_V9_INDEXES.sql`)
+> est **prête à exécuter** (index de performances sur les colonnes de filtrage : achats,
+> clients, interactions, tasks, devis, creances, campaigns, social_posts). À lancer dans le
+> SQL Editor (idempotente). La migration **V8** (`config/MIGRATION_V8_CAMPAGNES.sql`) a été
 > **appliquée en base** via une Edge Function temporaire `db-migrate` (secret `SUPABASE_DB_URL`),
 > puis supprimée. Ajoute le modèle campagnes + les champs de reporting.
 

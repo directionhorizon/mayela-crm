@@ -220,4 +220,24 @@ dans l'écran Réseaux ouvre la sous-page dédiée (liste + formulaire).
 
 ---
 
+## 7. Notes de performance (appliquées le 13/09/2026)
+
+Garder l'app réactive sur mobile à mesure que le volume grossit :
+
+- **Cache partagé `achats` (TTL 60 s)** : le tableau de bord, le centre d'action et les
+  rapports lisaient chacun toute la table `achats`. Une seule lecture est désormais
+  partagée via `getAchatsAll()` ; les périodes (jour / 30 j / réachat / CA attribué) sont
+  calculées en mémoire. Invalidation après ajout/suppression d'achat.
+- **Clients allégés** : `loadClientsCache()` ne sélectionne que les colonnes réellement
+  affichées (10 champs) au lieu de `*`.
+- **Debounce 90 ms** sur la recherche clients (pas de rendu DOM à chaque frappe).
+- **Index** : `config/MIGRATION_V9_INDEXES.sql` (à exécuter dans le SQL Editor) indexe les
+  colonnes de filtrage des rapports et du tableau de bord (achats.achat_date,
+  interactions.statut_traitement, tasks.due_date, client_id, etc.).
+- **Limite honnête** : pas de pagination serveur ni de recherche SQL — les listes sont
+  chargées entièrement. Pertinent jusqu'à quelques milliers de lignes ; à reconsidérer
+  (pagination + recherche serveur) si l'app dépasse cette échelle.
+
+---
+
 *Document lié : `config/SCHEMA_SUPABASE.md` (schéma actuel), `mayela-crm.html` (app), LOGIQUE CRM / modèles de données / modèles rapports (mémoire).*  
