@@ -1,6 +1,6 @@
 # Funnel de vente (Pipeline de conversion)
 
-**Fichier source** : `mayela-crm.html`, constantes et fonctions `renderClients()`, `campaignFunnel()` (~l.3726-3746).
+**Fichier source** : `mayela-crm.html`, constantes et fonctions `renderClients()`, `campaignFunnel()` (l.3816).
 
 ---
 
@@ -14,7 +14,7 @@
 | 4 | Client | `#7BC79A` (vert clair) | `Client` |
 | 5 | Fidèle | `#4C9A6B` (vert foncé) | `Fidèle` |
 
-**Affichage** : filtre par étapes au-dessus de la liste clients (l.443, `stageTabs`).
+**Affichage** : filtre par étapes au-dessus de la liste clients (l.461, `stageTabs`).
 
 **Étiquette** : le champ `stage_override` est affiché dans chaque fiche client ; si vide → affiché comme « Prospect ».
 
@@ -22,7 +22,7 @@
 
 ## Entonnoir par campagne
 
-**Fonction** : `campaignFunnel(d)` (l.3726)
+**Fonction** : `campaignFunnel(d)` (l.3816)
 
 ### Logique
 
@@ -42,7 +42,7 @@ Taux conv.    = acheteurs / prospects × 100  (ou « — » si 0 prospect)
 ```
 Taux global = somme(acheteurs) / somme(prospects) × 100
 ```
-Affiché dans le résumé textuel du rapport (l.3816).
+Affiché dans le résumé textuel du rapport (l.3912-3915).
 
 ### Source de données
 

@@ -1,6 +1,6 @@
 # Segmentation des clients (Centre d'action)
 
-**Fichier source** : `mayela-crm.html`, fonction `renderCentreAction()` (~l.2697-2780).
+**Fichier source** : `mayela-crm.html`, fonction `renderCentreAction()` (l.2787).
 
 ---
 
@@ -53,7 +53,7 @@ Chaque client est enrichi d'un objet `byClient[id]` :
 | `last` | Date du dernier achat (plus récent) |
 | `cats` | Objet `{ catégorie: nombre_achats }` (décompte par catégorie) |
 
-Calculé dans la boucle `achats.forEach(a => ...)` (l.2726-2736).
+Calculé dans la boucle `achats.forEach(a => ...)` (l.2817-2825).
 
 ---
 
@@ -68,7 +68,7 @@ Le champ `consentement` est un booléen **nullable** :
 
 Seuls les clients **non « false »** (null ou true) sont autorisés à recevoir une relance WhatsApp.
 
-**Affichage** : `X / Y consentent` dans la carte « Inactifs » (l.2752).
+**Affichage** : `X / Y consentent` dans la carte « Inactifs » (l.2842-2843).
 
 ---
 
@@ -76,10 +76,10 @@ Seuls les clients **non « false »** (null ou true) sont autorisés à recevoir
 
 | Paramètre | Valeur | Réf. |
 |---|---|---|
-| Pool | Clients **inactifs** uniquement | l.2752 |
-| Tri | Par **date de dernière activité** (ou date de création) croissante (plus ancien d'abord) | l.2759-2760 |
-| Limite | **6 clients** maximum | `.slice(0,6)` (l.2761) |
-| Lien WhatsApp | `wa.me/{phone}?text=Bonjour {name} 👋 Ici Mayela...` | l.2766 |
+| Pool | Clients **inactifs** uniquement | l.2848 |
+| Tri | Par **date de dernière activité** (ou date de création) croissante (plus ancien d'abord) | l.2848-2850 |
+| Limite | **6 clients** maximum | `.slice(0,6)` (l.2851) |
+| Lien WhatsApp | `wa.me/{phone}?text=Bonjour {name} 👋 Ici Mayela...` | l.2856 |
 
 **Condition d'affichage** : le lien WhatsApp n'est généré que si :
 1. Le client possède un `phone` (non vide)
@@ -87,7 +87,7 @@ Seuls les clients **non « false »** (null ou true) sont autorisés à recevoir
 
 **Affichage par client** : nombre d'achats · dernier achat il y a X j (ou créé il y a X j) · « sans consentement » (en rouge) si non consentant.
 
-**Marquer traité** : cliquer sur ✓ met à jour l'interaction associée (`statut_traitement → 'traite'`) puis recharge le centre d'action (l.2777-2780).
+**Marquer traité** : cliquer sur ✓ met à jour l'interaction associée (`statut_traitement → 'traite'`) puis recharge le centre d'action (l.2866-2871).
 
 ---
 

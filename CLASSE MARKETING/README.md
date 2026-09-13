@@ -11,10 +11,10 @@ Chaque fichier couvre un domaine distinct. Les paramètres, seuils, formules et 
 | `campagnes-publicitaires.md` | Modèle campagne | Champs, plateformes, types, saisie manuelle, coût par prospect |
 | `attribution-ca-et-roas.md` | Rentabilité | CA attribué, ROAS, panier moyen, coût d'acquisition, réachat |
 | `relances-et-actions.md` | Relances & file d'attente | Top 6 inactifs, message WhatsApp, consentement, « à traiter » |
-| `publication-offres.md` | Contenu / publications | Publier une offre, événements TikTok, repli manuel |
+| `publication-offres.md` | Contenu / publications | Publier du contenu, événements TikTok, repli manuel |
 | `tracking-pixel-tiktok.md` | Tracking événements | Pixel client, événements serveur, événement Purchase |
 | `analyse-audience-et-insights.md` | Audience & insights | social-insights, clients les plus actifs par réseau |
-| `impact-operationnel.md` | Statistiques internes | Offres publiées, échanges, clients suivis, achats 30 j |
+| `impact-operationnel.md` | Statistiques internes | Catégorie **Rapports** « Impact opérationnel » : offres publiées, échanges, clients suivis, achats (période sélectionnée) |
 | `kpis-tableau-de-bord.md` | KPIs accueil | Ventes du jour, CA 30 j, tâches, perf publicitaire |
 | `rapports-exports.md` | Moteur de reporting | Catégories, périodes, colonnes, export Google Sheets |
 | `meta-ads-manager-et-donnees-collectees.md` | **Étude** | Données recueillies (webhook WhatsApp, Insights API) & périmètre de Meta Ads Manager (Facebook + WhatsApp) |
