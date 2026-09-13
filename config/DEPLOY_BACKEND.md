@@ -128,6 +128,29 @@ Vérification :
 - `insert into public.email_change_requests (user_id, new_email)
    values (auth.uid(), 'x@y.com');` → OK ; avec un `user_id` d'un autre compte → **rejeté**
 
+### 1d — Migration V8 (modèle campagnes + champs reporting) — APPLIQUÉE le 12/09/2026
+> ✔️ **Statut : déjà appliquée en base** via une Edge Function temporaire `db-migrate` (même
+> procédure que V2 : le SQL Editor renvoie « Backend error » sur ce projet). La fonction a lu le
+> secret **`SUPABASE_DB_URL`** (préexistant), puis a été **supprimée** — aucune porte SQL ouverte,
+> mot de passe de la base **inchangé**.
+
+1. (Recommandé si le SQL Editor fonctionne sur votre projet) Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V8_CAMPAGNES.sql`
+3. Cliquez **Run**
+
+Cela ajoute :
+- la table **`campaigns`** (org, nom, plateforme facebook/instagram/tiktok, type, catégorie promue,
+  dates, budget, dépense réelle, portée, impressions, clics) + RLS `cam_all_org` ;
+- **`clients.campagne_origine`** (FK campaigns) et **`clients.consentement`** (consentement promo) ;
+- **`achats.campagne_id`** (FK campaigns) et **`achats.quantite`** (défaut 1) ;
+- **`produits_services.categorie`** ;
+- **`interactions.type_interaction`** (message/commentaire/clic/demande_prix/autre) et
+  **`interactions.statut_traitement`** (`en_attente` / `traite`, défaut `traite`).
+
+Vérification : les colonnes répondent en HTTP 200 (cf. `SCHEMA_SUPABASE.md`).
+Le front n'est pas déployé de nouveau : l'ajout du champ **quantité** dans la fiche client est
+déjà en place dans `mayela-crm.html`.
+
 ---
 
 ## Étape 2 — Clé Gemini + secrets

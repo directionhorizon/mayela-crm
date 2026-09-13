@@ -1,13 +1,12 @@
 # Schéma Supabase — MAYELA CRM
-*Extrait le 16 juillet 2026, actualisé le 31 août 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
+*Extrait le 16 juillet 2026, actualisé le 12 septembre 2026 — projet `ymqdmfsqtkmlmwffqskt` (région eu-central-1, plan Free)*
 
 > Ceci est une documentation du schéma réel, pas un dump SQL exécutable.
 > Toute modification de schéma passe par une migration (`config/MIGRATION_V1_1.sql`, `config/MIGRATION_V2.sql`), jamais par édition manuelle de ce fichier.
 >
-> ✔️ **Statut à jour (31/08/2026)** : la migration V2 a été **appliquée en base** (via une Edge
-> Function temporaire `db-migrate`, car le SQL Editor renvoyait "Backend error"). Toutes les tables
-> métier répondent désormais en HTTP 200 via REST, y compris `creances`, `social_*` et
-> `integrations_oauth` (auparavant en 42501 "permission denied").
+> ✔️ **Statut à jour (12/09/2026)** : la migration **V8** (`config/MIGRATION_V8_CAMPAGNES.sql`) a été
+> **appliquée en base** via une Edge Function temporaire `db-migrate` (secret `SUPABASE_DB_URL`),
+> puis supprimée. Ajoute le modèle campagnes + les champs de reporting.
 
 ## `organizations`
 ```
@@ -18,6 +17,27 @@ created_by    uuid
 created_at    timestamptz NOT NULL
 members_can_rename boolean NOT NULL DEFAULT false   -- autorise l'équipe à renommer l'espace
 ```
+
+## `campaigns` (campagnes publicitaires — V8)
+```
+id                 uuid NOT NULL
+org_id             uuid NOT NULL        -- FK organizations
+nom                text NOT NULL        -- ex : META_SOINS_VISAGE_OCT_2026
+plateforme         text NOT NULL        -- facebook | instagram | tiktok
+type               text                 -- visibilite | messages | leads | promotion_produit
+categorie_promue   text                 -- ex : Soins visage (libre)
+date_debut         date
+date_fin           date
+budget_prevu       numeric
+depense_reelle     numeric NOT NULL DEFAULT 0
+portee             integer NOT NULL DEFAULT 0
+impressions        integer NOT NULL DEFAULT 0
+clics              integer NOT NULL DEFAULT 0       -- "clics / messages"
+created_by         uuid
+created_at         timestamptz NOT NULL
+```
+- RLS `cam_all_org` : `org_id = current_org_id()`.
+- Alimente les rapports « Performance des campagnes », « Entonnoir », « CA attribuable » et « Rentabilité (ROAS) ».
 
 ## `org_members` (appartenances multi-espaces, EVO-001)
 ```
@@ -57,6 +77,8 @@ name                    text NOT NULL
 phone                   text
 zone                    text
 source                  text
+campagne_origine        uuid           -- FK campaigns (V8) : campagne qui a amené le prospect
+consentement            boolean        -- consentement promotionnel Oui/Non (nil = non renseigné)
 score                   integer
 stage_override          text   -- Prospect | Contacté | Négociation | Client | Fidèle
 stage_override_reason   text
@@ -66,13 +88,15 @@ updated_at              timestamptz NOT NULL
 
 ## `interactions`
 ```
-id            uuid NOT NULL
-client_id     uuid NOT NULL  -- FK clients
-user_id       uuid
-type          text NOT NULL  -- appel | whatsapp | visite | autre | facebook | tiktok
-note          text
-occurred_at   timestamptz NOT NULL
-created_at    timestamptz NOT NULL
+id                  uuid NOT NULL
+client_id           uuid NOT NULL  -- FK clients
+user_id             uuid
+type                text NOT NULL  -- CANAL : appel | whatsapp | visite | autre | facebook | tiktok
+type_interaction    text           -- V8 : message | commentaire | clic | demande_prix | autre
+statut_traitement   text NOT NULL  -- V8 : en_attente | traite (défaut 'traite')
+note                text
+occurred_at         timestamptz NOT NULL
+created_at          timestamptz NOT NULL
 ```
 
 ## `produits_services` (catalogue)
@@ -80,7 +104,8 @@ created_at    timestamptz NOT NULL
 id            uuid NOT NULL
 nom           text NOT NULL
 description   text
-image_url     text          -- URL publique (bucket "produits")
+categorie     text            -- V8 : catégorie (ex : Dermocosmétique, Hygiène) pour segmentation
+image_url     text            -- URL publique (bucket "produits")
 prix_defaut   numeric
 actif         boolean NOT NULL DEFAULT true
 owner_user_id uuid
@@ -93,7 +118,9 @@ created_at    timestamptz NOT NULL
 id            uuid NOT NULL
 client_id     uuid NOT NULL
 montant       numeric NOT NULL
-produit_id    uuid          -- FK produits_services (optionnel)
+produit_id    uuid       -- FK produits_services (optionnel)
+campagne_id   uuid       -- FK campaigns (V8) : vente attribuée à une campagne (CA attribuable)
+quantite      integer NOT NULL DEFAULT 1   -- V8 : quantité vendue
 achat_date    date NOT NULL
 created_at    timestamptz NOT NULL
 ```

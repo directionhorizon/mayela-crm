@@ -181,6 +181,9 @@
   .relance-card{ background:var(--panel); border-left:3px solid var(--clay); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
   .relance-card .name{ font-weight:600; font-size:13.5px; }
   .relance-card .meta{ font-size:11px; color:var(--sage); margin-top:2px; }
+  .pend-chk{ display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--sage); white-space:nowrap; cursor:pointer; }
+  .pend-chk input{ accent-color:var(--clay); width:14px; height:14px; cursor:pointer; }
+  .pend-lbl{ display:inline-block; font-size:9.5px; font-weight:600; letter-spacing:.3px; color:#E8926F; background:rgba(232,146,111,.12); border:1px solid rgba(232,146,111,.4); padding:2px 7px; border-radius:8px; }
 
   .search{ margin:14px 20px 6px; background:var(--panel-2); border:1px solid rgba(243,237,224,0.18); border-radius:12px; padding:10px 14px; font-size:13px; color:var(--text); width:calc(100% - 40px); }
   .search:focus{ outline:none; border-color:var(--gold); box-shadow:0 0 0 3px rgba(217,164,65,0.18); }
@@ -405,7 +408,11 @@
           <div class="kpi"><div class="num" id="kpiDevis">–</div><div class="lbl">Devis (30j)</div></div>
           <div class="kpi"><div class="num" id="kpiCA">–</div><div class="lbl">Achats (30j, FCFA)</div></div>
         </div>
-        <div class="section-title">À relancer <a data-nav="ia">Voir le conseiller →</a></div>
+        <div class="section-title">⏳ À traiter</div>
+        <div class="card-list" id="pendingList"></div>
+        <div class="section-title" style="padding-top:6px;">🎯 Segments à relancer</div>
+        <div class="card-list" id="segmentList"></div>
+        <div class="section-title" style="padding-top:6px;">Relances prioritaires</div>
         <div class="card-list" id="relanceList"></div>
         <div class="section-title" style="padding-top:6px;">Catalogue <a data-nav="produits">Produits & services →</a></div>
         <div style="height:14px;"></div>
@@ -488,7 +495,8 @@
           <div id="interactionsList"></div>
           <div class="add-inline">
             <select id="newIntType"><option value="appel">Appel</option><option value="whatsapp">WhatsApp</option><option value="visite">Visite</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option><option value="autre">Autre</option></select>
-            <input id="newIntNote" placeholder="Note rapide…">
+            <input id="newIntNote" placeholder="Note rapide…" style="flex:1; min-width:0;">
+            <label class="pend-chk"><input type="checkbox" id="newIntPending"> En attente</label>
             <button id="addIntBtn">+</button>
           </div>
         </div>
@@ -498,6 +506,7 @@
             <select id="achatProduitSelect"><option value="">Produit/service…</option></select>
           </div>
           <div class="add-inline">
+            <input id="newAchatQte" type="number" min="1" value="1" style="width:54px;" aria-label="Quantité">
             <input id="newAchatMontant" type="number" placeholder="Montant FCFA">
             <button id="addAchatBtn">+</button>
           </div>
@@ -1196,13 +1205,13 @@ document.body.addEventListener('click', (e)=>{
   document.querySelectorAll('#appShell > .screen').forEach(s=>s.classList.toggle('active', s.id===target));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.nav===target));
   if(target === 'dashboard'){
-    // Rafraîchit le cache clients à chaque retour Accueil : sans cela, la liste « À relancer »
+    // Rafraîchit le cache clients à chaque retour Accueil : sans cela, le Centre d'action
     // et les KPIs restent figés depuis le dernier loadEverything() (interactions ajoutées entre-temps).
     sb.from('clients').select('*').order('created_at', { ascending:false }).then(({ data: clients })=>{
       clientsCache = clients || [];
       document.getElementById('clientCount').textContent = clientsCache.length;
       renderDashboardKpis();
-      renderRelances();
+      renderCentreAction();
       renderClients();
     });
   }
@@ -1590,9 +1599,10 @@ async function trackTikTokPurchase(clientId, sale){
     if(!clientId || !sale) return;
     const client = (clientsCache||[]).find(c=>c.id===clientId);
     if(!client) return;
-    let prod = (produitsCache||[]).find(p=>p.id===sale.produitId) || null;
-    if(!prod && sale.produitId){
-      try{ const { data } = await sb.from('produits_services').select('*').eq('id', sale.produitId).maybeSingle(); prod = data || null; }catch(_e){}
+    const pid = sale.produitId ?? sale.produit_id;
+    let prod = (produitsCache||[]).find(p=>p.id===pid) || null;
+    if(!prod && pid){
+      try{ const { data } = await sb.from('produits_services').select('*').eq('id', pid).maybeSingle(); prod = data || null; }catch(_e){}
     }
     const value = Number(sale.montant) || 0;
     if(!value) return;
@@ -1600,11 +1610,12 @@ async function trackTikTokPurchase(clientId, sale){
       external_id: client.id,
       phone: client.phone || undefined,
       properties:{
-        content_id: sale.produitId || undefined,
+        content_id: pid || undefined,
         content_type: 'product',
         content_name: prod ? String(prod.nom||'') : undefined,
         description: prod ? String(prod.description||'') : undefined,
         price: prod && Number(prod.prix_defaut) ? Number(prod.prix_defaut) : value,
+        quantity: Math.max(1, Number(sale.quantite)||1),
         value,
         currency: 'XAF'
       }
@@ -2142,7 +2153,7 @@ async function loadEverything(){
   clientsCache = clients || [];
   document.getElementById('clientCount').textContent = clientsCache.length;
   await renderDashboardKpis();
-  renderRelances();
+  renderCentreAction();
   renderClients();
   renderIA();
   document.getElementById('setEmail').textContent = (await sb.auth.getUser()).data.user.email;
@@ -2260,7 +2271,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-38418ce289';
+const APP_VERSION = 'mayela-crm-ff173310ba';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2315,21 +2326,96 @@ async function renderDashboardKpis(){
   document.getElementById('kpiCA').textContent = new Intl.NumberFormat('fr-FR',{notation:'compact'}).format(total);
 }
 
-function relanceCandidates(){
-  return clientsCache
-    .map(c=>({...c, _idle: c.updated_at ? daysAgo(c.updated_at) : 999}))
-    .filter(c=>c._idle>=15)
-    .sort((a,b)=>b._idle-a._idle)
-    .slice(0,8);
+// ================== CENTRE D'ACTION (étape 2) ==================
+// « Demande en attente » (interaction statut_traitement = en_attente) : à traiter.
+// Segments : nouveaux (<30 j), réguliers (ré-achat <45 j), inactifs (>45 j / jamais acheté),
+// intérêt catégorie (achats par catégorie de produit). Relance WhatsApp selon consentement.
+async function renderCentreAction(){
+  const [{ data: pends }, achRes, prodRes] = await Promise.all([
+    sb.from('interactions')
+      .select('id,client_id,type,note,occurred_at')
+      .eq('statut_traitement','en_attente')
+      .order('occurred_at',{ ascending:true }),
+    sb.from('achats').select('client_id,produit_id,achat_date'),
+    sb.from('produits_services').select('id,nom,categorie')
+  ]);
+  const pendArr = pends || [];
+  const pendEl = document.getElementById('pendingList');
+  pendEl.innerHTML = pendArr.length ? pendArr.map(i=>{
+    const c = clientsCache.find(x=>x.id===i.client_id);
+    const wa = c && c.phone ? 'https://wa.me/'+String(c.phone).replace(/\D/g,'') : '';
+    return `<div class="relance-card">
+      <div style="min-width:0;">
+        <div class="name">${esc(c?c.name:'Client supprimé')} <span class="pend-lbl">EN ATTENTE</span></div>
+        <div class="meta">${esc(INTERACTION_TYPE_LABEL[i.type]||i.type)}${i.note?' · '+esc(i.note):''} · il y a ${Math.max(1,daysAgo(i.occurred_at))} j</div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        ${wa?`<a class="link-sm" href="${wa}" target="_blank" rel="noopener noreferrer">💬</a>`:''}<span class="link-sm" data-mark-done="${i.id}" style="color:var(--gold);" title="Marquer traité">✓</span>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty">Aucune demande en attente.</div>`;
+
+  const since30 = localDateStr(new Date(Date.now() - 30*86400000));
+  const since45 = localDateStr(new Date(Date.now() - 45*86400000));
+  const achats = achRes.data || [];
+  const prods = prodRes.data || [];
+  const prodCat = {}; prods.forEach(p=>{ prodCat[p.id] = p.categorie||''; });
+  const byClient = {};
+  achats.forEach(a=>{
+    const b = byClient[a.client_id] || (byClient[a.client_id] = { last:null, first:null, nb:0, cats:{} });
+    const d = a.achat_date || '';
+    if(d && (!b.last || d > b.last)) b.last = d;
+    if(d && (!b.first || d < b.first)) b.first = d;
+    b.nb++;
+    const cat = prodCat[a.produit_id];
+    if(cat) b.cats[cat] = (b.cats[cat]||0)+1;
+  });
+  const novos = [], regs = [], inacts = [];
+  const catBuyers = {};
+  clientsCache.forEach(c=>{
+    const b = byClient[c.id];
+    const isNew = c.created_at && c.created_at >= since30;
+    const buyWithin45 = !!b && !!b.last && b.last >= since45;
+    if(isNew) novos.push(c);
+    if(b && b.nb>=2 && buyWithin45) regs.push(c);
+    if((b && b.last && !buyWithin45) || (!b && !isNew)) inacts.push(c);
+    if(b) Object.keys(b.cats).forEach(k=>{ (catBuyers[k] = catBuyers[k]||[]).push(c); });
+  });
+  const consentCount = arr => arr.filter(c=>c.consentement !== false).length;
+  const segCard = (lbl,count,hint) => `<div class="relance-card"><div style="min-width:0;"><div class="name">${lbl}</div><div class="meta">${count>0?count+' client'+(count>1?'s':''):'Aucun pour le moment'} · ${hint}</div></div><div class="link-sm" style="cursor:default;">${count}</div></div>`;
+  const segs = [
+    segCard('🆕 Nouveaux', novos.length, 'Remercier + présenter l’offre'),
+    segCard('🔁 Réguliers', regs.length, 'Offre de fidélité ciblée'),
+    segCard('⏳ Inactifs', inacts.length, consentCount(inacts)+'/'+inacts.length+' consentent → relance WhatsApp')
+  ];
+  const topCat = Object.entries(catBuyers).sort((a,b)=>b[1].length-a[1].length)[0];
+  if(topCat && topCat[1].length) segs.push(segCard('🏷️ Intérêt « '+topCat[0]+' »', topCat[1].length, 'Campagne sur une catégorie'));
+  document.getElementById('segmentList').innerHTML = segs.join('');
+
+  const list = inacts
+    .map(c=>{ const b=byClient[c.id]; return { c, last: b&&b.last ? b.last : (c.created_at||'') }; })
+    .sort((a,b)=>String(a.last).localeCompare(String(b.last)))
+    .slice(0,6);
+  document.getElementById('relanceList').innerHTML = list.length ? list.map(({c,last})=>{
+    const b = byClient[c.id];
+    const idle = last ? daysAgo(last) : 999;
+    const consented = c.consentement !== false;
+    const wa = c.phone && consented ? 'https://wa.me/'+String(c.phone).replace(/\D/g,'')+'?text='+encodeURIComponent('Bonjour '+(c.name||'')+' 👋 Ici Mayela. Un petit message pour prendre de vos nouvelles…') : '';
+    return `<div class="relance-card">
+      <div style="min-width:0;">
+        <div class="name">${esc(c.name)}</div>
+        <div class="meta">${b ? (b.nb>1?b.nb+' achats · ':'1 achat · ')+'dernier il y a '+Math.max(0,idle)+' j' : 'aucun achat · créé il y a '+Math.max(1,idle)+' j'}${c.consentement===false?' · <span style="color:#E8926F;">sans consentement</span>':''}</div>
+      </div>
+      ${wa?`<a class="link-sm" href="${wa}" target="_blank" rel="noopener noreferrer">Relancer 💬</a>`:''}
+    </div>`;
+  }).join('') : `<div class="empty">Rien à relancer pour le moment — bon travail.</div>`;
 }
-function renderRelances(){
-  const list = relanceCandidates();
-  const el = document.getElementById('relanceList');
-  el.innerHTML = list.length ? list.map(c=>`
-    <div class="relance-card">
-      <div><div class="name">${esc(c.name)}</div><div class="meta">${esc(c.zone||'—')} · sans mise à jour depuis ${c._idle} j</div></div>
-    </div>`).join('') : `<div class="empty">Rien à relancer pour le moment — bon travail.</div>`;
-}
+document.body.addEventListener('click', async (e)=>{
+  const done = e.target.closest('[data-mark-done]'); if(!done) return;
+  const { error } = await sb.from('interactions').update({ statut_traitement:'traite' }).eq('id', done.dataset.markDone);
+  if(error){ toast(error.message, true); return; }
+  await renderCentreAction();
+});
 
 function renderClients(){
   const q = (document.getElementById('searchInput').value||"").toLowerCase();
@@ -2415,11 +2501,15 @@ async function openFiche(id){
   });
   const produitNom = (pid)=> produitsCache.find(p=>p.id===pid)?.nom || null;
 
-  document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>`
-    <div class="mini-row"><div><div class="t1">${esc(INTERACTION_TYPE_LABEL[i.type] || i.type)}</div><div class="t2">${esc(i.note||'')}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div><span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune interaction.</div>`;
+  document.getElementById('interactionsList').innerHTML = (interactions&&interactions.length) ? interactions.map(i=>{
+    const pending = i.statut_traitement === 'en_attente';
+    return `<div class="mini-row"><div><div class="t1">${esc(INTERACTION_TYPE_LABEL[i.type] || i.type)}${pending?` <span class="pend-lbl">EN ATTENTE</span>`:''}</div><div class="t2">${esc(i.note||'')}</div></div><div style="display:flex; align-items:center; gap:8px;"><div class="t2">${fmtDate(i.occurred_at)}</div>${pending?`<span class="link-sm" data-done-int="${i.id}">✓ Traité</span>`:''}<span class="link-sm" data-del-int="${i.id}" title="Supprimer">✕</span></div></div>`;
+  }).join('') : `<div class="empty">Aucune interaction.</div>`;
 
-  document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>`
-    <div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
+  document.getElementById('achatsList').innerHTML = (achats&&achats.length) ? achats.map(a=>{
+    const q = Number(a.quantite)||1;
+    return `<div class="mini-row"><div><div class="t1">${fmtFCFA(a.montant)}${q>1?` <span class="t2" style="font-weight:400;">×${q}</span>`:''}</div><div class="t2">${esc(produitNom(a.produit_id) || 'Sans produit précisé')} · ${fmtDate(a.achat_date)}</div></div><span class="link-sm" data-del-achat="${a.id}" title="Supprimer">✕</span></div>`;
+  }).join('') : `<div class="empty">Aucun achat enregistré.</div>`;
 
   document.getElementById('creancesList').innerHTML = (creances&&creances.length) ? creances.map(cr=>`
     <div class="mini-row"><div><div class="t1">${fmtFCFA(cr.montant)}</div><div class="t2">${esc(produitNom(cr.produit_id) || 'Sans produit précisé')} · ${cr.statut==='payee'?'Payée':'Due'} · ${fmtDate(cr.created_at)}</div></div><div style="display:flex; gap:8px; align-items:center;">${cr.statut!=='payee'?`<span class="link-sm" data-pay-creance="${cr.id}">Marquer payée</span>`:''}<span class="link-sm" data-del-creance="${cr.id}" title="Supprimer">✕</span></div></div>`).join('') : `<div class="empty">Aucune créance.</div>`;
@@ -2454,11 +2544,19 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 document.getElementById('addIntBtn').addEventListener('click', async ()=>{
   const type = document.getElementById('newIntType').value;
   const note = document.getElementById('newIntNote').value.trim();
+  const pending = document.getElementById('newIntPending').checked;
   const { data:{ user } } = await sb.auth.getUser();
-  const { error } = await sb.from('interactions').insert({ client_id: currentClientId, user_id: user.id, type, note: note||null });
+  const { error } = await sb.from('interactions').insert({ client_id: currentClientId, user_id: user.id, type, note: note||null, statut_traitement: pending ? 'en_attente' : 'traite' });
   if(error){ toast(error.message, true); return; }
   document.getElementById('newIntNote').value = '';
+  document.getElementById('newIntPending').checked = false;
   await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
+  openFiche(currentClientId);
+});
+document.body.addEventListener('click', async (e)=>{
+  const done = e.target.closest('[data-done-int]'); if(!done) return;
+  const { error } = await sb.from('interactions').update({ statut_traitement:'traite' }).eq('id', done.dataset.doneInt);
+  if(error){ toast(error.message, true); return; }
   openFiche(currentClientId);
 });
 document.body.addEventListener('click', async (e)=>{
@@ -2476,11 +2574,13 @@ document.getElementById('addAchatBtn').addEventListener('click', async ()=>{
   const montant = document.getElementById('newAchatMontant').value;
   const produitId = document.getElementById('achatProduitSelect').value || null;
   if(!montant){ return; }
-  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId });
+  const qte = Math.max(1, parseInt(document.getElementById('newAchatQte').value,10) || 1);
+  const { error } = await sb.from('achats').insert({ client_id: currentClientId, montant: Number(montant), produit_id: produitId, quantite: qte });
   if(error){ toast(error.message, true); return; }
-  trackTikTokPurchase(currentClientId, { montant: Number(montant), produit_id: produitId });
+  trackTikTokPurchase(currentClientId, { montant: Number(montant), produit_id: produitId, quantite: qte });
   await sb.from('clients').update({ updated_at: new Date().toISOString() }).eq('id', currentClientId);
   document.getElementById('newAchatMontant').value = '';
+  document.getElementById('newAchatQte').value = '1';
   document.getElementById('achatProduitSelect').value = '';
   openFiche(currentClientId);
 });
