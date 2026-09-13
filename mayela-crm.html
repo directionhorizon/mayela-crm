@@ -755,14 +755,6 @@
           </div>
         </div>
         <div class="col-collapse collapsed">
-          <div class="section-title col-head">Impact opérationnel (interne)<span class="col-chev">▾</span></div>
-          <div class="col-body">
-            <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-              <div id="opImpactBody"><div class="empty">Chargement…</div></div>
-            </div>
-          </div>
-        </div>
-        <div class="col-collapse collapsed">
           <div class="section-title col-head">Étude : données recueillies & périmètre Meta Ads Manager<span class="col-chev">▾</span></div>
           <div class="col-body">
             <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
@@ -861,6 +853,7 @@
             <option value="tasks">Tâches</option>
             <option value="produits">Produits & services</option>
             <option value="reseaux">Réseaux sociaux (publications)</option>
+            <option value="impact">Impact opérationnel (interne)</option>
             <option value="campagnes">Campagnes — Performance</option>
             <option value="entonnoir">Campagnes — Entonnoir de conversion</option>
             <option value="caattrib">Campagnes — Ventes & CA attribués</option>
@@ -1626,7 +1619,6 @@ async function loadSocial(){
     if(insightsData) document.getElementById('socialInsightsBody').innerHTML = renderInsights(insightsData);
     else loadSocialInsights();
   }
-  loadOperationalImpact();
 }
 
 // ---- Analyse d'audience (Edge Function social-insights) ----
@@ -1841,37 +1833,6 @@ document.body.addEventListener('click', (e)=>{
   col.classList.toggle('collapsed');
   updateSb();
 });
-// ---- Impact opérationnel (interne) : remplace les statistiques réseaux non disponibles ----
-async function loadOperationalImpact(){
-  const body = document.getElementById('opImpactBody');
-  try{
-    const { count: published } = await sb.from('social_posts').select('*', { count:'exact', head:true }).eq('status','sent');
-    const { count: failed } = await sb.from('social_posts').select('*', { count:'exact', head:true }).eq('status','failed');
-    const { data: inter } = await sb.from('interactions').select('type').in('type',['whatsapp','facebook','tiktok','appel','visite','autre']);
-    const counts = { whatsapp:0, facebook:0, tiktok:0, appel:0, visite:0, autre:0 };
-    for(const it of inter||[]) counts[it.type] = (counts[it.type]||0)+1;
-    const totalInter = (inter||[]).length;
-    const ca = document.getElementById('kpiCA').textContent;
-    const kpis = [
-      [published ?? 0, 'Offres publiées'],
-      [totalInter, 'Échanges clients enregistrés'],
-      [clientsCache.length, 'Clients suivis'],
-      [ca !== '–' ? ca : '—', 'Achats (30j, FCFA)']
-    ];
-    const per = ['whatsapp','tiktok','facebook','appel','visite'].map(k=>{
-      const label = INTERACTION_TYPE_LABEL[k] || k;
-      const c = counts[k]||0;
-      return `<span style="display:inline-block;background:var(--panel-2);border-radius:20px;padding:3px 10px;font-size:11px;margin:2px;">${label} : ${c}</span>`;
-    }).join(' ');
-    let html = `<div class="kpi-grid" style="padding:0;">` + kpis.map(k=>`<div class="kpi"><div class="num">${esc(String(k[0]))}</div><div class="lbl">${k[1]}</div></div>`).join('') + `</div>`;
-    html += `<div style="color:var(--sage);font-size:11px;margin-top:6px;">Répartition des échanges</div><div>${per}</div>`;
-    if((failed??0)>0) html += `<div style="color:var(--clay);font-size:11px;margin-top:6px;">⚠ ${failed} publication(s) en échec à retenter.</div>`;
-    html += `<div style="color:var(--sage);font-size:10.5px;margin-top:6px;">En attendant le branchement TikTok/Facebook, suivez ici l'impact réel de vos offres sur vos clients.</div>`;
-    body.innerHTML = html;
-  }catch(_e){
-    body.innerHTML = '<div class="empty">Suivi opérationnel indisponible.</div>';
-  }
-}
 // ---- TikTok Pixel (événements navigateur, opt-in par espace) ----
 // Pixel basé sur le code TikTok Pixel officiel (Client-side). L'identifiant est celui du pixel
 // configuré pour l'espace actif (Réglages → Configuration Tracking → Pixel ID) ; à défaut, on
@@ -2711,7 +2672,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-f2ed9fe565';
+const APP_VERSION = 'mayela-crm-a23e096991';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -3933,6 +3894,13 @@ function reportSummaryText(d){
     case 'reseaux':
       t=`${posts.length} publication(s) réseaux sociaux sur la période.`;
       break;
+    case 'impact': {
+      const sent = (posts||[]).filter(p=>p.status==='sent').length;
+      const failN = (posts||[]).filter(p=>p.status==='failed').length;
+      const rev = achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
+      t=`${sent} offre(s) publiée(s)${failN?` dont ${failN} en échec à retenter`:''} · ${interactions.length} échange(s) enregistré(s) · ${clients.length} client(s) suivi(s) · ${fmtFCFA(rev)} d'achats sur la période. Indicateurs internes du CRM (remplacent les statistiques réseaux non disponibles).`;
+      break;
+    }
     case 'campagnes': {
       const cs = d.campaigns||[];
       const spend = cs.reduce((s,x)=>s+(Number(x.depense_reelle)||0),0);
@@ -4000,6 +3968,24 @@ function reportRows(d){
       return [['Réseau','Contenu','Statut','Date']].concat(
         posts.map(p=>[p.platform||'', (p.content||'').slice(0,80), p.status||'', String(p.created_at||'').slice(0,10)])
       );
+    case 'impact': {
+      const sent = (posts||[]).filter(p=>p.status==='sent').length;
+      const failN = (posts||[]).filter(p=>p.status==='failed').length;
+      const counts = { whatsapp:0, facebook:0, tiktok:0, appel:0, visite:0, autre:0 };
+      interactions.forEach(x=>{ counts[x.type]=(counts[x.type]||0)+1; });
+      const rev = achats.reduce((s,x)=>s+(Number(x.montant)||0),0);
+      const rows = [
+        ['Offres publiées',''+sent,'publications au statut « envoyé »'],
+        ['En échec à retenter',''+failN, failN ? 'à republier' : 'aucune'],
+        ['Échanges enregistrés',''+interactions.length,'interactions sur la période'],
+        ['Achats (FCFA)', rev, 'total des ventes sur la période'],
+        ['Clients suivis',''+clients.length,'total du fichier']
+      ];
+      ['whatsapp','tiktok','facebook','appel','visite','autre'].forEach(k=>{
+        rows.push([(INTERACTION_TYPE_LABEL[k]||k)+' (part des échanges)',''+(counts[k]||0),'']);
+      });
+      return [['Indicateur','Valeur','Détail']].concat(rows);
+    }
     case 'campagnes': {
       const counts = campaignProspectCounts(clients);
       const body = (d.campaigns||[]).map(camp=>{
@@ -4238,6 +4224,7 @@ const REPORT_TYPE_LABEL = {
   tasks:'Tâches',
   produits:'Produits & services',
   reseaux:'Réseaux sociaux (publications)',
+  impact:'Impact opérationnel (interne)',
   campagnes:'Campagnes — Performance',
   entonnoir:'Campagnes — Entonnoir de conversion',
   caattrib:'Campagnes — Ventes & CA attribués',

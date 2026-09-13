@@ -117,7 +117,9 @@ Analyse :
 - C'est **par nature un rapport**, pas une fonctionnalité de réseau : il n'a **aucun prérequis de connexion**, se calcule sur vos propres données et se croise naturellement avec les autres catégories (achats, interactions, clients).
 - Dans Réseaux, il est « caché » sous l'angle comptes/publier ; il exceptionne la logique de l'écran (qui est : comptes, santé, publications).
 
-**Recommandation : le déplacer dans Rapports** comme nouvelle catégorie « Impact opérationnel » (avec le sélecteur de période et l'export, comme les autres). 
+**Recommandation : le déplacer dans Rapports** comme nouvelle catégorie « Impact opérationnel » (avec le sélecteur de période et l'export, comme les autres).
+
+**Décision appliquée le 13/09/2026** : catégorie `impact` ajoutée aux Rapports (`<option>` à partir de l.856 ; `reportRows()` l.3971+, `reportSummaryText()` l.3897+, libellé `REPORT_TYPE_LABEL` l.4227). La section « Impact opérationnel (interne) » est retirée de Réseaux ; la fonctions `loadOperationalImpact()` est supprimée. Les KPIs (offres publiées / en échec, échanges enregistrés, achats, clients suivis, répartition par canal) sont désormais calculés sur la **période choisie** et s'exportent en Google Sheets / PDF comme les autres catégories. `docs/CLASSE MARKETING/impact-operationnel.md` mis à jour.
 
 **Synthèse des deux questions** : *analyse d'audience* → reste en Réseaux (donnée externe liée aux comptes) ; *impact opérationnel* → part en Rapports (donnée interne, format rapport).
 

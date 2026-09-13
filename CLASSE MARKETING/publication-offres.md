@@ -41,7 +41,7 @@ Contenu prêt à poster manuellement :
 | Statut | Signification | Où s'affiche |
 |---|---|---|
 | `sent` | Publiée (via `social-publish`) | Comptée « Offres publiées » |
-| `failed` | Échec de publication | Signalée « à retenter » dans Impact opérationnel |
+| `failed` | Échec de publication | Signalée « à retenter » dans le rapport Impact opérationnel (Rapports) |
 
 ---
 

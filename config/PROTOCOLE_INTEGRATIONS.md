@@ -104,12 +104,13 @@ l'espace courant uniquement).
 - Téléchargé localement, prêt à être publié manuellement.
 
 ### 7.3 Suivi opérationnel interne (remplace l'analyse d'audience)
-- Section **Impact opérationnel (interne)**, affichée en complément dans l'onglet Réseaux.
-- KPIs dérivés des données internes de l'espace :
+- Rapport **Impact opérationnel (interne)**, catégorie `impact` de l'écran **Rapports** (déplacé de Réseaux le 13/09/2026 — donnée interne, au format rapport : période + export).
+- KPIs dérivés des données internes de l'espace, calculés sur la **période sélectionnée** (sauf « clients suivis », total du fichier) :
   - offres publiées (et échecs à retenter)
   - échanges clients enregistrés, répartis par canal (WhatsApp, TikTok, Facebook, appels, visites)
   - clients suivis
-  - achats 30 jours (FCFA)
+  - achats (FCFA, sur la période)
+- Export Google Sheets / PDF, comme les autres catégories de rapports.
 - Fournit un indicateur d'impact réel sans dépendre des APIs réseaux.
 
 > Ces automatisations remplissent temporairement les manques opérationnels tant que les
