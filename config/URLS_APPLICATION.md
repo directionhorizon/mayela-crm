@@ -43,7 +43,8 @@
 - **Réglages → Changer d'espace** liste chaque espace avec le compte qui le gère
   (`RPC my_spaces` : `owner_email` = e-mail du créateur de l'espace).
 - Cliquer un espace **dont le gmail diffère** du gmail connecté → confirmation →
-  déconnexion du compte courant → envoi d'un code sur le gmail de l'espace →
-  à la connexion, rebascule automatiquement sur cet espace (`pendingSwitchOrg`).
+  la **page dédiée `#switchCode`** (bascule d'espace) apparaît : Supabase envoie un code
+  (6-8 chiffres) sur le gmail de l'espace, vous le validez sur cet écran → `pendingSwitchOrg`
+  → rebascule automatiquement sur cet espace après connexion. Plus d'écran de connexion générique.
 - Cliquer un espace **géré par le même gmail** → bascule immédiate (comme avant).
 - Rien n'est supprimé : les espaces restent tous membres de leurs comptes respectifs.

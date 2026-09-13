@@ -18,17 +18,13 @@ Références : `mayela-crm.html` (les numéros de ligne désignent ce fichier), 
 
 ## 1 — Pourquoi la page de connexion s'affiche toujours au début puis disparaît seule ?
 
-**Ce n'est pas un bug : c'est l'état initial du DOM.**
+**CORRIGÉ le 13/09/2026 — un splash logo est maintenant affiché par défaut.**
 
-- Dans le HTML, l'écran `#authEmail` (connexion) porte **la classe `active` par défaut** (l.333), tandis que le shell de l'app `#appShell` — qui contient tout le menu et les écrans — est masqué par la classe `hidden` (l.397).
-- Au chargement, `boot()` (l.1056) appelle `sb.auth.getSession()`. Cette **vérification est asynchrone** (lecture de la session locale + validation/récupération réseau) ; si une session existe elle enchaîne `afterLogin()` (l.1144, qui refait encore un `getUser()` + une requête profil) puis `afterPinOk()` (l.1234) qui démasque `#appShell` et affiche le tableau de bord.
-- Pendant tout ce temps (typiquement **0,5 à 2 s** selon la connexion), l'écran de connexion reste affiché… puis « disparaît tout seul » quand la bascule se fait.
+Ce qui est en place désormais :
 
-Il n'existe **aucun écran de chargement / splash** pour masquer cette transition : la page de connexion **est** l'écran initial. Le « clignotement » de la page de login est donc ressenti à **chaque** ouverture, même pour un utilisateur déjà connecté.
-
-**Correction possible (non faite) :** ajouter un état « chargement » (splash logo) affiché par défaut, et ne basculer vers `#authEmail` **ou** `#appShell` qu'après la résolution du `getSession()`. L'app passera alors d'un splash neutre à la bonne destination sans flash de login.
-
----
+- Dans le HTML, l'écran `#splash` (logo centré) porte **la classe `active` par défaut** (l.339) ; `#authEmail` (connexion) ne la porte plus (l.346). Le shell de l'app `#appShell` — qui contient tout le menu et les écrans — reste masqué par `hidden` (l.421).
+- Au chargement, `boot()` (l.1150) appelle `sb.auth.getSession()` : si une session existe, il enchaîne `afterLogin()` (l.1258) puis `afterPinOk()` (l.1348) qui démasque `#appShell` et affiche le tableau de bord.
+- L'utilisateur connecté voit donc **splash (logo) → app**, sans flash de login. La page de connexion n'apparaît que si aucune session n'est trouvée (`showScreen('authEmail')`).
 
 ## 2 — Logique de classification des segments (Centre d'action)
 
@@ -54,17 +50,13 @@ Détails complémentaires :
 
 ## 3 — Pourquoi la barre de menu ne s'affiche qu'au « deuxième allumage » ?
 
-Même mécanique que la question 1 : **la barre de menu n'existe que dans `#appShell`** (boutons `nav-btn`, l.928-933), et `#appShell` est `hidden` tant que la session n'est pas restaurée.
+**CORRIGÉ avec la question 1.** Le splash `#splash` (l.339) est affiché par défaut, puis la bascule se fait vers `#authEmail` (aucune session) **ou** `#appShell` (session présente). La barre de menu (`nav-btn`, l.1019-1024) n'est démasquée que lorsque `#appShell` sort de `hidden` — directement après le splash, sans flash de connexion.
 
 Concrètement :
-- **1er allumage après installation** : aucune session locale dans l'appareil → l'app **reste sur la page de connexion** (pas de shell, donc pas de menu). Dès que vous vous connectez, le shell s'affiche et le menu apparaît.
-- **Allumages suivants** : la session est restaurée, mais il y a toujours le **flash de connexion** (question 1) avant que le shell ne soit démasqué.
+- **1er allumage après installation** : aucune session locale → après le splash, l'app **reste sur la page de connexion**. Dès que vous vous connectez, le shell s'affiche et le menu apparaît.
+- **Allumages suivants** : session restaurée → **splash → shell directement**, le menu est disponible tout de suite.
 
-La perception « le menu ne vient qu'au 2ᵉ allumage » est donc la combinaison de : (a) le premier démarrage est un vrai écran de connexion, et (b) chaque démarrage suivant a un bref flash login qui fait croire à un « allumage vide » avant que le menu n'apparaisse.
-
-À noter : le code revendique l'intention inverse — « Accès direct à l'app : le verrou PIN est volontairement ignoré à l'ouverture pour entrer instantanément. La barre de navigation en bas est alors immédiatement disponible » (l.1173-1175). L'expérience réelle (flash login) contredit cette intention.
-
-**Correction possible (non faite)** : la même solution que la question 1 (splash + bascule conditionnelle) règle les deux perceptions d'un coup.
+Le code revendiquait déjà l'intention — « Accès direct à l'app : le verrou PIN est volontairement ignoré à l'ouverture pour entrer instantanément. La barre de navigation en bas est alors immédiatement disponible » (l.1305-1307). L'expérience réelle (splash neutre puis app) correspond maintenant à cette intention.
 
 ---
 

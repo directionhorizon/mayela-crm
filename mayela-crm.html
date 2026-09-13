@@ -335,8 +335,15 @@
     <div class="notch"></div>
     <div id="toast" class="toast hidden"></div>
 
+    <!-- SPLASH -->
+    <div class="screen active center-screen" id="splash">
+      <div class="badge64">📇</div>
+      <div class="stitle">MAYELA CRM</div>
+      <div class="ssub">Le chemin de chaque client, jamais perdu</div>
+    </div>
+
     <!-- AUTH: INSCRIPTION -->
-    <div class="screen active center-screen" id="authEmail" style="justify-content:flex-start; padding-top:52px;">
+    <div class="screen center-screen" id="authEmail" style="justify-content:flex-start; padding-top:52px;">
       <div class="badge64">📇</div>
       <div class="stitle">Connexion à MAYELA CRM</div>
       <div class="ssub">Aucun mot de passe — un code de connexion vous sera envoyé par e-mail.</div>
@@ -362,6 +369,17 @@
       <button class="btn" id="verifyOtpBtn">Valider</button>
       <div class="err-msg" id="authOtpErr"></div>
       <span class="link-sm" id="backToEmail">← changer d'e-mail</span>
+    </div>
+
+    <!-- AUTH: SPACE SWITCH CODE -->
+    <div class="screen center-screen" id="switchCode">
+      <div class="badge64">🔄</div>
+      <div class="stitle">Bascule vers un espace</div>
+      <div class="ssub" id="switchCodeSentTo">Un code de vérification vous sera envoyé par e-mail.</div>
+      <input class="field" type="text" inputmode="numeric" id="switchCodeInput" placeholder="Code reçu par e-mail" maxlength="10" style="text-align:center; letter-spacing:4px; font-family:'IBM Plex Mono';">
+      <button class="btn" id="switchCodeBtn">Valider la bascule</button>
+      <div class="err-msg" id="switchCodeErr"></div>
+      <span class="link-sm" id="switchCodeCancel">← Annuler</span>
     </div>
 
     <!-- SET PIN (first login) -->
@@ -1203,6 +1221,26 @@ document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
   });
 });
 document.getElementById('backToEmail').addEventListener('click', ()=> showScreen('authEmail'));
+
+// ================== AUTH: BASCULE D'ESPACE (reconnexion gmail) ==================
+document.getElementById('switchCodeBtn').addEventListener('click', async ()=>{
+  const token = document.getElementById('switchCodeInput').value.trim();
+  const errEl = document.getElementById('switchCodeErr');
+  errEl.textContent = "";
+  if(token.length < 6){ errEl.textContent = "Code trop court."; return; }
+  const btn = document.getElementById('switchCodeBtn'); btn.disabled = true; btn.textContent = "Vérification…";
+  const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type:'email' });
+  btn.disabled = false; btn.textContent = "Valider la bascule";
+  if(error){ errEl.textContent = "Code incorrect ou expiré."; return; }
+  // Filet de sécurité : normalement onAuthStateChange (SIGNED_IN) prend déjà le relais.
+  if(!sessionHandled){ sessionHandled = true; await afterLogin(); }
+});
+document.getElementById('switchCodeCancel').addEventListener('click', ()=>{
+  sessionStorage.removeItem('pendingSwitchOrg');
+  document.getElementById('switchCodeInput').value = "";
+  document.getElementById('switchCodeErr').textContent = "";
+  showScreen('authEmail');
+});
 document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
   const token = document.getElementById('otpInput').value.trim();
   const errEl = document.getElementById('authOtpErr');
@@ -2529,13 +2567,18 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
         return;
       }
       sessionStorage.setItem('pendingSwitchOrg', orgId);
-      profile = null; pendingProfile = {}; pendingEmail = "";
+      profile = null; pendingProfile = {}; pendingEmail = ownerEmail;
       document.getElementById('appShell').classList.add('hidden');
-      document.getElementById('otpInput').value = '';
+      // Page dédiée à la bascule : le gmail de l'espace cible est déjà connu,
+      // on envoie le code Supabase et on valide sur cet écran (pas de page de connexion générique).
+      document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + ownerEmail + "…";
+      document.getElementById('switchCodeInput').value = "";
+      document.getElementById('switchCodeErr').textContent = "";
+      showScreen('switchCode');
       await sb.auth.signOut();
-      document.getElementById('emailInput').value = ownerEmail;
-      showScreen('authEmail');
-      document.getElementById('sendOtpBtn').click();
+      const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
+      if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
+      document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail;
       return;
     }
   }
@@ -2582,7 +2625,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-cc9c3a32df';
+const APP_VERSION = 'mayela-crm-ce9e08d4c5';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
