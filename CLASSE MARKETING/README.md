@@ -24,6 +24,6 @@ Chaque fichier couvre un domaine distinct. Les paramètres, seuils, formules et 
 - Dates comparées en **chaînes locales** (`localDateStr`), seuils calculés en millisecondes (`Date.now() - N*86400000`).
 - La segmentation et les KPIs sont **recalculés à chaque affichage**, rien n'est persistant.
 - Les données « campagnes » couvrent **toute la durée réelle des campagnes** (pas la période sélectionnée dans Rapports).
-- **Paramètres utilisateur** (localStorage) : nombre de « clients les plus actifs en ligne » (défaut **15**, plage 3–50), réglable dans Réglages → Marketing.
+- **Paramètres utilisateur** (localStorage) : nombre de « clients les plus actifs par réseau » (défaut **15**, plage 3–50), réglable dans Réglages → Marketing ; période du top clients (7 / 30 j par défaut / 90 / depuis le début).
 
 *Documentation figée au 13/09/2026 — à mettre à jour à chaque évolution de la logique marketing.*

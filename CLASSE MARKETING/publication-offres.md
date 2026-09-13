@@ -1,6 +1,6 @@
 # Publication d'offres (contenu marketing)
 
-**Fichier source** : `mayela-crm.html`, écran Réseaux sociaux (l.665-687).
+**Fichier source** : `mayela-crm.html`, écran Réseaux sociaux (l.660-693).
 
 ---
 
@@ -49,19 +49,19 @@ Contenu prêt à poster manuellement :
 
 | Paramètre | Valeur |
 |---|---|
-| Redirect URI | Calculée dynamiquement (l.1694-1698) |
+| Redirect URI | Calculée dynamiquement (l.1841-1861) |
 | Client Key | Saisie dans `ttClientKey` (Réglages TikTok) |
 | Client Secret | Saisie dans `ttClientSecret` |
 | Scope OAuth | `user.info.basic,video.publish` |
 | Endpoint auth | `https://www.tiktok.com/v2/auth/authorize/` |
 
-**Publication** : déléguée à l'Edge Function `social-publish` (côté serveur ; les secrets ne sont **jamais** envoyés au navigateur, `sanitizeSocialAccount` l.1363-1375).
+**Publication** : déléguée à l'Edge Function `social-publish` (côté serveur ; les secrets ne sont **jamais** envoyés au navigateur, `sanitizeSocialAccount` l.1445).
 
 ---
 
 ## Sécurité / secrets
 
-- Listé dans `SOCIAL_SECRET_KEYS` (l.1362) : `client_secret`, `access_token`, `refresh_token`, `open_id`, `page_id`, `pixel_access_token`, `adjust_app_token`, `adjust_s2s_token`.
+- Listé dans `SOCIAL_SECRET_KEYS` (l.1444) : `client_secret`, `access_token`, `refresh_token`, `open_id`, `page_id`, `pixel_access_token`, `adjust_app_token`, `adjust_s2s_token`.
 - Ces clés sont retirées de tout objet renvoyé au client.
 
 ---

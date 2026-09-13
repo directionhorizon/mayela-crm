@@ -1,6 +1,6 @@
 # Attribution du CA & rentabilité (ROAS, panier moyen, réachat)
 
-**Fichier source** : `mayela-crm.html`, fonction `campaignAttribution()` (l.3609-3633), `renderDashboardPerf()` (l.2510-2552), résumés `roas`/`caattrib` (l.3681-3690).
+**Fichier source** : `mayela-crm.html`, fonction `campaignAttribution()` (l.3748-3774), `renderDashboardPerf()` (l.2649-2692), résumés `roas`/`caattrib` (l.3820-3829).
 
 ---
 
@@ -20,14 +20,14 @@ Pour **chaque campagne** dans `campaignAttribution()` :
 
 | Métrique | Formule | Réf. |
 |---|---|---|
-| `n` (ventes) | nombre d'achats avec `campagne_id = camp.id` | l.3613 |
-| `ca` (CA attribuable) | somme des `montant` de ces achats | l.3615 |
-| `avg` (panier moyen) | `ca / n` (arrondi entier) | l.3621 |
-| `buyers` (clients acheteurs) | nombre de **clients distincts** parmi ces achats | l.3617 |
-| `spend` (dépense) | `depense_reelle` de la campagne (ou 0) | l.3616 |
-| `roas` | `ca / spend`, arrondi à 2 décimales ; **`null` si dépense nulle** | l.3624 |
-| `cacCost` (coût d'acquisition) | `spend / buyers` (entier) ; 0 si aucun acheteur | l.3625 |
-| `cats` | catégories de produits **distinctes** parmi les ventes attribuées | l.3626 |
+| `n` (ventes) | nombre d'achats avec `campagne_id = camp.id` | l.3752 |
+| `ca` (CA attribuable) | somme des `montant` de ces achats | l.3754 |
+| `avg` (panier moyen) | `ca / n` (arrondi entier) | l.3760 |
+| `buyers` (clients acheteurs) | nombre de **clients distincts** parmi ces achats | l.3756 |
+| `spend` (dépense) | `depense_reelle` de la campagne (ou 0) | l.3755 |
+| `roas` | `ca / spend`, arrondi à 2 décimales ; **`null` si dépense nulle** | l.3763 |
+| `cacCost` (coût d'acquisition) | `spend / buyers` (entier) ; 0 si aucun acheteur | l.3764 |
+| `cats` | catégories de produits **distinctes** parmi les ventes attribuées | l.3765 |
 
 ---
 
@@ -42,7 +42,7 @@ Pour **chaque campagne** dans `campaignAttribution()` :
 
 ---
 
-## KPIs publicitaires du tableau de bord (l.2510-2552)
+## KPIs publicitaires du tableau de bord (l.2649-2692)
 
 | KPI | Formule | Affichage |
 |---|---|---|
@@ -51,7 +51,7 @@ Pour **chaque campagne** dans `campaignAttribution()` :
 | **Panier moyen (campagnes)** | `CA attribué ÷ nb ventes attribuées` | compact FCFA |
 | **Réachat** | `(clients avec ≥ 2 achats attribués ÷ clients acheteurs) × 100` | % |
 
-**Graphique CA par campagne** : top 5 campagnes par CA attribué, barres proportionnelles au CA max (l.2542-2551).
+**Graphique CA par campagne** : top 5 campagnes par CA attribué, barres proportionnelles au CA max (l.2663-2681).
 
 ---
 

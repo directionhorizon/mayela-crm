@@ -1,6 +1,6 @@
 # Impact opérationnel (statistiques internes)
 
-**Fichier source** : `mayela-crm.html`, fonction `loadOperationalImpact()` (l.1583-1612).
+**Fichier source** : `mayela-crm.html`, fonction `loadOperationalImpact()` (l.1722-1745).
 
 > Rôle affiché : « remplace les statistiques réseaux non disponibles ». Tant que les statistiques réseau externes (TikTok/Facebook) ne sont pas branchées en profondeur, cet écran mesure l'impact réel du marketing sur les clients.
 
@@ -10,16 +10,16 @@
 
 | KPI | Source | Réf. |
 |---|---|---|
-| **Offres publiées** | `social_posts` avec `status = 'sent'` (compte exact) | l.1586 |
-| **Échanges clients enregistrés** | `interactions` total (tous types) | l.1588-1591 |
-| **Clients suivis** | `clientsCache.length` | l.1596 |
-| **Achats (30 j, FCFA)** | Valeur du KPI `kpiCA` (montants des achats des 30 derniers jours) | l.1592-1597 |
+| **Offres publiées** | `social_posts` avec `status = 'sent'` (compte exact) | l.1724 |
+| **Échanges clients enregistrés** | `interactions` total (tous types) | l.1726-1729 |
+| **Clients suivis** | `clientsCache.length` | l.1735 |
+| **Achats (30 j, FCFA)** | Valeur du KPI `kpiCA` (montants des achats des 30 derniers jours) | l.1731-1736 |
 
 ---
 
 ## Répartition des échanges par canal
 
-Types comptés (`INTERACTION_TYPE_LABEL`, l.3962) :
+Types comptés (`INTERACTION_TYPE_LABEL`, l.4101) :
 
 | Valeur | Libellé |
 |---|---|

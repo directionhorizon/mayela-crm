@@ -1,12 +1,12 @@
 # Relances & file d'attente (actions)
 
-**Fichier source** : `mayela-crm.html`, `renderCentreAction()` (l.2558-2642).
+**Fichier source** : `mayela-crm.html`, `renderCentreAction()` (l.2697-2780).
 
 ---
 
 ## File « À traiter » (demandes en attente)
 
-**Requête** : interactions où `statut_traitement = 'en_attente'` (l.2559-2563).
+**Requête** : interactions où `statut_traitement = 'en_attente'` (l.2701).
 
 | Paramètre | Valeur |
 |---|---|
@@ -17,7 +17,7 @@
 
 **Actions par carte** :
 - 💬 : lien `wa.me/{phone}` (uniquement si le client a un téléphone)
-- ✓ : marque l'interaction traitée (`statut_traitement → 'traite'`) puis recharge (l.2638-2642)
+- ✓ : marque l'interaction traitée (`statut_traitement → 'traite'`) puis recharge (l.2777-2780)
 
 **États vides** : « Aucune demande en attente. »
 
@@ -33,7 +33,7 @@
 | Condition | Client avec `phone` **ET** `consentement !== false` |
 | Lien | `https://wa.me/{phone}?text=Bonjour {name} 👋 Ici Mayela. Un petit message pour prendre de vos nouvelles…` |
 
-**Message par défaut** (l.2627) :
+**Message par défaut** (l.2766) :
 ```
 Bonjour {name} 👋 Ici Mayela. Un petit message pour prendre de vos nouvelles…
 ```

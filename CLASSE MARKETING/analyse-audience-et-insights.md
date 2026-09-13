@@ -1,12 +1,12 @@
 # Analyse d'audience & insights (réseaux sociaux)
 
-**Fichier source** : `mayela-crm.html` (l.1528-1581), Edge Function `supabase/functions/social-insights/index.ts`.
+**Fichier source** : `mayela-crm.html` (l.1610+, 1722+), Edge Function `supabase/functions/social-insights/index.ts`.
 
 ---
 
 ## Analyse d'audience (« Analyser mon audience »)
 
-**Fonction** : `loadSocialInsights(force)` (l.1528-1555)
+**Fonction** : `loadSocialInsights(force)` (l.1610-1642)
 **Bouton** : « 📊 Analyser mon audience » (`refreshInsightsBtn`)
 
 ### Conditions
@@ -27,7 +27,7 @@
 
 ## Clients les plus actifs par réseau social
 
-**Fonction** : `loadSocialTopClients()` (l.1634+) ; limite pilotée par `topClientsLimit()` (défaut 15).
+**Fonction** : `loadSocialTopClients()` (l.1644+) ; limite pilotée par `topClientsLimit()` (défaut 15).
 
 | Paramètre | Valeur |
 |---|---|

@@ -1,6 +1,6 @@
 # Tracking des événements (Pixel TikTok & événements serveur)
 
-**Fichier source** : `mayela-crm.html`, l.1613-1691.
+**Fichier source** : `mayela-crm.html`, l.1776-1836 (`fireTikTokPixel`, `sendServerTikTokEvent`, `trackTikTokPurchase`).
 
 ---
 
@@ -17,7 +17,7 @@
 ```
 tiktokPixelId() = config.pixel_id du compte TikTok connecté  OU  défaut 'DAGRTSRC77UC8FLJV020'
 ```
-(l.1617-1621)
+(l.1756)
 
 **Pixel par défaut** : `DAGRTSRC77UC8FLJV020` (utilisé si aucun compte TikTok configuré).
 
@@ -36,7 +36,7 @@ tiktokPixelId() = config.pixel_id du compte TikTok connecté  OU  défaut 'DAGRT
 
 ---
 
-## Événement Purchase (trackTikTokPurchase, l.1663-1691)
+## Événement Purchase (trackTikTokPurchase, l.1802-1836)
 
 Déclenché à l'enregistrement d'une vente.
 
@@ -53,7 +53,7 @@ Déclenché à l'enregistrement d'une vente.
 | `value` | montant de la vente |
 | `currency` | `XAF` |
 
-**Envoi** : via `sendServerTikTokEvent('Purchase', props)` → Edge Function `tiktok-events` (l.1647-1662). Le tracking ne bloque jamais la vente (échec silencieux).
+**Envoi** : via `sendServerTikTokEvent('Purchase', props)` → Edge Function `tiktok-events` (l.1786). Le tracking ne bloque jamais la vente (échec silencieux).
 
 ---
 
