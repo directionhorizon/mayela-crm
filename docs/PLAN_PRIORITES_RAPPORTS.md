@@ -32,7 +32,7 @@
 | 5. Moteur de reporting | 🟢 Fait | Résumés + tableaux par catégorie, export Google Sheets (`loadReports`), campagnes (Performance, Entonnoir, CA attribué, ROAS, coût d'acquisition). **Reste (interne)** : réachat |
 | 1. Meta Business Suite | 🟡 Partiel | Suivi social / santé des intégrations. Pas de remontée réelle des résultats FB/IG par campagne |
 | 2. TikTok Ads Manager | 🟡 Partiel | Auth TikTok, Pixel, suivi d'achat (`trackTikTokPurchase`). Pas de remontée des métriques Ads par campagne |
-| 6. Tableau de bord | 🟡 Partiel | KPIs génériques (`renderDashboardKpis`). Pas encore portée/impressions/ROAS/coût par prospect ni graphiques |
+| 6. Tableau de bord | 🟢 Fait | KPIs accueil : clients, à traiter, tâches en retard, ventes du jour, devis & achats 30 j (`renderDashboardKpis`) + section Performance publicitaire (ROAS, coût/prospect, panier moyen, réachat, graphique CA par campagne via `renderDashboardPerf`) |
 
 **Verdict** : la colonne vertébrale (le « CRM mobile ») est opérationnelle mais capte trop peu de
 données au quotidien (pas de campagne, pas de quantité, pas de traitement des demandes). Le potentiel
@@ -165,13 +165,19 @@ fidélisation) ÷ effort, en s'appuyant sur l'existant.
   Rappel d'usage : le ROAS se calcule dès qu'une vente est liée à une campagne ; les campagnes
   à ROAS < 1 → réduire la dépense ou improver l'entonnoir (étape 2/3).
 
-### Étape 5 — Tableau de bord consolidé (~1 h) 📊
+### Étape 5 — Tableau de bord consolidé (~1 h) 📊 ✅ APPLIQUÉE
+*Livrée le 13/09/2026 dans `mayela-crm.html` (service worker `5e02a29009`), déployée sur Vercel.*
 
 - **Motif** : la vue d'ensemble en une ouverture : ce qui se passe aujourd'hui (demandes en attente,
   relances dues, ventes du jour) + ce qui va bien (ROAS, coût par prospect, panier moyen, réachat).
-- **Actions** :
-  - Cartes KPIs : demandes en attente, relances à faire, ventes du jour, CA du jour.
-  - Graphique simple : répartition du CA ou des prospects par campagne (option A : libellés barres).
+- **Actions** (état réel du code) :
+  - Grille KPI portée à 6 cartes : Clients actifs, **À traiter** (interactions en attente),
+    Tâches en retard, **Ventes du jour**, Devis (30 j), Achats (30 j, FCFA).
+  - Nouvelle section « 📊 Performance publicitaire » (affichée seulement s'il existe des
+    campagnes) : tuiles ROAS (cumul), Coût / prospect, Panier moyen (campagnes), Réachat, +
+    graphique à barres de la répartition du CA attribué par campagne (top 5).
+  - Toutes les métriques publicitaires sont cumulées sur la durée des campagnes (cohérent
+    avec les rapports d'étape 4).
 - **Livrable** : le responsable décide en 30 secondes, tableaux/cartes/graphiques simples.
 
 **Chronologie cumulée estimée : ~5–7 h.**
