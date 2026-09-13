@@ -17,6 +17,7 @@ Chaque fichier couvre un domaine distinct. Les paramètres, seuils, formules et 
 | `impact-operationnel.md` | Statistiques internes | Offres publiées, échanges, clients suivis, achats 30 j |
 | `kpis-tableau-de-bord.md` | KPIs accueil | Ventes du jour, CA 30 j, tâches, perf publicitaire |
 | `rapports-exports.md` | Moteur de reporting | Catégories, périodes, colonnes, export Google Sheets |
+| `meta-ads-manager-et-donnees-collectees.md` | **Étude** | Données recueillies (webhook WhatsApp, Insights API) & périmètre de Meta Ads Manager (Facebook + WhatsApp) |
 
 **Conventions transverses**
 - Devise : **FCFA (XAF)** — formatage `fmtFCFA`/`Intl.NumberFormat('fr-FR')`.

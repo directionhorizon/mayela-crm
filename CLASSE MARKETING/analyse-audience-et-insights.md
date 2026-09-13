@@ -27,10 +27,11 @@
 
 ## Clients les plus actifs par réseau social
 
-**Fonction** : `loadSocialTopClients()` (l.1604+) ; limite pilotée par `topClientsLimit()` (défaut 15).
+**Fonction** : `loadSocialTopClients()` (l.1634+) ; limite pilotée par `topClientsLimit()` (défaut 15).
 
 | Paramètre | Valeur |
 |---|---|
+| **Période** | **Fenêtre glissante sur `occurred_at`, jamais de cache** : 7 / 30 (défaut) / 90 jours ou « Depuis le début » ; filtre SQL `gte('occurred_at', since)` recalculé à chaque affichage |
 | Source | `interactions` avec `type IN ('whatsapp','facebook','tiktok')` |
 | Comptage | Par client **et par réseau** (`perNet`) |
 | Distinction réseau | Onglets **Tous / WhatsApp / Facebook / TikTok** (`topClientsNet`) — classement recalculé pour le réseau sélectionné |

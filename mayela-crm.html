@@ -720,6 +720,12 @@
               <button class="stage-chip" data-nwsrc="facebook">Facebook</button>
               <button class="stage-chip" data-nwsrc="tiktok">TikTok</button>
             </div>
+            <div class="stage-tabs" id="topClientsPeriodTabs" style="padding:0 20px 10px;">
+              <button class="stage-chip" data-np="7">7 j</button>
+              <button class="stage-chip active" data-np="30">30 j</button>
+              <button class="stage-chip" data-np="90">90 j</button>
+              <button class="stage-chip" data-np="all">Depuis le début</button>
+            </div>
             <div id="socialTopClients" class="card-list" style="padding-top:0;"></div>
           </div>
         </div>
@@ -734,6 +740,30 @@
           <div class="col-body">
             <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
               <div id="opImpactBody"><div class="empty">Chargement…</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">Étude : données recueillies & périmètre Meta Ads Manager<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+              <div style="font-size:12.5px; line-height:1.55;">
+                <b style="color:var(--gold);">Résumé :</b> WhatsApp Cloud ne fait pas d'analyse : il <b>transmet les événements</b> de chaque message en temps réel (webhook : contenu, numéro, statut livré/lu). La collecte automatique repose sur : <i>WhatsApp transmet → le CRM attribue → la base stocke → les rapports calculent</i>.
+              </div>
+              <div style="font-size:12.5px; line-height:1.55;">
+                <b style="color:var(--gold);">Meta Ads Manager est unique et commun</b> : un seul compte, un seul tableau de bord pour les pubs Facebook, Instagram, Messenger et WhatsApp (Click-to-WhatsApp) — impressions, clics, dépense, conversions + « conversations démarrées » et coût par conversation pour WhatsApp.
+              </div>
+              <div style="font-size:12.5px; line-height:1.55;">
+                <b style="color:var(--gold);">Attribution d'un message à une campagne</b>, 3 méthodes :
+                <ul style="margin:6px 0 0 18px; padding:0; color:var(--text);">
+                  <li>Contexte du clic d'une pub <b>Click-to-WhatsApp</b> ;</li>
+                  <li><b>Code dans le lien pré-rempli</b> <code style="font-size:11px;">wa.me/NUMERO?text=…CODE</code> ;</li>
+                  <li><b>Un numéro WhatsApp par campagne</b> (le plus fiable).</li>
+                </ul>
+              </div>
+              <div style="font-size:12.5px; line-height:1.55;">
+                <b style="color:var(--gold);">Ads Manager = côté pub</b> (agrégats) ; <b>webhook = côté conversation</b> (détail par contact). Le CRM combine les deux. Étude complète : <b>CLASSE MARKETING/meta-ads-manager-et-donnees-collectees.md</b>.
+              </div>
             </div>
           </div>
         </div>
@@ -1610,11 +1640,18 @@ document.getElementById('refreshInsightsBtn').addEventListener('click', ()=>load
 // ---- Top clients par interactions en ligne, distingués par réseau social (croisement interne) ----
 const ONLINE_NETS = ['whatsapp','facebook','tiktok'];
 let topClientsNet = 'tous'; // 'tous' | 'whatsapp' | 'facebook' | 'tiktok'
+let topClientsPeriod = '30'; // '7' | '15' | '30' | '90' | 'all' — fenêtre glissante sur occurred_at
 async function loadSocialTopClients(){
   const el = document.getElementById('socialTopClients');
   if(!el) return;
   try{
-    const { data: inter } = await sb.from('interactions').select('client_id,type').in('type', ONLINE_NETS);
+    // Période = filtre dans la requête (jamais de cache) : always frais.
+    const since = topClientsPeriod === 'all'
+      ? null
+      : new Date(Date.now() - parseInt(topClientsPeriod,10)*86400000).toISOString();
+    let q = sb.from('interactions').select('client_id,type,occurred_at').in('type', ONLINE_NETS);
+    if(since) q = q.gte('occurred_at', since);
+    const { data: inter } = await q;
     // Comptage par client et par réseau social.
     const perNet = { whatsapp:{}, facebook:{}, tiktok:{} };
     for(const it of inter||[]){
@@ -1632,8 +1669,10 @@ async function loadSocialTopClients(){
       .slice(0, topClientsLimit());
     const tabs = document.querySelectorAll('#topClientsTabs .stage-chip');
     if(tabs.length) tabs.forEach(x=>x.classList.toggle('active', x.dataset.nwsrc===topClientsNet));
+    const pTabs = document.querySelectorAll('#topClientsPeriodTabs .stage-chip');
+    if(pTabs.length) pTabs.forEach(x=>x.classList.toggle('active', x.dataset.np===String(topClientsPeriod)));
     if(!ranked.length){
-      el.innerHTML = '<div class="empty">Aucune interaction sur ce réseau. Notez vos échanges WhatsApp/Facebook dans chaque fiche client.</div>';
+      el.innerHTML = '<div class="empty">Aucune interaction sur ce réseau pour la période choisie. Notez vos échanges WhatsApp/Facebook dans chaque fiche client.</div>';
       return;
     }
     el.innerHTML = ranked.map(r=>{
@@ -1645,11 +1684,12 @@ async function loadSocialTopClients(){
     el.innerHTML = '<div class="empty">Impossible de charger les statistiques.</div>';
   }
 }
-// Sélecteur de réseau : « Clients les plus actifs » classés par réseau social.
+// Sélecteur de réseau et de période : « Clients les plus actifs » classés par réseau + fenêtre.
 document.body.addEventListener('click', (e)=>{
-  const chip = e.target.closest('#topClientsTabs .stage-chip'); if(!chip) return;
-  topClientsNet = chip.dataset.nwsrc;
-  loadSocialTopClients();
+  const chip = e.target.closest('#topClientsTabs .stage-chip');
+  if(chip){ topClientsNet = chip.dataset.nwsrc; loadSocialTopClients(); return; }
+  const pchip = e.target.closest('#topClientsPeriodTabs .stage-chip');
+  if(pchip){ topClientsPeriod = pchip.dataset.np; loadSocialTopClients(); }
 });
 // ---- Réglage « top clients » (Réseaux sociaux) : limite paramétrable, défaut 15 (plage 3 à 50) ----
 const TOP_CLIENTS_KEY = 'mayela_topClientsCount';
@@ -2542,7 +2582,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-f9ef6fda36';
+const APP_VERSION = 'mayela-crm-cc9c3a32df';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
