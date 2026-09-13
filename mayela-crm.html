@@ -176,6 +176,12 @@
   .kpi .lbl{ font-size:11px; color:var(--sage); margin-top:4px; }
   .section-title{ padding:22px 20px 10px; font-family:'Sora',sans-serif; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:var(--sage); display:flex; justify-content:space-between; align-items:center;}
   .section-title a{ color:var(--gold); font-size:11px; text-decoration:none; cursor:pointer; }
+  /* Sections repliables : tête cliquable + corps pliable (pliées à l'ouverture) */
+  .col-collapse .col-head{ cursor:pointer; user-select:none; }
+  .col-collapse .col-body{ overflow:hidden; }
+  .col-collapse.collapsed .col-body{ display:none; }
+  .col-chev{ display:inline-block; font-size:11px; color:var(--gold); margin-left:10px; flex:0 0 auto; transition:transform .18s ease; }
+  .col-collapse.collapsed .col-chev{ transform:rotate(-90deg); }
 
   .card-list{ padding:0 20px; display:flex; flex-direction:column; gap:8px; }
   .relance-card{ background:var(--panel); border-left:3px solid var(--clay); border-radius:12px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; gap:8px;}
@@ -685,25 +691,51 @@
           <canvas id="offerCanvas" class="hidden"></canvas>
           <div class="err-msg" id="manualOfferErr"></div>
         </div>
-        <div class="section-title">État des intégrations</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">Réseaux connectés</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Vérif.</span></div>
-          <div id="socialHealthBody"><div class="empty">Chargement…</div></div>
-          <button class="btn-ghost" id="refreshHealthBtn">🔍 Vérifier l'état des intégrations</button>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">État des intégrations<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+              <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">Réseaux connectés</span><span class="pill" style="background:rgba(243,237,224,0.06); color:var(--sage); border-color:var(--line);">Vérif.</span></div>
+              <div id="socialHealthBody"><div class="empty">Chargement…</div></div>
+              <button class="btn-ghost" id="refreshHealthBtn">🔍 Vérifier l'état des intégrations</button>
+            </div>
+          </div>
         </div>
-        <div class="section-title">Analyse d'audience</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div></div>
-          <button class="btn-ghost" id="refreshInsightsBtn">📊 Analyser mon audience</button>
-          <div class="err-msg" id="insightsErr"></div>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">Analyse d'audience<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+              <div id="socialInsightsBody"><div class="empty">Connectez votre Page Facebook ou votre compte TikTok pour analyser votre audience.</div></div>
+              <button class="btn-ghost" id="refreshInsightsBtn">📊 Analyser mon audience</button>
+              <div class="err-msg" id="insightsErr"></div>
+            </div>
+          </div>
         </div>
-        <div class="section-title">Clients les plus actifs en ligne</div>
-        <div id="socialTopClients" class="card-list" style="padding-top:0;"></div>
-        <div class="section-title">Publications récentes</div>
-        <div id="socialPostsList" class="card-list" style="padding-top:0;"></div>
-        <div class="section-title">Impact opérationnel (interne)</div>
-        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
-          <div id="opImpactBody"><div class="empty">Chargement…</div></div>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">Clients les plus actifs par réseau<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div class="stage-tabs" id="topClientsTabs" style="padding:4px 20px 10px;">
+              <button class="stage-chip active" data-nwsrc="tous">Tous</button>
+              <button class="stage-chip" data-nwsrc="whatsapp">WhatsApp</button>
+              <button class="stage-chip" data-nwsrc="facebook">Facebook</button>
+              <button class="stage-chip" data-nwsrc="tiktok">TikTok</button>
+            </div>
+            <div id="socialTopClients" class="card-list" style="padding-top:0;"></div>
+          </div>
+        </div>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">Publications récentes<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div id="socialPostsList" class="card-list" style="padding-top:0;"></div>
+          </div>
+        </div>
+        <div class="col-collapse collapsed">
+          <div class="section-title col-head">Impact opérationnel (interne)<span class="col-chev">▾</span></div>
+          <div class="col-body">
+            <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;">
+              <div id="opImpactBody"><div class="empty">Chargement…</div></div>
+            </div>
+          </div>
         </div>
         <div style="height:16px;"></div>
       </div>
@@ -897,6 +929,17 @@
           <div class="err-msg" id="gsErr"></div>
           <div class="meta" style="color:var(--sage); font-size:10.5px;">Une fois connecté, exportez le rapport courant depuis l'onglet <b style="color:var(--text);">Rapports</b>.</div>
         </div>
+        <div class="section-title">Marketing</div>
+        <div class="set-block">
+          <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div class="lbl">« Clients les plus actifs par réseau »<small>Nombre maximum affiché par vue dans Réseaux sociaux · de 3 à 50 (défaut : 15)</small></div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input class="field" type="number" id="topClientsCount" min="3" max="50" style="width:110px; flex:0 0 auto;" inputmode="numeric">
+              <button class="btn" id="saveTopClientsBtn" style="flex:1 1 auto; min-height:44px;">💾 Enregistrer</button>
+            </div>
+            <div class="err-msg" id="topClientsErr"></div>
+          </div>
+        </div>
         <div class="section-title">Configuration Tracking</div>
         <div class="info-block" style="margin:0 20px 12px; display:flex; flex-direction:column; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;"><span style="font-size:12px; font-weight:700; color:var(--gold);">TikTok · Événements (server-side)</span><span class="pill" style="background:rgba(76,154,107,0.14); color:#7BC79A; border-color:rgba(76,154,107,0.3);">Actif</span></div>
@@ -968,7 +1011,10 @@ function esc(s){ return String(s ?? '').replace(/[&<>"']/g, ch=>({'&':'&amp;','<
 function showScreen(id){
   document.querySelectorAll('.stage > .phone > .screen, #appShell > .screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(id === 'settings' && typeof refreshVersionInfo === 'function') refreshVersionInfo();
+  if(id === 'settings'){
+    if(typeof refreshVersionInfo === 'function') refreshVersionInfo();
+    if(typeof fillTopClientsSetting === 'function') fillTopClientsSetting();
+  }
   updateSb();
 }
 function updateSb(){
@@ -1280,10 +1326,16 @@ document.body.addEventListener('click', (e)=>{
   }
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
-  if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
+  if(target === 'social'){
+    // Sections repliables : toujours repliées à l'ouverture de l'écran Réseaux.
+    document.querySelectorAll('#social .col-collapse').forEach(c=>c.classList.add('collapsed'));
+    updateSb();
+    loadSocial();
+    if(typeof gsRefreshStatus==='function') gsRefreshStatus();
+  }
   if(target === 'addclient') loadCampaigns();
   if(target === 'campaigns'){ loadCampaigns().then(renderCampaigns); }
-  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); loadTrackingConfig(); }
+  if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); if(typeof fillTopClientsSetting==='function') fillTopClientsSetting(); loadTrackingConfig(); }
   if(target === 'reports') loadReports();
 });
 async function loadProduits(){
@@ -1555,30 +1607,77 @@ async function loadSocialInsights(force){
 }
 document.getElementById('refreshInsightsBtn').addEventListener('click', ()=>loadSocialInsights(true));
 
-// ---- Top clients par interactions en ligne (croisement interne) ----
+// ---- Top clients par interactions en ligne, distingués par réseau social (croisement interne) ----
+const ONLINE_NETS = ['whatsapp','facebook','tiktok'];
+let topClientsNet = 'tous'; // 'tous' | 'whatsapp' | 'facebook' | 'tiktok'
 async function loadSocialTopClients(){
   const el = document.getElementById('socialTopClients');
+  if(!el) return;
   try{
-    const { data: inter } = await sb.from('interactions').select('client_id,type').in('type',['whatsapp','facebook','tiktok']);
-    const counts = {};
-    for(const it of inter||[]){ counts[it.client_id] = (counts[it.client_id]||0)+1; }
-    const ranked = Object.entries(counts)
-      .map(([id,n])=>({ c:clientsCache.find(x=>x.id===id), n }))
+    const { data: inter } = await sb.from('interactions').select('client_id,type').in('type', ONLINE_NETS);
+    // Comptage par client et par réseau social.
+    const perNet = { whatsapp:{}, facebook:{}, tiktok:{} };
+    for(const it of inter||[]){
+      if(!perNet[it.type]) continue;
+      perNet[it.type][it.client_id] = (perNet[it.type][it.client_id]||0)+1;
+    }
+    const tot = {};
+    ONLINE_NETS.forEach(net=>{ Object.entries(perNet[net]).forEach(([id,n])=>{ tot[id] = (tot[id]||0)+n; }); });
+    // Classement selon le réseau sélectionné (ou tous), puis limite paramétrable.
+    const pool = topClientsNet === 'tous' ? tot : (perNet[topClientsNet] || {});
+    const ranked = Object.entries(pool)
+      .map(([id,n])=>({ c:clientsCache.find(x=>x.id===id), n, per: perNet, net: topClientsNet }))
       .filter(r=>r.c)
       .sort((a,b)=>b.n-a.n)
-      .slice(0,5);
+      .slice(0, topClientsLimit());
+    const tabs = document.querySelectorAll('#topClientsTabs .stage-chip');
+    if(tabs.length) tabs.forEach(x=>x.classList.toggle('active', x.dataset.nwsrc===topClientsNet));
     if(!ranked.length){
-      el.innerHTML = '<div class="empty">Aucune interaction réseaux enregistrée. Notez vos échanges WhatsApp/Facebook dans chaque fiche client.</div>';
+      el.innerHTML = '<div class="empty">Aucune interaction sur ce réseau. Notez vos échanges WhatsApp/Facebook dans chaque fiche client.</div>';
       return;
     }
     el.innerHTML = ranked.map(r=>{
       const wa = r.c.phone ? 'https://wa.me/'+String(r.c.phone).replace(/\D/g,'') : null;
-      return `<div class="relance-card"><div style="min-width:0;"><div class="name">${esc(r.c.name)}</div><div class="meta">${r.n} interaction${r.n>1?'s':''} en ligne${r.c.stage_override ? ' · '+esc(r.c.stage_override) : ''}</div></div>${wa?`<a href="${wa}" target="_blank" rel="noopener" class="link-sm" style="flex-shrink:0;">💬 Relancer</a>`:''}</div>`;
+      const det = ONLINE_NETS.map(net=>{ const n = r.per[net][r.c.id]; return n ? esc(INTERACTION_TYPE_LABEL[net]) + ' ' + n : null; }).filter(Boolean).join(' · ');
+      return `<div class="relance-card"><div style="min-width:0;"><div class="name">${esc(r.c.name)}</div><div class="meta">${r.n} interaction${r.n>1?'s':''} en ligne${det ? ' · <b style="color:var(--gold);">'+det+'</b>' : ''}${r.c.stage_override ? ' · '+esc(r.c.stage_override) : ''}</div></div>${wa?`<a href="${wa}" target="_blank" rel="noopener" class="link-sm" style="flex-shrink:0;">💬 Relancer</a>`:''}</div>`;
     }).join('');
   }catch(_e){
     el.innerHTML = '<div class="empty">Impossible de charger les statistiques.</div>';
   }
 }
+// Sélecteur de réseau : « Clients les plus actifs » classés par réseau social.
+document.body.addEventListener('click', (e)=>{
+  const chip = e.target.closest('#topClientsTabs .stage-chip'); if(!chip) return;
+  topClientsNet = chip.dataset.nwsrc;
+  loadSocialTopClients();
+});
+// ---- Réglage « top clients » (Réseaux sociaux) : limite paramétrable, défaut 15 (plage 3 à 50) ----
+const TOP_CLIENTS_KEY = 'mayela_topClientsCount';
+function topClientsLimit(){
+  const v = parseInt(localStorage.getItem(TOP_CLIENTS_KEY) || '', 10);
+  return (v && v >= 3 && v <= 50) ? v : 15;
+}
+function fillTopClientsSetting(){
+  const el = document.getElementById('topClientsCount');
+  if(el) el.value = topClientsLimit();
+}
+document.getElementById('saveTopClientsBtn').addEventListener('click', ()=>{
+  const el = document.getElementById('topClientsCount');
+  const errEl = document.getElementById('topClientsErr');
+  const v = parseInt(el.value, 10);
+  if(!v || v < 3 || v > 50){ if(errEl) errEl.textContent = 'Entrez un nombre entre 3 et 50.'; return; }
+  if(errEl) errEl.textContent = '';
+  localStorage.setItem(TOP_CLIENTS_KEY, String(v));
+  toast('Limite top clients enregistrée : ' + v + '.');
+  loadSocialTopClients();
+});
+// ---- Sections repliables : tête cliquable (standard CSS/JS, aucun bouton modifié) ----
+document.body.addEventListener('click', (e)=>{
+  const head = e.target.closest('.col-head'); if(!head) return;
+  const col = head.closest('.col-collapse'); if(!col) return;
+  col.classList.toggle('collapsed');
+  updateSb();
+});
 // ---- Impact opérationnel (interne) : remplace les statistiques réseaux non disponibles ----
 async function loadOperationalImpact(){
   const body = document.getElementById('opImpactBody');
@@ -2443,7 +2542,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-5528bc01a7';
+const APP_VERSION = 'mayela-crm-f9ef6fda36';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
