@@ -64,20 +64,13 @@ Le code revendiquait déjà l'intention — « Accès direct à l'app : le verro
 
 ## 4 — Pourquoi la discussion du Conseiller défile mais la barre reste bloquée ?
 
-L'app possède une **barre de défilement « custom »** (molette iOS, `#sbWrap`/`#sbThumb`, l.974-1033) car la barre native est masquée (`scrollbar-width:none`, l.278). C'est elle qui ne suit pas le mouvement.
+**CORRIGÉ le 13/09/2026.** La molette custom (`#sbWrap`/`#sbThumb`) suivait `document.querySelector('.screen.active')` — sur le Conseiller (`#ia`), le défilement réel se produit dans un **sous-conteneur** (`#iaChatLog`, `#iaEmpty`, ou `#iaHistoryList`), pas dans l'écran : le pouce restait donc « figé » à zéro pendant que le contenu bougeait.
 
-- `updateSb()` (l.974-987) calcule la position du pouce à partir du `scrollTop` de `document.querySelector('.screen.active')` (l.977 et l.986) — c'est-à-dire **de l'écran entier**.
-- Sur l'écran Conseiller, le conteneur qui défile réellement n'est **pas** `.screen`, mais **`#iaChatLog`** (CSS l.278 : `overflow-y:auto ; flex:1 ; min-height:0`). La conversation défile **à l'intérieur** de `#iaChatLog`, tandis que `.screen.active` garde `scrollTop = 0`.
-- Résultat : la molette custom reste à zéro (« bloquée ») alors que le contenu se déplace ; et comme la barre native est masquée, l'utilisateur n'a **aucun** indicateur de position.
+Correctif appliqué (l.1095-1135) : nouvelle résolution `sbScroller()` qui renvoie l'élément qui défile réellement
+- écran normal → `.screen.active` (inchangé) ;
+- écran Conseiller → `#iaChatLog` si une conversation est affichée et défilable, sinon `#iaEmpty` (accueil), sinon `#iaHistoryList` quand le panneau historique est ouvert.
 
-**Origine** : `updateSb()` suppose qu'il n'y a qu'un seul défileur possible (l'écran), or le Conseiller a un **sous-défileur** interne.
-
-**Correctifs possibles (non faits)** :
-1. Faire travailler `updateSb()` sur **l'élément qui a réellement défilé** (utiliser la cible de l'événement `scroll` en capture, l.988) au lieu de `.screen.active`.
-2. Simplifier le CSS : laisser `#iaChatLog` s'étendre dans `.screen` (sans `overflow` interne) et **n'autoriser qu'un seul défileur** par écran.
-3. Ré-afficher la barre native `#iaChatLog` (retirer `scrollbar-width:none`) — le plus simple.
-
-Le défilement automatique vers le bas, lui, fonctionne (`iaScrollToBottom` cible bien `#iaChatLog` l.3049-3051) : c'est uniquement l'**indicateur visuel** (molette custom) qui est décarré.
+`updateSb()`, le glisser (pointer) et les `ResizeObserver` utilisent désormais `sbScroller()` au lieu de `.screen.active` — la molette reflète et pilote le bon conteneur. Aucun changement CSS : un seul défileur reste présent par vue (l'écran, ou le sous-conteneur du Conseiller).
 
 ---
 
