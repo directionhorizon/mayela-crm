@@ -445,6 +445,7 @@
           <select class="field" id="newStage">
             <option>Prospect</option><option>Contacté</option><option>Négociation</option><option>Client</option><option>Fidèle</option>
           </select>
+          <select class="field" id="newCampagne"><option value="">Campagne d'origine (optionnel)</option></select>
         </div>
         <div style="padding:14px 20px;">
           <button class="btn" id="saveClientBtn">Enregistrer</button>
@@ -596,6 +597,7 @@
       <div class="screen" id="social">
         <div class="topbar"><h1>Réseaux sociaux</h1></div>
         <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
+        <div style="margin:8px 20px 0;"><button class="btn-ghost" data-nav="campaigns">📢 Campagnes publicitaires — saisir & succès</button></div>
         <div id="tiktokSetupPanel" class="hidden" style="margin:0 20px;">
           <div class="section-title">Configurer TikTok (Login Kit)</div>
           <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
@@ -691,6 +693,53 @@
         <div style="height:16px;"></div>
       </div>
 
+      <!-- CAMPAGNES (sous-page Réseaux) -->
+      <div class="screen" id="campaigns">
+        <div class="back" data-nav="social">← Réseaux</div>
+        <div class="section-title">Nouvelle campagne</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">
+            Saisissez ici ce que vous lisez dans Meta / TikTok Ads Manager (dépense, portée,
+            impressions, clics). Les rapports « Performance » et « Entonnoir » se calculent
+            automatiquement ; le coût par prospect se met à jour dès que les fiches prospects
+            sont rattachées à cette campagne.
+          </div>
+          <input class="field" id="campNom" placeholder="Nom (ex : META_SOINS_VISAGE_OCT_2026)">
+          <div style="display:flex; gap:8px;">
+            <select class="field" id="campPlateforme" style="flex:1;" aria-label="Plateforme">
+              <option value="facebook">Facebook</option>
+              <option value="instagram">Instagram</option>
+              <option value="tiktok">TikTok</option>
+            </select>
+            <select class="field" id="campType" style="flex:1;" aria-label="Type de campagne">
+              <option value="visibilite">Visibilité</option>
+              <option value="messages">Messages</option>
+              <option value="leads">Leads</option>
+              <option value="promotion_produit">Promotion produit</option>
+            </select>
+          </div>
+          <input class="field" id="campCategorie" placeholder="Catégorie promue (ex : Soins visage)">
+          <div style="display:flex; gap:8px;">
+            <input class="field" id="campDebut" type="date" onfocus="this.showPicker && this.showPicker()" style="flex:1;" aria-label="Date de début">
+            <input class="field" id="campFin" type="date" onfocus="this.showPicker && this.showPicker()" style="flex:1;" aria-label="Date de fin">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input class="field" id="campBudget" type="number" min="0" placeholder="Budget prévu (FCFA)" style="flex:1;" inputmode="numeric">
+            <input class="field" id="campDepense" type="number" min="0" placeholder="Dépense réelle (FCFA)" style="flex:1;" inputmode="numeric">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input class="field" id="campPortee" type="number" min="0" placeholder="Portée" style="flex:1;" inputmode="numeric">
+            <input class="field" id="campImpressions" type="number" min="0" placeholder="Impressions" style="flex:1;" inputmode="numeric">
+            <input class="field" id="campClics" type="number" min="0" placeholder="Clics / msgs" style="flex:1;" inputmode="numeric">
+          </div>
+          <button class="btn" id="saveCampaignBtn">💾 Enregistrer la campagne</button>
+          <div class="err-msg" id="campaignErr"></div>
+        </div>
+        <div class="section-title">Campagnes saisies</div>
+        <div id="campaignsList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
       <!-- RAPPORTS -->
       <div class="screen" id="reports">
         <div class="topbar"><h1>Rapports</h1><div class="pill online"><span class="dot"></span><span id="reportCount">–</span></div></div>
@@ -712,13 +761,15 @@
             <option value="tasks">Tâches</option>
             <option value="produits">Produits & services</option>
             <option value="reseaux">Réseaux sociaux (publications)</option>
+            <option value="campagnes">Campagnes — Performance</option>
+            <option value="entonnoir">Campagnes — Entonnoir de conversion</option>
             <option value="autre">Autre… (rapport personnalisé)</option>
           </select>
           <div id="reportAutreWrap" style="display:none; flex-direction:column; gap:6px;">
             <textarea id="reportAutre" class="field" rows="3" placeholder="Décrivez le rapport que vous souhaitez (données, période, style…). L'assistant IA générera le contenu." style="resize:vertical; font-family:'Work Sans';"></textarea>
             <button class="btn" id="rpGenerateIaBtn">✨ Générer avec l'assistant</button>
           </div>
-          <div class="meta" style="color:var(--sage); font-size:11px;">Le résumé et le tableau ci-dessous suivent la catégorie choisie. « Autre » génère un rapport personnalisé avec l'assistant.</div>
+          <div class="meta" style="color:var(--sage); font-size:11px;">Le résumé et le tableau ci-dessous suivent la catégorie choisie. Pour « Campagnes — Performance » et « Campagnes — Entonnoir », les chiffres couvrent toute la durée des campagnes (la période sélectionnée ne les filtre pas). « Autre » génère un rapport personnalisé avec l'assistant.</div>
           <div class="err-msg" id="reportErr"></div>
         </div>
         <div id="reportExtra" class="kpi-grid"></div>
@@ -881,6 +932,7 @@ let pendingEmail = "";
 let pendingProfile = {};
 let profile = null;
 let clientsCache = [];
+let campaignsCache = [];
 let currentStage = "Tous";
 let currentClientId = null;
 let produitsCache = [];
@@ -1218,6 +1270,8 @@ document.body.addEventListener('click', (e)=>{
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'social'){ loadSocial(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); }
+  if(target === 'addclient') loadCampaigns();
+  if(target === 'campaigns'){ loadCampaigns().then(renderCampaigns); }
   if(target === 'settings'){ gsSetupStatus(); if(typeof gsRefreshStatus==='function') gsRefreshStatus(); if(typeof refreshVersionInfo==='function') refreshVersionInfo(); loadTrackingConfig(); }
   if(target === 'reports') loadReports();
 });
@@ -1289,6 +1343,7 @@ const PLATFORM_META = {
   whatsapp: { icon:'💬', img:'./icons/whatsapp.png', label:'WhatsApp Business', hint:"Cloud API à configurer. En attendant : boutons WhatsApp dans chaque fiche client." },
   tiktok:   { icon:'🎵', img:'./icons/tiktok.jpg', label:'TikTok Business', hint:"Connectez votre compte pour publier vos offres en carrousel photo." }
 };
+const CAMPAIGN_TYPE_LABEL = { visibilite:'Visibilité', messages:'Messages', leads:'Leads', promotion_produit:'Promotion produit' };
 let socialCache = [];
 // Ne conserve jamais les secrets côté client. La publication, le tracking et le rafraîchissement
 // des jetons sont gérés par les Edge Functions (server-side) : le navigateur n'a besoin que des
@@ -2143,6 +2198,86 @@ document.getElementById('saveTrackingBtn').addEventListener('click', async ()=>{
   }
 });
 
+// ================== CAMPAGNES (étape 3) ==================
+// Sous-page de l'écran Réseaux : liste + formulaire de création (V1 saisie manuelle,
+// V2 sync auto Meta/TikTok sans changement de structure). Alimente les rapports
+// « Campagnes — Performance » et « Campagnes — Entonnoir de conversion ».
+async function loadCampaigns(){
+  const { data } = await sb.from('campaigns').select('*').order('created_at', { ascending:false });
+  campaignsCache = data || [];
+  const sel = document.getElementById('newCampagne');
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Campagne d\'origine (optionnel)</option>' +
+      campaignsCache.map(c=>`<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+    if(cur && campaignsCache.some(c=>c.id===cur)) sel.value = cur;
+  }
+  return campaignsCache;
+}
+async function renderCampaigns(){
+  const list = document.getElementById('campaignsList');
+  if(!list) return;
+  if(!campaignsCache.length){
+    list.innerHTML = '<div class="empty">Aucune campagne saisie. Créez la première ci-dessus.</div>';
+    return;
+  }
+  const { data: clients } = await sb.from('clients').select('campagne_origine').not('campagne_origine', 'is', null);
+  const counts = {};
+  (clients||[]).forEach(c=>{ counts[c.campagne_origine] = (counts[c.campagne_origine]||0)+1; });
+  list.innerHTML = campaignsCache.map(c=>{
+    const pr = counts[c.id]||0;
+    const cpp = pr ? Math.round((Number(c.depense_reelle)||0)/pr) : 0;
+    const pl = PLATFORM_META[c.plateforme];
+    return `<div class="relance-card" style="flex-direction:column; align-items:stretch; gap:5px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="min-width:0;"><div class="name">${esc(c.nom)}</div><div class="meta">${pl?.img ? `<img src="${pl.img}" alt="" style="width:15px;height:15px;object-fit:contain;vertical-align:-2px;margin-right:3px;">` : (pl?.icon||'')} ${pl?.label||esc(c.plateforme)} · ${esc(CAMPAIGN_TYPE_LABEL[c.type]||c.type||'—')}${c.categorie_promue?' · '+esc(c.categorie_promue):''}</div></div>
+        <span class="link-sm" data-del-campaign="${c.id}" title="Supprimer la campagne">✕</span>
+      </div>
+      <div class="meta">📆 ${c.date_debut ? fmtDate(c.date_debut) : 'début libre'} → ${c.date_fin ? fmtDate(c.date_fin) : 'fin libre'} · Portée ${Number(c.portee)||0} · Impressions ${Number(c.impressions)||0} · Clics ${Number(c.clics)||0}</div>
+      <div class="meta">Dépense ${fmtFCFA(c.depense_reelle)}${c.budget_prevu ? ' / budget '+fmtFCFA(c.budget_prevu) : ''} · <b style="color:var(--gold);">${pr} prospect(s)</b> · coût/prospect ${cpp ? fmtFCFA(cpp) : '—'}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('saveCampaignBtn').addEventListener('click', async ()=>{
+  const nom = document.getElementById('campNom').value.trim();
+  const errEl = document.getElementById('campaignErr');
+  if(!nom){ errEl.textContent = "Le nom de la campagne est obligatoire."; return; }
+  errEl.textContent = '';
+  const { data:{ user } } = await sb.auth.getUser();
+  const budget = document.getElementById('campBudget').value;
+  const { error } = await sb.from('campaigns').insert({
+    org_id: activeOrgId(),
+    nom,
+    plateforme: document.getElementById('campPlateforme').value,
+    type: document.getElementById('campType').value,
+    categorie_promue: document.getElementById('campCategorie').value.trim() || null,
+    date_debut: document.getElementById('campDebut').value || null,
+    date_fin: document.getElementById('campFin').value || null,
+    budget_prevu: budget ? Number(budget) : null,
+    depense_reelle: Number(document.getElementById('campDepense').value) || 0,
+    portee: parseInt(document.getElementById('campPortee').value, 10) || 0,
+    impressions: parseInt(document.getElementById('campImpressions').value, 10) || 0,
+    clics: parseInt(document.getElementById('campClics').value, 10) || 0,
+    created_by: user.id
+  });
+  if(error){ errEl.textContent = error.message; return; }
+  [['campNom',''],['campCategorie',''],['campDebut',''],['campFin',''],['campBudget',''],['campDepense',''],['campPortee',''],['campImpressions',''],['campClics','']]
+    .forEach(([id])=>{ document.getElementById(id).value = ''; });
+  document.getElementById('campPlateforme').value = 'facebook';
+  document.getElementById('campType').value = 'visibilite';
+  toast('Campagne enregistrée.');
+  await loadCampaigns();
+  renderCampaigns();
+});
+document.body.addEventListener('click', async (e)=>{
+  const del = e.target.closest('[data-del-campaign]'); if(!del) return;
+  if(!confirm("Supprimer cette campagne ? Les prospects et ventes liés sont conservés.")) return;
+  const { error } = await sb.from('campaigns').delete().eq('id', del.dataset.delCampaign);
+  if(error){ toast(error.message, true); }
+  await loadCampaigns();
+  renderCampaigns();
+});
+
 // ================== LOAD EVERYTHING ==================
 async function loadEverything(){
   document.getElementById('hello').textContent = 'Bonjour, ' + (profile.full_name || 'vous');
@@ -2271,7 +2406,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-ff173310ba';
+const APP_VERSION = 'mayela-crm-92c6613279';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -2451,6 +2586,7 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   const zone = document.getElementById('newZone').value.trim();
   const phone = document.getElementById('newPhone').value.trim();
   const stage = document.getElementById('newStage').value;
+  const campagneOrigine = document.getElementById('newCampagne') ? document.getElementById('newCampagne').value : '';
   const errEl = document.getElementById('addClientErr');
   if(!name){ errEl.textContent = "Le nom est obligatoire."; return; }
   const { data:{ user } } = await sb.auth.getUser();
@@ -2458,11 +2594,13 @@ document.getElementById('saveClientBtn').addEventListener('click', async ()=>{
   const clientOwner = isSolo ? { owner_user_id: user.id } : { org_id: activeOrgId() };
   const { error } = await sb.from('clients').insert({
     name, zone: zone||null, phone: phone||null, stage_override: stage,
+    campagne_origine: campagneOrigine || null,
     updated_at: new Date().toISOString(),
     ...clientOwner
   });
   if(error){ errEl.textContent = error.message; return; }
   document.getElementById('newName').value=''; document.getElementById('newZone').value=''; document.getElementById('newPhone').value='';
+  if(document.getElementById('newCampagne')) document.getElementById('newCampagne').value='';
   const { data: clients } = await sb.from('clients').select('*').order('created_at', { ascending:false });
   clientsCache = clients || [];
   document.getElementById('clientCount').textContent = clientsCache.length;
@@ -3340,6 +3478,36 @@ function periodSince(){
   return d ? new Date(Date.now() - d).toISOString() : '1970-01-01';
 }
 
+// Helpers « Campagnes » : comptage des prospects rattachés par campagne.
+// Les deux rapports campagnes s'appuient sur d.campaigns (toutes les campagnes) et
+// d.clients (avec campagne_origine) ; la période sélectionnée ne sert qu'à la
+// lecture brute, le succès d'une campagne se lit sur toute sa durée réelle.
+function campaignProspectCounts(clients){
+  const m = {};
+  (clients||[]).forEach(c=>{ if(c.campagne_origine) m[c.campagne_origine]=(m[c.campagne_origine]||0)+1; });
+  return m;
+}
+function campaignFunnel(d){
+  const { clients=[], campaigns=[], achAll=[] } = d || {};
+  const buyerIds = new Set((achAll||[]).map(a=>a.client_id));
+  const rows = campaigns.map(camp=>{
+    const pros = clients.filter(cl=>cl.campagne_origine===camp.id);
+    const p = pros.length;
+    const at = s => pros.filter(c=>c.stage_override===s).length;
+    return {
+      camp,
+      p,
+      contactes: at('Contacté'),
+      negation: at('Négociation'),
+      cli: pros.filter(c=>c.stage_override==='Client'||c.stage_override==='Fidèle').length,
+      ach: pros.filter(c=>buyerIds.has(c.id)).length
+    };
+  });
+  const totP = rows.reduce((s,r)=>s+r.p,0);
+  const totAch = rows.reduce((s,r)=>s+r.ach,0);
+  return { rows, totP, totAch, totalRate: totP ? Math.round((totAch/totP)*100)+'%' : '—' };
+}
+
 // Résumé textuel généré automatiquement pour la catégorie choisie
 function reportSummaryText(d){
   const { clients=[], achats=[], devis=[], creances=[], interactions=[], tasks=[], produits=[], posts=[] } = d || {};
@@ -3373,6 +3541,19 @@ function reportSummaryText(d){
     case 'reseaux':
       t=`${posts.length} publication(s) réseaux sociaux sur la période.`;
       break;
+    case 'campagnes': {
+      const cs = d.campaigns||[];
+      const spend = cs.reduce((s,x)=>s+(Number(x.depense_reelle)||0),0);
+      const counts = campaignProspectCounts(clients);
+      const prs = cs.reduce((s,x)=>s+(counts[x.id]||0),0);
+      t=`${cs.length} campagne(s) pour ${fmtFCFA(spend)} de dépense, ${prs} prospect(s) rattaché(s) dans le CRM. Coût par prospect global : ${prs?fmtFCFA(Math.round(spend/prs)):'non calculable'} (calcul sur toute la durée des campagnes, indépendamment de la période).`;
+      break;
+    }
+    case 'entonnoir': {
+      const { totP, totAch, totalRate } = campaignFunnel(d);
+      t=`${totP} prospect(s) issus des campagnes, dont ${totAch} acheteur(s) réels (${totalRate} de conversion). Maintenez l'étape de chaque prospect (Contacté, Négociation, Client) et laissez le système calculer la perte d'attention entre les étapes.`;
+      break;
+    }
     default:
       t=`${clients.length} clients · ${achats.length} ventes (${fmtFCFA(rev)}) · ${devis.length} devis · ${fmtFCFA(due)} de créances en attente. Zones : ${zoneTxt||'non renseignées'}.`;
   }
@@ -3417,6 +3598,32 @@ function reportRows(d){
       return [['Réseau','Contenu','Statut','Date']].concat(
         posts.map(p=>[p.platform||'', (p.content||'').slice(0,80), p.status||'', String(p.created_at||'').slice(0,10)])
       );
+    case 'campagnes': {
+      const counts = campaignProspectCounts(clients);
+      const body = (d.campaigns||[]).map(camp=>{
+        const pr = counts[camp.id]||0;
+        return [
+          camp.nom||'',
+          PLATFORM_META[camp.plateforme]?.label || camp.plateforme || '—',
+          CAMPAIGN_TYPE_LABEL[camp.type] || camp.type || '—',
+          Number(camp.depense_reelle)||0,
+          Number(camp.portee)||0,
+          Number(camp.impressions)||0,
+          Number(camp.clics)||0,
+          pr,
+          pr ? Math.round((Number(camp.depense_reelle)||0)/pr) : '—'
+        ];
+      });
+      return [['Campagne','Plateforme','Type','Dépense (FCFA)','Portée','Impressions','Clics / messages','Prospects CRM','Coût / prospect (FCFA)']].concat(
+        body.length ? body : [['Aucune campagne saisie pour le moment.','','','','','','','','']]
+      );
+    }
+    case 'entonnoir': {
+      const { rows } = campaignFunnel(d);
+      return [['Campagne','Prospects','Contactés','Négociation','Clients / Fidèles','Acheteurs','Taux de conversion']].concat(
+        rows.length ? rows.map(r=>[r.camp.nom||'',''+r.p,''+r.contactes,''+r.negation,''+r.cli,''+r.ach, r.p?Math.round((r.ach/r.p)*100)+'%':'—']) : [['Aucune campagne saisie pour le moment.','','','','','','']]
+      );
+    }
     default:
       return [['Type','Client','Montant (FCFA)','Date']].concat(
         achats.map(a=>['Achat', nm(a.client_id), Number(a.montant)||0, String(a.achat_date||'').slice(0,10)]),
@@ -3450,20 +3657,22 @@ async function loadReports(){
   document.getElementById('reportCount').textContent = '…';
   try{
     const since = periodSince();
-    const [cl, ac, dv, cr, it, tk, pr, po] = await Promise.all([
-      sb.from('clients').select('id,name,zone,source,stage_override,created_at'),
+    const [cl, ac, dv, cr, it, tk, pr, po, ca, achAll] = await Promise.all([
+      sb.from('clients').select('id,name,zone,source,stage_override,campagne_origine,created_at'),
       sb.from('achats').select('client_id,montant,produit_id,achat_date').gte('achat_date', since),
       sb.from('devis').select('client_id,montant,produit_id,devis_date').gte('devis_date', since),
       sb.from('creances').select('client_id,montant,produit_id,statut,created_at'),
       sb.from('interactions').select('client_id,type,occurred_at').gte('occurred_at', since),
       sb.from('tasks').select('client_id,libelle,due_date,status').gte('due_date', '1970-01-01'),
       sb.from('produits_services').select('id,nom,description,prix_defaut,actif'),
-      sb.from('social_posts').select('platform,content,status,created_at').gte('created_at', since)
+      sb.from('social_posts').select('platform,content,status,created_at').gte('created_at', since),
+      sb.from('campaigns').select('*'),
+      sb.from('achats').select('client_id')
     ]);
     const d = {
       clients: cl.data||[], achats: ac.data||[], devis: dv.data||[],
       creances: cr.data||[], interactions: it.data||[], tasks: tk.data||[],
-      produits: pr.data||[], posts: po.data||[]
+      produits: pr.data||[], posts: po.data||[], campaigns: ca.data||[], achAll: achAll.data||[]
     };
     reportData = d;
 
@@ -3614,7 +3823,9 @@ const REPORT_TYPE_LABEL = {
   interactions:'Interactions & rendez-vous',
   tasks:'Tâches',
   produits:'Produits & services',
-  reseaux:'Réseaux sociaux (publications)'
+  reseaux:'Réseaux sociaux (publications)',
+  campagnes:'Campagnes — Performance',
+  entonnoir:'Campagnes — Entonnoir de conversion'
 };
 function currentSheetDetail(){
   if(reportType==='autre'){

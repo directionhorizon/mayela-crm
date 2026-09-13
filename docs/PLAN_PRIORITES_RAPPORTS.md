@@ -124,16 +124,26 @@ fidélisation) ÷ effort, en s'appuyant sur l'existant.
     `statut_traitement = en_attente`), badge `EN ATTENTE` + « ✓ Traité » dans la liste.
 - **Livrable** : le commercial ouvre l'app le matin et voit exactement **qui répondre et qui relancer**. C'est l'usage quotidien le plus rentable.
 
-### Étape 3 — Saisie des campagnes + rapports « Performance » & « Entonnoir » (~1–1,5 h) 📢
+### Étape 3 — Saisie des campagnes + rapports « Performance » & « Entonnoir » (~1–1,5 h) 📢 ✅ APPLIQUÉE
+*Livrée le 13/09/2026 dans `mayela-crm.html` (code + service worker re-versione). À tester en navigateur puis à déployer sur Vercel.*
 
 - **Motif** : le responsable doit savoir **quelle campagne amène des prospects et à quel coût**
   (coût par prospect) et où les prospects sont perdus (montrer que le problème vient de la
   réactivité ou de la relance → relance le centre d'action de l'étape 2).
-- **Actions** :
-  - **Sous-page « Campagnes »** dans l'écran « Réseaux » : bouton dédié → liste + formulaire de création (nom, plateforme, type, période, catégorie, budget, dépense, portée, impressions, clics/messages).
-  - Associer la campagne d'origine à la création d'une fiche prospect (menu déroulant depuis les campagnes existantes).
-  - Rapport « Performance des campagnes » : dépense, portée, clics/messages, prospects CRM créés, coût par prospect (formule §4).
-  - Rapport « Entonnoir de conversion » : prospects → contactés → relancés → achats, taux de conversion par campagne.
+- **Actions** (état réel du code) :
+  - **Sous-page « Campagnes »** dans l'écran « Réseaux » (`data-nav="campaigns"`) : bouton
+    « Campagnes publicitaires — saisir & succès » → liste + formulaire de création (nom,
+    plateforme facebook/instagram/tiktok, type visibilité/messages/leads/promotion produit,
+    catégorie promue, dates, budget prévu, dépense réelle, portée, impressions, clics/messages) ;
+    suppression d'une campagne conservant prospects et ventes.
+  - Associer la campagne d'origine à la création d'une fiche prospect (menu déroulant
+    « Campagne d'origine » sur l'écran Ajouter un client) → insère `clients.campagne_origine`.
+  - Rapport « Campagnes — Performance » : Campagne, Plateforme, Type, Dépense (FCFA), Portée,
+    Impressions, Clics/messages, Prospects CRM, Coût/prospect (formule §4) — sur toute la durée
+    des campagnes (période ignorée dans ces deux rapports).
+  - Rapport « Campagnes — Entonnoir de conversion » : Campagne, Prospects, Contactés, Négociation,
+    Clients/Fidèles, Acheteurs (≥ 1 achat réel, historique complet), Taux de conversion.
+  - Les deux rapports sont exportables (Google Sheets / PDF) comme les autres catégories.
 - **Livrable** : comparer objectivement les campagnes (même à portées différentes) + localiser les pertes.
 
 ### Étape 4 — Rapports « CA attribuable » & « Rentabilité (ROAS) » (~1 h) 💵
