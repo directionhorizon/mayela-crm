@@ -52,6 +52,8 @@ Détails complémentaires :
 
 **CORRIGÉ avec la question 1.** Le splash `#splash` (l.339) est affiché par défaut, puis la bascule se fait vers `#authEmail` (aucune session) **ou** `#appShell` (session présente). La barre de menu (`nav-btn`, l.1019-1024) n'est démasquée que lorsque `#appShell` sort de `hidden` — directement après le splash, sans flash de connexion.
 
+**Durcissement (13/09/2026) :** depuis `boot()` (l.1150), une session **locale** présente démasque immédiatement `#appShell` (donc le menu) **avant** toute requête réseau (`getUser`, `profiles`). Le menu ne dépend plus du flash de chargement : le shell s'affiche, puis les données se chargent en arrière-plan via `afterLogin()`. Cas protégé : compte sans espace → `afterPinOk()` remasque le shell et dirige vers l'onboarding ; session locale invalide → retour écran de connexion.
+
 Concrètement :
 - **1er allumage après installation** : aucune session locale → après le splash, l'app **reste sur la page de connexion**. Dès que vous vous connectez, le shell s'affiche et le menu apparaît.
 - **Allumages suivants** : session restaurée → **splash → shell directement**, le menu est disponible tout de suite.

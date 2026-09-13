@@ -1052,6 +1052,28 @@ let pinMode = "verify"; // 'verify' | 'set'
 // Espace ACTIVEMENT sélectionné (multi-espaces, EVO-001). Chute sur profiles.org_id
 // pour les comptes "mono-espace" existants : aucune régression.
 function activeOrgId(){ return profile && profile.active_org_id ? profile.active_org_id : (profile ? profile.org_id : null); }
+// --- Contexte local de l'app (révélation optimiste du shell/menu) ---
+// Écrit à chaque état « app chargé » établi (afterPinOk, switch_org, création/rejoindre espace).
+// Sert de précondition : boot() ne démasque le shell immédiatement que si cette session
+// avait déjà chargé l'app avec un espace — jamais sinon (évite les flashs d'écrans erronés).
+function saveAppContext(){
+  try{
+    if(!profile || !profile.id || !activeOrgId()) return;
+    localStorage.setItem('mayela.ctx', JSON.stringify({ uid: profile.id, orgId: activeOrgId() }));
+  }catch(e){}
+}
+function readAppContext(){
+  try{
+    const raw = localStorage.getItem('mayela.ctx');
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+// Triage des erreurs au démarrage : un échec réseau ne doit pas éjecter une session valide.
+function isNetworkError(e){
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  const m = String((e && (e.message || e.error_description || '')) || '');
+  return /failed to fetch|fetch failed|network request failed|econnrefused|enotfound|timeout|socket hang/i.test(m);
+}
 // Échappement HTML systématique pour toute donnée insérée dans un template innerHTML.
 // Les noms clients, zones, notes, produits… sont saisis par des humains : sans ceci,
 // une valeur comme <img src=x onerror=...> s'exécuterait chez tous les membres de l'org (XSS stocké).
@@ -1149,7 +1171,32 @@ let sessionHandled = false;
 
 async function boot(){
   const { data:{ session } } = await sb.auth.getSession();
-  if(session){ sessionHandled = true; await afterLogin(); } else { showScreen('authEmail'); }
+  if(!session){ showScreen('authEmail'); return; }
+  sessionHandled = true;
+  // Révélation optimiste MAIS conditionnée : on ne démasque le shell (menu) immédiatement
+  // que si une preuve locale dit que CETTE session avait déjà chargé l'app avec un espace.
+  // Sans elle (1er allumage, compte sans espace) on garde le splash et on route normalement,
+  // pour éviter tout flash d'écran erroné.
+  const ctx = readAppContext();
+  const canReveal = !!(ctx && ctx.uid === session.user.id && ctx.orgId);
+  const shell = document.getElementById('appShell');
+  if(canReveal){
+    shell.classList.remove('hidden');
+    showScreen('dashboard');
+  }
+  try{
+    await afterLogin();
+  }catch(e){
+    // Triage : un échec RÉSEAU ne doit pas éjecter une session valide — on garde l'app
+    // (et son menu) avec un toast. Une erreur d'AUTH (token invalide/expiré/révoqué)
+    // remasque le shell et renvoie à la connexion.
+    if(isNetworkError(e) && canReveal){
+      toast('Hors ligne — données non chargées. Réessayez dès que la connexion revient.');
+      return;
+    }
+    shell.classList.add('hidden');
+    showScreen('authEmail');
+  }
 }
 boot();
 
@@ -1346,11 +1393,18 @@ function onVerifyPinDigit(k){
   }
 }
 async function afterPinOk(){
-  if(!activeOrgId()){ showScreen('onboard'); return; }
+  if(!activeOrgId()){
+    // Compte sans espace : on masque le shell (et sa barre de menu) pour afficher l'onboarding.
+    const shell = document.getElementById('appShell');
+    if(shell) shell.classList.add('hidden');
+    showScreen('onboard');
+    return;
+  }
   const shell = document.getElementById('appShell');
   if(shell) shell.classList.remove('hidden');
   showScreen('dashboard');
   await loadEverything();
+  saveAppContext();
 }
 
 // ================== ONBOARDING ==================
@@ -1364,6 +1418,7 @@ document.getElementById('createOrgBtn').addEventListener('click', async ()=>{
   document.getElementById('appShell').classList.remove('hidden');
   showScreen('dashboard');
   await loadEverything();
+  saveAppContext();
 });
 document.getElementById('joinOrgBtn').addEventListener('click', async ()=>{
   const code = document.getElementById('orgCodeInput').value.trim();
@@ -1375,6 +1430,7 @@ document.getElementById('joinOrgBtn').addEventListener('click', async ()=>{
   document.getElementById('appShell').classList.remove('hidden');
   showScreen('dashboard');
   await loadEverything();
+  saveAppContext();
 });
 async function refreshProfile(){
   const { data } = await sb.from('profiles').select('*').eq('id', profile.id).single();
@@ -2588,6 +2644,7 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
   document.getElementById('switchOrgList').classList.add('hidden');
   toast('Espace changé.');
   await loadEverything();
+  saveAppContext();
 });
 document.getElementById('createOrgRow').addEventListener('click', ()=>{
   const listEl = document.getElementById('createOrgList');
@@ -2625,7 +2682,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-ce9e08d4c5';
+const APP_VERSION = 'mayela-crm-9c54888a0e';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
