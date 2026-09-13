@@ -88,10 +88,12 @@ Ce sont **deux objets différents** qui semblent faire double emploi parce qu'il
 - « Publier une offre » = **communication organique** : poster une promo, suivre l'événement sur le pixel TikTok.
 - « Nouvelle campagne » = **pilotage publicitaire** : ce qu'on lit dans Meta/TikTok Ads Manager, pour mesurer coût/prospect et rentabilité.
 
-**Recommandation : garder les deux**, mais lever la confusion dans l'interface :
-1. Renommer/regrouper visuellement : « Publier du contenu » (bâtir la marque) vs « Campagnes publicitaires » (dépenser + mesurer).
-2. Ne pas fusionner : supprimer « Publier une offre » ferait perdre **toute capacité de publication** (le pont entre le CRM et les réseaux). En revanche, à votre échelle d'usage, **la campagne est la brique à valeur** (elle alimente ROAS/entonnoir) : la publication doit donc rester secondaire, pas prioritaire.
-3. Connecter les deux là où c'est naturel : rattacher un post publié à une campagne (optionnel) facilitera plus tard les rapports « contenu → vente ».
+**Décision appliquée le 13/09/2026 : garder les deux, UI clarifiée.**
+
+- « Publier du contenu » (Réseaux) = **communication organique** : renommé depuis « Publier une offre » avec une sous-titre explicite (« Publie automatiquement sur TikTok ou prépare le post à copier sur vos autres réseaux »). La publication reste le pont CRM → réseaux (`social_posts`).
+- « Campagnes publicitaires » = la **sous-page** `#campaigns` (Réseaux) : entrée simple par bouton « 📊 Campagnes publicitaires — saisir & mesurer » — pas de bloc dédié sur l'écran principal ; la clarification est portée par la sous-page elle-même. On y saisit ce qu'on lit dans Ads Manager, ce qui alimente Performance / Entonnoir / CA attribué / ROAS (`campaigns`).
+- Sous-page `#campaigns` : titre « Enregistrer une campagne » + rappel doré « ≠ Publier du contenu » pour lever toute ambiguïté.
+- Non fait (optionnel, plus tard) : rattacher un post publié à une campagne pour les rapports « contenu → vente ».
 
 ---
 

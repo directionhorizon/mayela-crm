@@ -636,7 +636,7 @@
       <div class="screen" id="social">
         <div class="topbar"><h1>Réseaux sociaux</h1></div>
         <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
-        <div style="margin:8px 20px 0;"><button class="btn-ghost" data-nav="campaigns">📢 Campagnes publicitaires — saisir & succès</button></div>
+        <div style="margin:8px 20px 0;"><button class="btn-ghost" data-nav="campaigns">📊 Campagnes publicitaires — saisir & mesurer</button></div>
         <div id="tiktokSetupPanel" class="hidden" style="margin:0 20px;">
           <div class="section-title">Configurer TikTok (Login Kit)</div>
           <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
@@ -686,7 +686,8 @@
           </div>
         </div>
         <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
-        <div class="section-title">Publier une offre</div>
+        <div class="section-title">Publier du contenu</div>
+        <div class="meta" style="margin:0 20px 8px; color:var(--sage); line-height:1.5;">Communication organique : promo, nouveauté, cadeau. Publie automatiquement sur TikTok ou prépare le post à copier sur vos autres réseaux.</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <textarea class="field" id="offerText" rows="3" placeholder="Texte de l'offre (promo, nouveauté…)" style="resize:none;"></textarea>
           <select class="field" id="offerProduit"></select>
@@ -791,13 +792,17 @@
       <!-- CAMPAGNES (sous-page Réseaux) -->
       <div class="screen" id="campaigns">
         <div class="back" data-nav="social">← Réseaux</div>
-        <div class="section-title">Nouvelle campagne</div>
+        <div class="section-title">Enregistrer une campagne</div>
         <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
           <div class="meta" style="color:var(--sage); line-height:1.5;">
             Saisissez ici ce que vous lisez dans Meta / TikTok Ads Manager (dépense, portée,
             impressions, clics). Les rapports « Performance » et « Entonnoir » se calculent
             automatiquement ; le coût par prospect se met à jour dès que les fiches prospects
             sont rattachées à cette campagne.
+          </div>
+          <div class="meta" style="color:var(--gold); line-height:1.5; font-size:11px;">
+            ≠ Publier du contenu (dans Réseaux) : ici on ne crée pas de post — on enregistre la
+            performance publicitaire pour la mesurer (dépense et retombées).
           </div>
           <input class="field" id="campNom" placeholder="Nom (ex : META_SOINS_VISAGE_OCT_2026)">
           <div style="display:flex; gap:8px;">
@@ -2706,7 +2711,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-7b122a8996';
+const APP_VERSION = 'mayela-crm-f2ed9fe565';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
