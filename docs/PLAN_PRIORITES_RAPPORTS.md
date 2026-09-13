@@ -29,7 +29,7 @@
 |--------|------|--------|
 | 3. CRM mobile | ✅ Solide | Fiches clients, interactions (+ « en attente »), achats, devis, créances, tâches, **Centre d'action** (`renderCentreAction`) |
 | 4. Module IA | 🟡 Débuté | Conseiller IA (`ia-conseiller`), classification, segmentation, historique des conversations |
-| 5. Moteur de reporting | 🟡 Partiel | Résumés + tableaux par catégorie, export Google Sheets (`loadReports`). **Manquent** : ROAS, CA attribuable, coût/prospect, réachat |
+| 5. Moteur de reporting | 🟢 Fait | Résumés + tableaux par catégorie, export Google Sheets (`loadReports`), campagnes (Performance, Entonnoir, CA attribué, ROAS, coût d'acquisition). **Reste (interne)** : réachat |
 | 1. Meta Business Suite | 🟡 Partiel | Suivi social / santé des intégrations. Pas de remontée réelle des résultats FB/IG par campagne |
 | 2. TikTok Ads Manager | 🟡 Partiel | Auth TikTok, Pixel, suivi d'achat (`trackTikTokPurchase`). Pas de remontée des métriques Ads par campagne |
 | 6. Tableau de bord | 🟡 Partiel | KPIs génériques (`renderDashboardKpis`). Pas encore portée/impressions/ROAS/coût par prospect ni graphiques |
@@ -146,15 +146,24 @@ fidélisation) ÷ effort, en s'appuyant sur l'existant.
   - Les deux rapports sont exportables (Google Sheets / PDF) comme les autres catégories.
 - **Livrable** : comparer objectivement les campagnes (même à portées différentes) + localiser les pertes.
 
-### Étape 4 — Rapports « CA attribuable » & « Rentabilité (ROAS) » (~1 h) 💵
+### Étape 4 — Rapports « CA attribuable » & « Rentabilité (ROAS) » (~1 h) 💵 ✅ APPLIQUÉE
+*Livrée le 13/09/2026 dans `mayela-crm.html` (code + service worker re-versione `319297e171`), déployée sur Vercel.*
 
 - **Motif** : le lien direct « publicité → ventes parapharmaceutiques » = décision budgétaire.
   Justifier ce qu'on dépense en pub ne tient qu'à ce calcul.
-- **Actions** :
-  - « Ventes & CA attribués » : par campagne → catégorie de produit, clients acheteurs, ventes,
-    CA attribuable, panier moyen.
-  - « Rentabilité publicitaire » : dépense, CA attribuable, ROAS, coût d'acquisition client.
+- **Actions** (état réel du code) :
+  - **Attribution des ventes** : liste déroulante « Aucune (vente sans pub) / <campagne> » dans
+    l'onglet Ventes de la fiche client → enregistre `achats.campagne_id` ; chaque vente affiche
+    sa campagne d'origine (📢 nom) dans la fiche. Ajout possible aussi à la saisie directe.
+  - Rapport « Campagnes — Ventes & CA attribués » (`caattrib`) : par campagne → ventes, CA
+    attribuable, panier moyen, clients acheteurs, catégories de produits vendues.
+  - Rapport « Campagnes — Rentabilité (ROAS) » (`roas`) : par campagne → dépense, CA attribuable,
+    ROAS (CA attribuable ÷ dépense), coût d'acquisition client (dépense ÷ acheteurs).
+  - Les deux rapports couvrent toute la durée des campagnes (période ignorée), exportables
+    (Google Sheets / PDF) comme les autres catégories.
 - **Livrable** : l'app prouve (ou non) la rentabilité des campagnes et oriente le budget.
+  Rappel d'usage : le ROAS se calcule dès qu'une vente est liée à une campagne ; les campagnes
+  à ROAS < 1 → réduire la dépense ou improver l'entonnoir (étape 2/3).
 
 ### Étape 5 — Tableau de bord consolidé (~1 h) 📊
 
