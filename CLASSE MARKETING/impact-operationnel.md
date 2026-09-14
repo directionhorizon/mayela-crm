@@ -1,6 +1,6 @@
 # Impact opérationnel (statistiques internes)
 
-**Fichier source** : `mayela-crm.html`, **catégorie de rapport** `impact` dans l'écran Rapports (`reportRows()` l.3971+, `reportSummaryText()` l.3897+, libellé `REPORT_TYPE_LABEL.impact` l.4227, option du sélecteur l.856).
+**Fichier source** : `mayela-crm.html`, **catégorie de rapport** `impact` dans l'écran Rapports (`reportRows()` l.3984+, `reportSummaryText()` l.3910+, libellé `REPORT_TYPE_LABEL.impact` l.4240, option du sélecteur l.860).
 
 > Rôle affiché : « Indicateurs internes du CRM (remplacent les statistiques réseaux non disponibles) ». Tant que les statistiques réseau externes (TikTok/Facebook) ne sont pas branchées en profondeur, ce rapport mesure l'impact réel du marketing sur les clients — au format rapport (période + export), comme les autres catégories.
 >
@@ -12,19 +12,19 @@
 
 | Indicateur | Source | Réf. |
 |---|---|---|
-| **Offres publiées** | `social_posts` avec `status = 'sent'` (sur la période) | l.3978 |
-| **En échec à retenter** | `social_posts` avec `status = 'failed'` (sur la période) | l.3979 |
-| **Échanges enregistrés** | `interactions` (sur la période, tous types) | l.3980 |
-| **Achats (FCFA)** | somme des achats de la période | l.3981 |
-| **Clients suivis** | total du fichier clients | l.3982 |
+| **Offres publiées** | `social_posts` avec `status = 'sent'` (sur la période) | l.3991 |
+| **En échec à retenter** | `social_posts` avec `status = 'failed'` (sur la période) | l.3992 |
+| **Échanges enregistrés** | `interactions` (sur la période, tous types) | l.3993 |
+| **Achats (FCFA)** | somme des achats de la période | l.3994 |
+| **Clients suivis** | total du fichier clients | l.3995 |
 
-La phase de résumé textuel (`reportSummaryText()`, l.3897) reprend ces valeurs : « N offre(s) publiée(s) [dont X en échec] · N échange(s) enregistré(s) · N client(s) suivi(s) · montant d'achats sur la période ».
+La phase de résumé textuel (`reportSummaryText()`, l.3910) reprend ces valeurs : « N offre(s) publiée(s) [dont X en échec] · N échange(s) enregistré(s) · N client(s) suivi(s) · montant d'achats sur la période ».
 
 ---
 
 ## Répartition des échanges par canal
 
-Types comptés (`INTERACTION_TYPE_LABEL`, l.4216) :
+Types comptés (`INTERACTION_TYPE_LABEL`, l.4229) :
 
 | Valeur | Libellé |
 |---|---|

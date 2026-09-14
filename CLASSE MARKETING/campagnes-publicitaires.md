@@ -1,6 +1,6 @@
 # Campagnes publicitaires (modèle & saisie)
 
-**Fichier source** : `mayela-crm.html`, fonctions `loadCampaigns()` (l.2439), `renderCampaigns()` (l.2455), handler `saveCampaignBtn` (l.2479).
+**Fichier source** : `mayela-crm.html`, fonctions `loadCampaigns()` (l.2452), `renderCampaigns()` (l.2468), handler `saveCampaignBtn` (l.2492).
 
 ---
 
@@ -34,7 +34,7 @@
 | `instagram` | _(affiché brut)_ | — | Non géré dans PLATFORM_META |
 | `tiktok` | TikTok Business | 🎵 | Publication via Login Kit |
 
-**Ref.** : `PLATFORM_META` (l.1550) ; `CAMPAIGN_TYPE_LABEL` (l.1555).
+**Ref.** : `PLATFORM_META` (l.1563) ; `CAMPAIGN_TYPE_LABEL` (l.1568).
 
 ---
 
@@ -71,7 +71,7 @@ coût / prospect = depense_reelle / nombre de clients dont campagne_origine = ca
 
 Si 0 prospect → « — ».
 
-Calcul **par campagne** dans `renderCampaigns()` (l.2455+) et **global** dans les rapports (l.3904-3909, somme des dépenses / somme des prospects).
+Calcul **par campagne** dans `renderCampaigns()` (l.2468+) et **global** dans les rapports (l.3917-3922, somme des dépenses / somme des prospects).
 
 ---
 
@@ -86,7 +86,7 @@ Calcul **par campagne** dans `renderCampaigns()` (l.2455+) et **global** dans le
 
 ## Suppression
 
-Supprimer une campagne est possible (croix ✕ dans la liste). Les prospects rattachés (`campagne_origine`) et ventes liées (`campagne_id`) **sont conservés** — seul l'intitulé disparaît (l.2511).
+Supprimer une campagne est possible (croix ✕ dans la liste). Les prospects rattachés (`campagne_origine`) et ventes liées (`campagne_id`) **sont conservés** — seul l'intitulé disparaît (l.2524).
 
 ---
 

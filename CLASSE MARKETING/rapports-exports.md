@@ -1,6 +1,6 @@
 # Moteur de reporting & exports (côté marketing)
 
-**Fichier source** : `mayela-crm.html`, fonctions `reportSummaryText()` (l.3865), `reportRows()` (l.3934), `periodSince()` (l.3802) ; constantes `PERIOD_MS` (l.3801), `REPORT_TYPE_LABEL` (l.4217).
+**Fichier source** : `mayela-crm.html`, fonctions `reportSummaryText()` (l.3878), `reportRows()` (l.3947), `periodSince()` (l.3815) ; constantes `PERIOD_MS` (l.3814), `REPORT_TYPE_LABEL` (l.4230).
 
 ---
 
@@ -15,7 +15,7 @@
 
 `periodSince()` renvoie la date ISO de début ; si la période est `all` → `'1970-01-01'`.
 
-**Attention** : pour les catégories de campagnes (`campagnes`, `entonnoir`, `caattrib`, `roas`), **la période ne filtre pas le calcul** : les campagnes et les rattachements (prospects & ventes) sont lus sur leur **durée réelle** (l.3808-3810).
+**Attention** : pour les catégories de campagnes (`campagnes`, `entonnoir`, `caattrib`, `roas`), **la période ne filtre pas le calcul** : les campagnes et les rattachements (prospects & ventes) sont lus sur leur **durée réelle** (l.3821-3823).
 
 ---
 
@@ -23,12 +23,12 @@
 
 | Valeur | Libellé UI | Lignes du tableau | Code |
 |---|---|---|---|
-| `reseaux` | Réseaux sociaux (publications) | Réseau, Contenu, Statut, Date | l.3967-3970 |
-| `impact` | Impact opérationnel (interne) | Indicateur, Valeur, Détail (offres publiées / en échec, échanges, achats, clients suivis, répartition par canal) | l.3971-3988 |
-| `campagnes` | Campagnes — Performance | Campagne, Plateforme, Type, Dépense, Portée, Impressions, Clics/messages, Prospects CRM, Coût / prospect | l.3989-4007 |
-| `entonnoir` | Campagnes — Entonnoir de conversion | Campagne, Prospects, Contactés, Négociation, Clients / Fidèles, Acheteurs, Taux de conversion | l.4009-4013 |
-| `caattrib` | Campagnes — Ventes & CA attribués | Campagne, Ventes, CA attribuable, Panier moyen, Clients acheteurs, Catégories vendues | l.4015-4020 |
-| `roas` | Campagnes — Rentabilité (ROAS) | Campagne, Dépense, CA attribuable, ROAS, Coût d'acquisition, Clients acheteurs | l.4021-4025 |
+| `reseaux` | Réseaux sociaux (publications) | Réseau, Contenu, Statut, Date | l.3980-3983 |
+| `impact` | Impact opérationnel (interne) | Indicateur, Valeur, Détail (offres publiées / en échec, échanges, achats, clients suivis, répartition par canal) | l.3984-4001 |
+| `campagnes` | Campagnes — Performance | Campagne, Plateforme, Type, Dépense, Portée, Impressions, Clics/messages, Prospects CRM, Coût / prospect | l.4002-4020 |
+| `entonnoir` | Campagnes — Entonnoir de conversion | Campagne, Prospects, Contactés, Négociation, Clients / Fidèles, Acheteurs, Taux de conversion | l.4022-4026 |
+| `caattrib` | Campagnes — Ventes & CA attribués | Campagne, Ventes, CA attribuable, Panier moyen, Clients acheteurs, Catégories vendues | l.4028-4033 |
+| `roas` | Campagnes — Rentabilité (ROAS) | Campagne, Dépense, CA attribuable, ROAS, Coût d'acquisition, Clients acheteurs | l.4034-4038 |
 
 ---
 
@@ -46,7 +46,7 @@
 
 ## Export
 
-- **Google Sheets** : bouton d'export du rapport courant (`gsExportBtn2`, l.4242) → Edge Function `google-sheets`.
+- **Google Sheets** : bouton d'export du rapport courant (`gsExportBtn2`, l.4255) → Edge Function `google-sheets`.
 - Ligne de titre : libellé de catégorie + période (ex. « Campagnes — Entonnoir de conversion 30 jours »).
 
 ---
@@ -55,10 +55,10 @@
 
 | Colonne | Formule | Réf. |
 |---|---|---|
-| Coût / prospect (par campagne) | `depense_reelle ÷ prospects.` | l.4002 |
-| Taux de conversion (par campagne) | `acheteurs ÷ prospects × 100` | l.4012 |
-| ROAS (par campagne) | `CA attribuable ÷ depense_reelle` | l.3853 |
-| Coût d'acquisition | `depense_reelle ÷ clients acheteurs` | l.3854 |
+| Coût / prospect (par campagne) | `depense_reelle ÷ prospects.` | l.4015 |
+| Taux de conversion (par campagne) | `acheteurs ÷ prospects × 100` | l.4025 |
+| ROAS (par campagne) | `CA attribuable ÷ depense_reelle` | l.3866 |
+| Coût d'acquisition | `depense_reelle ÷ clients acheteurs` | l.3867 |
 
 Détails complets : voir `campagnes-publicitaires.md`, `attribution-ca-et-roas.md`, `funnel-de-vente.md`.
 

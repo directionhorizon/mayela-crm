@@ -1,6 +1,6 @@
 # Tracking des événements (Pixel TikTok & événements serveur)
 
-**Fichier source** : `mayela-crm.html` — `tiktokPixelId()` l.1840, `bootTikTokPixel()` l.1845, `fireTikTokPixel()` l.1860, `sendServerTikTokEvent()` l.1870, `trackTikTokPurchase()` l.1886.
+**Fichier source** : `mayela-crm.html` — `tiktokPixelId()` l.1853, `bootTikTokPixel()` l.1858, `fireTikTokPixel()` l.1873, `sendServerTikTokEvent()` l.1883, `trackTikTokPurchase()` l.1899.
 
 ---
 
@@ -17,7 +17,7 @@
 ```
 tiktokPixelId() = config.pixel_id du compte TikTok connecté  OU  défaut 'DAGRTSRC77UC8FLJV020'
 ```
-(l.1840)
+(l.1853)
 
 **Pixel par défaut** : `DAGRTSRC77UC8FLJV020` (utilisé si aucun compte TikTok configuré).
 
@@ -36,7 +36,7 @@ tiktokPixelId() = config.pixel_id du compte TikTok connecté  OU  défaut 'DAGRT
 
 ---
 
-## Événement Purchase (trackTikTokPurchase, l.1886-1913)
+## Événement Purchase (trackTikTokPurchase, l.1899-1926)
 
 Déclenché à l'enregistrement d'une vente.
 
@@ -53,7 +53,7 @@ Déclenché à l'enregistrement d'une vente.
 | `value` | montant de la vente |
 | `currency` | `XAF` |
 
-**Envoi** : via `sendServerTikTokEvent('Purchase', props)` → Edge Function `tiktok-events` (l.1870). Le tracking ne bloque jamais la vente (échec silencieux).
+**Envoi** : via `sendServerTikTokEvent('Purchase', props)` → Edge Function `tiktok-events` (l.1883). Le tracking ne bloque jamais la vente (échec silencieux).
 
 ---
 
