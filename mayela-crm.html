@@ -378,10 +378,10 @@
     <!-- AUTH: SPACE SWITCH CODE -->
     <div class="screen center-screen" id="switchCode">
       <div class="badge64">🔄</div>
-      <div class="stitle">Bascule vers un espace</div>
+      <div class="stitle" id="switchCodeTitle">Bascule vers un espace</div>
       <div class="ssub" id="switchCodeSentTo">Un code de vérification vous sera envoyé par e-mail.</div>
       <input class="field" type="text" inputmode="numeric" id="switchCodeInput" placeholder="Code reçu par e-mail" maxlength="10" style="text-align:center; letter-spacing:4px; font-family:'IBM Plex Mono';">
-      <button class="btn" id="switchCodeBtn">Valider la bascule</button>
+      <button class="btn" id="switchCodeBtn">Valider</button>
       <div class="err-msg" id="switchCodeErr"></div>
       <span class="link-sm" id="switchCodeCancel">← Annuler</span>
     </div>
@@ -414,6 +414,7 @@
       <div class="stitle">Votre espace de travail</div>
       <div class="ssub">Créez l'espace de votre entreprise, ou rejoignez-en un avec un code.</div>
       <input class="field" type="text" id="orgNameInput" placeholder="Nom de l'entreprise">
+      <input class="field" type="email" id="orgOwnerInput" placeholder="E-mail du compte qui gérera l'espace (optionnel)" autocomplete="off">
       <button class="btn" id="createOrgBtn">Créer mon espace</button>
       <div style="color:var(--sage); font-size:11px;">— ou —</div>
       <input class="field" type="text" id="orgCodeInput" placeholder="Code d'invitation">
@@ -687,6 +688,21 @@
             <button class="btn" id="ttConnectBtn">🎵 Se connecter à TikTok</button>
             <button class="btn-ghost" id="ttCancelBtn">Annuler</button>
             <div class="err-msg" id="ttSetupErr"></div>
+
+            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
+              <div class="meta"><b>4 · Analyse publicitaire (TikTok Marketing API)</b> — optionnel</div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Synchronise automatiquement vos campagnes publicitaires (dépense, impressions,
+                clics) dans l'écran <b>Campagnes</b>. Votre app doit avoir le produit
+                <b>Marketing API</b> activé sur developers.tiktok.com (mêmes Client Key/Secret).
+                Autorisez ensuite le compte <b>TikTok for Business</b> : la statistiques des
+                30 derniers jours seront relevées.
+              </div>
+              <div class="meta" id="ttMarketingStatus" style="color:var(--sage); min-height:1.2em;"></div>
+              <button class="btn-ghost" id="ttMarketingConnectBtn" style="margin-right:6px;">📊 Se connecter à l'analyse publicitaire</button>
+              <button class="btn-ghost" id="ttMarketingSyncBtn">🔄 Relever les campagnes (30 j)</button>
+              <div class="err-msg" id="ttMarketingErr"></div>
+            </div>
           </div>
         </div>
         <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
@@ -906,6 +922,7 @@
           <div class="set-row" id="createOrgRow"><div class="lbl">Créer un espace<small>Nouveau business indépendant — les espaces existants restent</small></div></div>
           <div id="createOrgList" class="hidden" style="display:flex; flex-direction:column; gap:8px; padding:0 20px 12px;">
             <input class="field" type="text" id="newSpaceName" placeholder="Nom du nouvel espace">
+            <input class="field" type="email" id="newSpaceOwnerEmail" placeholder="E-mail du compte qui gérera l'espace (optionnel)" autocomplete="off">
             <button class="btn" id="createSpaceBtn">Créer mon espace</button>
             <div class="err-msg" id="newSpaceErr"></div>
           </div>
@@ -1312,13 +1329,14 @@ document.getElementById('switchCodeBtn').addEventListener('click', async ()=>{
   if(token.length < 6){ errEl.textContent = "Code trop court."; return; }
   const btn = document.getElementById('switchCodeBtn'); btn.disabled = true; btn.textContent = "Vérification…";
   const { error } = await sb.auth.verifyOtp({ email: pendingEmail, token, type:'email' });
-  btn.disabled = false; btn.textContent = "Valider la bascule";
+  btn.disabled = false; btn.textContent = "Valider";
   if(error){ errEl.textContent = "Code incorrect ou expiré."; return; }
   // Filet de sécurité : normalement onAuthStateChange (SIGNED_IN) prend déjà le relais.
   if(!sessionHandled){ sessionHandled = true; await afterLogin(); }
 });
 document.getElementById('switchCodeCancel').addEventListener('click', ()=>{
   sessionStorage.removeItem('pendingSwitchOrg');
+  sessionStorage.removeItem('pendingCreateOrg');
   document.getElementById('switchCodeInput').value = "";
   document.getElementById('switchCodeErr').textContent = "";
   showScreen('authEmail');
@@ -1362,6 +1380,18 @@ async function afterLogin(){
     sessionStorage.removeItem('pendingSwitchOrg');
     const { error: swErr } = await sb.rpc('switch_org', { org_id: pendingSwitch });
     if(!swErr){
+      const { data: refreshed } = await sb.from('profiles').select('*').eq('id', user.id).single();
+      if(refreshed) profile = refreshed;
+    }
+  }
+  // Création d'espace = reconnexion gmail : l'espace a été demandé avec un gmail
+  // dédié ; une fois ce compte connecté, on crée l'espace sous CE compte (le nom
+  // de l'espace est conservé dans pendingCreateOrg).
+  const pendingCreate = sessionStorage.getItem('pendingCreateOrg');
+  if(pendingCreate){
+    sessionStorage.removeItem('pendingCreateOrg');
+    const { error: creErr } = await sb.rpc('create_organization', { org_name: pendingCreate });
+    if(!creErr){
       const { data: refreshed } = await sb.from('profiles').select('*').eq('id', user.id).single();
       if(refreshed) profile = refreshed;
     }
@@ -1445,8 +1475,30 @@ async function afterPinOk(){
 // ================== ONBOARDING ==================
 document.getElementById('createOrgBtn').addEventListener('click', async ()=>{
   const name = document.getElementById('orgNameInput').value.trim();
+  const ownerEmail = document.getElementById('orgOwnerInput').value.trim();
   const errEl = document.getElementById('onboardErr');
   if(!name){ errEl.textContent = "Entrez un nom d'entreprise."; return; }
+  // Espace dédié = reconnexion gmail (même principe que la bascule d'espace) :
+  // si un gmail propriétaire différent du gmail connecté est saisi, on se reconnecte
+  // avec ce gmail puis on crée l'espace sous CE compte.
+  const { data: { user } } = await sb.auth.getUser();
+  const me = ((user && user.email) || '').toLowerCase();
+  if(ownerEmail && ownerEmail.toLowerCase() !== me){
+    if(!window.confirm('Créer l\'espace « ' + name + ' » géré par le compte « ' + ownerEmail + ' » ?\nVous allez être déconnecté(e) puis reconnecté(e) avec ce compte pour finaliser la création.')){ return; }
+    sessionStorage.setItem('pendingCreateOrg', name);
+    profile = null; pendingProfile = {}; pendingEmail = ownerEmail;
+    document.getElementById('appShell').classList.add('hidden');
+    document.getElementById('switchCodeTitle').textContent = "Création d'un espace";
+    document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + ownerEmail + "…";
+    document.getElementById('switchCodeInput').value = "";
+    document.getElementById('switchCodeErr').textContent = "";
+    showScreen('switchCode');
+    await sb.auth.signOut();
+    const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
+    if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
+    document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail + " — l'espace sera créé sur ce compte.";
+    return;
+  }
   const { data, error } = await sb.rpc('create_organization', { org_name: name });
   if(error){ errEl.textContent = error.message; return; }
   await refreshProfile();
@@ -1570,7 +1622,7 @@ let socialCache = [];
 // Ne conserve jamais les secrets côté client. La publication, le tracking et le rafraîchissement
 // des jetons sont gérés par les Edge Functions (server-side) : le navigateur n'a besoin que des
 // champs publics (client_key, pixel_id) et d'un indicateur de connexion.
-const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token'];
+const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token','marketing_access_token'];
 function sanitizeSocialAccount(acc){
   const cfg = (acc && acc.config) || {};
   // La vue SQL social_accounts_safe fournit déjà connected / has_pixel_token
@@ -1626,6 +1678,7 @@ async function loadSocial(){
   }).join('');
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${esc(p.id)}" data-img="${esc(p.image_url||'')}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`<div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.img ? `<img src="${PLATFORM_META[p.platform].img}" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:4px;">` : (PLATFORM_META[p.platform]?.icon||'')} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
+  renderTikTokMarketingStatus();
   loadSocialTopClients();
   loadSocialHealth();
   if(socialCache.some(a=>a.platform==='facebook')){
@@ -1964,6 +2017,79 @@ async function completeTikTokAuth(code){
   insightsData = null;
   loadSocial();
 }
+// ---- Marketing API (analyse publicitaire, ads.tiktok.com) ----
+function startMarketingAuth(){
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  const clientKey = (acc && acc.config && acc.config.client_key) || document.getElementById('ttClientKey').value.trim();
+  if(!clientKey){ toast("Enregistrez d'abord la Client Key de votre app TikTok.", true); return; }
+  const redirectUri = tiktokRedirectUri();
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('tt_marketing_state', state);
+  sessionStorage.setItem('tt_marketing_redirect', redirectUri);
+  const qs = new URLSearchParams({
+    app_id: clientKey,
+    redirect_uri: redirectUri,
+    state
+  });
+  location.href = 'https://ads.tiktok.com/marketing_api/auth?' + qs.toString();
+}
+async function completeMarketingAuth(authCode){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const redirectUri = sessionStorage.getItem('tt_marketing_redirect') || tiktokRedirectUri();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-tiktok', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'exchange_marketing', auth_code:authCode, redirect_uri:redirectUri })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Échec de la connexion à l'analyse publicitaire.");
+    const advs = (out.advertiser_ids||[]).length;
+    toast('Analyse publicitaire connectée' + (advs ? ` : ${advs} compte(s) autorisé(s)` : ''));
+  }catch(ex){ toast(ex.message, true); }
+  loadSocial();
+}
+async function syncMarketingCampaigns(){
+  const errEl = document.getElementById('ttMarketingErr');
+  if(errEl) errEl.textContent = '';
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session){ toast('Session expirée, reconnectez-vous.', true); return; }
+  try{
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-tiktok', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'marketing_sync' })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Échec de la synchronisation.");
+    if(out.errors && out.errors.length){
+      if(errEl){ errEl.textContent = out.errors.join('\n'); }
+      toast(out.message, true);
+    } else {
+      toast(out.message || 'Campagnes à jour.');
+    }
+    loadCampaigns().then(renderCampaigns);
+  }catch(ex){
+    if(errEl) errEl.textContent = ex.message;
+    toast(ex.message, true);
+  }
+}
+function renderTikTokMarketingStatus(){
+  const el = document.getElementById('ttMarketingStatus');
+  if(!el) return;
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  const cfg = (acc && acc.config) || {};
+  const hasMkt = !!(acc && (acc.has_marketing || cfg.marketing_access_token));
+  if(hasMkt){
+    const ids = cfg.marketing_advertiser_ids || [];
+    const names = cfg.marketing_advertiser_names || [];
+    el.innerHTML = `<span class="sc-status ok">Analyse publicitaire connectée</span>` +
+      (names.length ? `<div class="meta">Compte(s) : ${esc(names.join(', '))}</div>` : '') +
+      (ids.length ? `<div class="meta" style="color:var(--sage);">Advertiser ID : ${esc(ids.join(', '))}</div>` : '');
+  } else {
+    el.innerHTML = `<span class="sc-status no">Analyse publicitaire non connectée</span>`;
+  }
+}
 // ---- Panneau de configuration TikTok (Login Kit) ----
 const ttSetupPanel = document.getElementById('tiktokSetupPanel');
 function openTikTokSetup(){
@@ -1995,6 +2121,8 @@ async function connectTikTokFromSetup(){
   await startTikTokAuth();
 }
 document.getElementById('ttConnectBtn').addEventListener('click', connectTikTokFromSetup);
+document.getElementById('ttMarketingConnectBtn').addEventListener('click', startMarketingAuth);
+document.getElementById('ttMarketingSyncBtn').addEventListener('click', syncMarketingCampaigns);
 document.getElementById('ttCancelBtn').addEventListener('click', ()=>{ closeTikTokSetup(); });
 document.getElementById('ttCopyUriBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('ttCopyUriErr');
@@ -2198,11 +2326,22 @@ const _origLoadSocial = window.__gs_hook;
   const prev = document.getElementById('social');
   // rafraîchit le statut Google Sheets quand on ouvre l'onglet Réseaux
 })();
-// Retour d'autorisation TikTok (?code=...&state=...) : détecté au chargement de la page
+// Retour d'autorisation TikTok (?code=...&state=...) ou Marketing API (?auth_code=...&state=...)
 (function(){
   const q = new URLSearchParams(location.search);
   const state = q.get('state');
-  if(!state || sessionStorage.getItem('tt_state') !== state) return;
+  if(!state) return;
+  const mkState = sessionStorage.getItem('tt_marketing_state');
+  if(state === mkState){
+    sessionStorage.removeItem('tt_marketing_state');
+    history.replaceState(null,'', sessionStorage.getItem('tt_marketing_redirect') || tiktokRedirectUri());
+    sessionStorage.removeItem('tt_marketing_redirect');
+    const authCode = q.get('auth_code') || q.get('code'), err = q.get('error');
+    if(err || !authCode){ toast('Connexion à l\'analyse publicitaire annulée : ' + (q.get('error_description')||err), true); return; }
+    setTimeout(()=>completeMarketingAuth(authCode), 300);
+    return;
+  }
+  if(state !== sessionStorage.getItem('tt_state')) return;
   sessionStorage.removeItem('tt_state');
   history.replaceState(null,'', sessionStorage.getItem('tt_redirect') || tiktokRedirectUri());
   const code = q.get('code'), err = q.get('error');
@@ -2630,6 +2769,7 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
       document.getElementById('appShell').classList.add('hidden');
       // Page dédiée à la bascule : le gmail de l'espace cible est déjà connu,
       // on envoie le code Supabase et on valide sur cet écran (pas de page de connexion générique).
+      document.getElementById('switchCodeTitle').textContent = "Bascule vers un espace";
       document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + ownerEmail + "…";
       document.getElementById('switchCodeInput').value = "";
       document.getElementById('switchCodeErr').textContent = "";
@@ -2655,13 +2795,37 @@ document.getElementById('createOrgRow').addEventListener('click', ()=>{
 });
 document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
   const inp = document.getElementById('newSpaceName');
+  const ownerEl = document.getElementById('newSpaceOwnerEmail');
   const errEl = document.getElementById('newSpaceErr');
   const name = (inp.value || '').trim();
   if(!name){ errEl.textContent = "Entrez un nom d'entreprise."; return; }
   errEl.textContent = '';
+  // Espace dédié = reconnexion gmail : si un gmail propriétaire est saisi et qu'il
+  // diffère du gmail connecté, on se reconnecte avec ce gmail puis on crée l'espace
+  // sous CE compte (le nom est conservé dans pendingCreateOrg).
+  const { data: { user } } = await sb.auth.getUser();
+  const me = ((user && user.email) || '').toLowerCase();
+  const ownerEmail = (ownerEl.value || '').trim();
+  if(ownerEmail && ownerEmail.toLowerCase() !== me){
+    if(!window.confirm('Créer l\'espace « ' + name + ' » géré par le compte « ' + ownerEmail + ' » ?\nVous allez être déconnecté(e) puis reconnecté(e) avec ce compte pour finaliser la création.')){ return; }
+    sessionStorage.setItem('pendingCreateOrg', name);
+    profile = null; pendingProfile = {}; pendingEmail = ownerEmail;
+    document.getElementById('appShell').classList.add('hidden');
+    document.getElementById('switchCodeTitle').textContent = "Création d'un espace";
+    document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + ownerEmail + "…";
+    document.getElementById('switchCodeInput').value = "";
+    document.getElementById('switchCodeErr').textContent = "";
+    showScreen('switchCode');
+    await sb.auth.signOut();
+    const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
+    if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
+    document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail + " — l'espace sera créé sur ce compte.";
+    return;
+  }
   const { data, error } = await sb.rpc('create_organization', { org_name: name });
   if(error){ errEl.textContent = error.message; return; }
   inp.value = '';
+  ownerEl.value = '';
   await refreshProfile();
   await loadEverything();
   if(!document.getElementById('switchOrgList').classList.contains('hidden')) await loadOrgMembers();

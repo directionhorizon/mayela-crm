@@ -151,6 +151,28 @@ Vérification : les colonnes répondent en HTTP 200 (cf. `SCHEMA_SUPABASE.md`).
 Le front n'est pas déployé de nouveau : l'ajout du champ **quantité** dans la fiche client est
 déjà en place dans `mayela-crm.html`.
 
+### 1e — Migration V10 (Marketing API TikTok) — APPLIQUÉE le 15/09/2026
+> ✔️ **Statut : déjà appliquée en base** via une Edge Function temporaire `db-migrate`
+> (même procédure que V2/V8 : le SQL Editor renvoie « Backend error » sur ce projet).
+> La fonction a exécuté le SQL via le secret **`SUPABASE_DB_URL`** (préexistant), puis a été
+> **supprimée** — aucune porte SQL ouverte, mot de passe de la base **inchangé**.
+
+1. (Recommandé si le SQL Editor fonctionne sur votre projet) Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V10_TIKTOK_MARKETING.sql`
+3. Cliquez **Run**
+
+Cela ajoute :
+- le booléen **`has_marketing`** à la vue `social_accounts_safe` (sans exposer le
+  `marketing_access_token`, purgé comme les autres secrets de `sanitize_social_config`) ;
+- le GRANT de lecture de la vue aux rôles `anon`, `authenticated`, `service_role`.
+
+⚠️ **La fonction `social-tiktok` doit être REDÉPLOYÉE après cette migration** (elle expose
+désormais les actions `exchange_marketing` et `marketing_sync` — voir Étape 3).
+
+Vérification :
+- `select platform, connected, has_marketing from public.social_accounts_safe;` → OK
+  (`has_marketing` = true une fois l'analyse publicitaire connectée).
+
 ---
 
 ## Étape 2 — Clé Gemini + secrets
@@ -549,6 +571,7 @@ Deux modes possibles :
 | TikTok : erreur à l'autorisation (redirect_uri) | Le Redirect URI collé dans le portail TikTok ne correspond pas exactement à celui affiché par l'app (https obligatoire, sans paramètres), ou la plateforme **Web** n'a pas été cochée dans **App details → Platforms** (le champ Redirect URI n'existe alors pas — cochez Web puis ouvrez **Products → Login Kit → Web**) |
 | TikTok : « Session expirée, reconnectez » | Refresh_token révoqué ou app TikTok recréée → Déconnecter puis Connecter à nouveau |
 | TikTok : publication refusée `url_ownership_unverified` / privée uniquement | Voir section « Limites actuelles de TikTok » ci-dessus |
+| TikTok : « Analyse publicitaire non connectée » | Cliquer sur **Se connecter à l'analyse publicitaire** ; ou app TikTok sans produit **Marketing API** |
 | Analyse d'audience vide ou en erreur | Fonction `social-insights` non déployée ; ou token sans `pages_read_engagement` / expiré → regénérer le token (étape « Connecter la Page Facebook ») |
 | Analyse d'audience : chiffres TikTok absents | Compte TikTok non connecté, ou fonction `social-insights` déployée avant sa mise à jour TikTok → redéployer |
 | Événement TikTok non envoyé à la publication | Section Configuration Tracking vide (Pixel ID / token manquants), fonction `tiktok-events` non déployée, ou token Events API expiré → vérifier dans la table `social_events_log` le statut `failed` |

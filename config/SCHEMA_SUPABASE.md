@@ -4,12 +4,14 @@
 > Ceci est une documentation du schéma réel, pas un dump SQL exécutable.
 > Toute modification de schéma passe par une migration (`config/MIGRATION_V1_1.sql`, `config/MIGRATION_V2.sql`), jamais par édition manuelle de ce fichier.
 >
-> ✔️ **Statut à jour (13/09/2026)** : la migration **V9** (`config/MIGRATION_V9_INDEXES.sql`)
-> est **prête à exécuter** (index de performances sur les colonnes de filtrage : achats,
-> clients, interactions, tasks, devis, creances, campaigns, social_posts). À lancer dans le
-> SQL Editor (idempotente). La migration **V8** (`config/MIGRATION_V8_CAMPAGNES.sql`) a été
-> **appliquée en base** via une Edge Function temporaire `db-migrate` (secret `SUPABASE_DB_URL`),
-> puis supprimée. Ajoute le modèle campagnes + les champs de reporting.
+> ✔️ **Statut à jour (15/09/2026)** : la migration **V10** (`config/MIGRATION_V10_TIKTOK_MARKETING.sql`)
+> est **appliquée en base** (booléen `has_marketing` dans `social_accounts_safe` + purge de
+> `marketing_access_token` de la vue) via une Edge Function temporaire `db-migrate` (secret
+> `SUPABASE_DB_URL`), puis supprimée. La migration **V9** (`config/MIGRATION_V9_INDEXES.sql`)
+> est **prête à exécuter** (index de performances). La migration **V8**
+> (`config/MIGRATION_V8_CAMPAGNES.sql`) a été **appliquée en base** via une Edge Function
+> temporaire `db-migrate` (secret `SUPABASE_DB_URL`), puis supprimée. Ajoute le modèle
+> campagnes + les champs de reporting.
 
 ## `organizations`
 ```
@@ -286,6 +288,9 @@ Accès réservé : `profiles.is_horizon_staff = true`. Ne pas exposer côté pro
   lisent, via `service_role`. La vue `social_accounts_safe` (lue par le navigateur) est en
   `security_invoker = false` + `FORCE ROW LEVEL SECURITY` pour conserver le filtrage par
   espace tout en purgeant les secrets.
+- **Vue `social_accounts_safe`** : expose les champs publics (client_key, pixel_id, etc.) +
+  les booléens `has_marketing` (Marketing API TikTok connecté) et `connected`/`has_pixel_token`,
+  sans jamais exposer `marketing_access_token` ni les autres secrets (ajouté en V10).
 
 ## Edge Functions déployées
 
@@ -295,7 +300,7 @@ Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles r�
 |---|---|---|
 | `ia-conseiller` | oui | Chat & rapport personnalisé IA (Gemini, flux SSE) |
 | `social-publish` | oui | Publie une offre (Facebook Graph / TikTok Content Posting) |
-| `social-tiktok` | oui | Flux OAuth TikTok (échange du code / refresh) |
+| `social-tiktok` | oui | Flux OAuth TikTok (échange du code / refresh) + Marketing API pub (exchange_marketing / marketing_sync) |
 | `social-insights` | oui | Analyse d'audience (Facebook + TikTok) |
 | `social-health` | oui | Diagnostic de l'état des intégrations (absent/incomplet/complete) |
 | `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
