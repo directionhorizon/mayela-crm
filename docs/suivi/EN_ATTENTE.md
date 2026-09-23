@@ -47,11 +47,19 @@ a été **révoqué/expiré** chez Google — masqué, non récupérable, à rem
 
 ---
 
-## 3. Bascule Sandbox → Production (publication d'offres TikTok)
+## 3. Bascule Sandbox → Production (publication d'offres TikTok) — PREPAREE le 23/09/2026
 
-- [ ] Portail TikTok developers → app organique → **App details → Status** : Sandbox → Production.
-- [ ] Prérequis revue : Web, Login Kit, Content Posting API, Legal (URLs dispo).
-- [ ] Vérifier un **domaine** TikTok pour les images produit (`mayela-crm.vercel.app`).
+**Côté code/préparation (fait) :**
+- [x] Meta tag `tiktok-developers-site-verification` ajouté dans `index.html`
+      (en plus du fichier `tiktok0OBaVnw93QgZvZL3IjMOty1RGq5KaxWo.txt` déjà servi à la racine)
+      → domaine `mayela-crm.vercel.app` prêt pour la vérification images produit.
+- [x] URLs exigées vérifiées en ligne (200) : `/`, `terms.html`, `politique-confidentialite.html`,
+      `mayela-crm.html`, `sw.js`.
+
+**Reste (manuel, portail TikTok developers) :**
+- [ ] **App details → Status** : Sandbox → Production.
+- [ ] Prérequis revue : Web, Login Kit, Content Posting API, Legal (URLs toutes dispo).
+- [ ] Vérifier le **domaine** (images produit) dans le portail.
 - [ ] Reconnecter le compte dans le CRM après bascule.
 
 ---
@@ -62,13 +70,15 @@ a été **révoqué/expiré** chez Google — masqué, non récupérable, à rem
 
 ---
 
-## 5. Nettoyage (audit 13/09)
+## 5. Nettoyage (audit 13/09) — FAIT le 23/09/2026
 
-- [ ] Supprimer le projet Vercel redondant `src`
-      (`src-3hvhv9op1-directionhorizoncg-7652s-projects.vercel.app`).
-- [ ] Supprimer/confirmer 6 edge functions Supabase non référencées :
+- [x] Projet Vercel redondant **`src`** supprimé
+      (l'URL obsolète `src-five-chi-49.vercel.app` ne répond plus).
+- [x] Les 6 edge functions Supabase non référencées supprimées :
       `notify-new-devis`, `task-expiry-alerts`, `check-password-pwned`,
       `horizon-leads-webhook`, `horizon-send-email`, `super-api-réseaux-sociaux-mayela`.
+      (Code des 5 premières archivé en backup local avant suppression.)
+- [x] Projet Vercel **`google-sheet-id`** conservé (décision utilisateur).
 
 ---
 
