@@ -6,4 +6,5 @@ node_modules/
 .env.local
 supabase/.temp/
 .env*
+supabase/Password*.txt
 config/SUIVI_PRIORITES.md
