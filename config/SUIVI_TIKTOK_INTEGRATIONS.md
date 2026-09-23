@@ -1,6 +1,6 @@
 # Suivi intégrations TikTok — MAYELA CRM
 
-Dernière mise à jour : 2026-08-29
+Dernière mise à jour : 2026-09-22
 
 ---
 
@@ -75,6 +75,34 @@ Dernière mise à jour : 2026-08-29
 | Table `social_events_log` (audit trail) | `config/MIGRATION_V1_1.sql` | ✅ Fait (2026-08-27) |
 | Policies RLS pour `social_events_log` | — | ✅ Fait |
 | Mettre à jour DEPLOY_BACKEND.md (setup Events API TikTok) | `config/DEPLOY_BACKEND.md` | ✅ Fait |
+
+## Phase 7 — Gestion Ads Marketing API v1.3 (V10.1)
+
+Le CRM passe de la **lecture seule** (analyse publicitaire) à la **gestion réelle** des comptes publicitaires.
+
+| Fonctionnalité | Fichier | Statut |
+|---|---|---|
+| Migration V10.1 : `campaigns.source/tik_*`, `tik_adgroups`, `tik_audiences`, `leads_tiktok` + RLS + grants | `config/MIGRATION_V10_1_TIKTOK_MANAGE.sql` | ✅ Écrit — ⏳ À exécuter dans Supabase SQL Editor |
+| Fonction Edge : helpers `busReq` (Access-Token), `sha256Hex`, `md5Hex`, `marketingCtx` | `supabase/functions/social-tiktok/index.ts` | ✅ Écrit — ⏳ À redéployer |
+| Actions Ads : `ads_campaigns_get/create/update/status` (campagnes) | — | ✅ Écrit |
+| Actions Ads : `ads_adgroups_get/update/status` (ad groups) | — | ✅ Écrit |
+| Actions Ads : `ads_audiences_get/create` (DMP file upload + create, SHA-256) | — | ✅ Écrit |
+| Actions Leads : `leads_forms`, `leads_get` (→ fiches clients + interactions) | — | ✅ Écrit |
+| Écrans UI : « Gérer mes campagnes TikTok Ads », « Audiences TikTok », « Leads TikTok » | `mayela-crm.html` (3 nouveaux écrans + boutons dans Réseaux) | ✅ Écrit — ⏳ À déployer (Vercel) |
+| Navigation + événements (pause/reprendre, budget, enchère, import leads) | `mayela-crm.html` | ✅ Écrit |
+
+### Reste à faire (manuel)
+
+- Exécuter `config/MIGRATION_V10_1_TIKTOK_MANAGE.sql` dans Supabase → SQL Editor.
+- Redéployer la fonction `social-tiktok` (Vercel dashboard ou CLI) car elle référence les nouvelles tables.
+- Sur le portail **TikTok for Business Developers** : activer les scopes en écriture
+  (Audience Management, Bidding & Budget, Lead Management) puis re-autoriser le compte publicitaire dans l'app (Réseaux → connexion analyse publicitaire) pour que le token accepte `campaign/create`, `adgroup/update`, `dmp/*`, `lead/*`.
+
+### Notes API
+- Devise : budgets/enchères en **devise du compte publicitaire** (pas en FCFA). Le CRM stocke `tik_currency` avec chaque montant.
+- Audiences : téléphones normalisés (chiffres) puis hachés **SHA-256** côté serveur, upload CSV multipart (MD5 = `file_signature`), création via `/dmp/custom_audience/file/upload/` puis `/dmp/custom_audience/create/`.
+- Leads : `/page/get/` (Instant Forms) → `/lead/get/` (+ `/lead/field/get/`), header `x-lead-region: us` (non-EEA). Lead sans lead_id → déduplication par clé composite `page|phone/email/nom|date`.
+- Statuts : l'état CRM mappe ENABLE/ACTIVE → ACTIVE, DISABLE/PAUSED → PAUSED.
 
 ---
 

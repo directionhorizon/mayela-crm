@@ -40,6 +40,17 @@ impressions        integer NOT NULL DEFAULT 0
 clics              integer NOT NULL DEFAULT 0       -- "clics / messages"
 created_by         uuid
 created_at         timestamptz NOT NULL
+-- V10.1 (Gestion TikTok Ads) : lignes source='tik' = campagnes gérées via Marketing API
+source              text NOT NULL DEFAULT 'manuel'  -- 'manuel' | 'tik'
+tik_campaign_id     text           -- id TikTok native
+tik_advertiser_id   text           -- compte publicitaire propriétaire
+tik_budget_mode     text           -- BUDGET_MODE_DAY | BUDGET_MODE_TOTAL
+tik_budget          numeric        -- budget natif (devise du compte publicitaire)
+tik_currency        text           -- devise du compte publicitaire
+tik_status          text           -- ACTIVE | PAUSED | DELETED | …
+tik_objective       text           -- objective_type TikTok
+tik_synced_at       timestamptz
+-- index unique partiel : (org_id, tik_campaign_id) où source='tik'
 ```
 - RLS `cam_all_org` : `org_id = current_org_id()`.
 - Alimente les rapports « Performance des campagnes », « Entonnoir », « CA attribuable » et « Rentabilité (ROAS) ».
@@ -229,6 +240,61 @@ error         text
 payload       jsonb NOT NULL
 sent_by       uuid
 created_at    timestamptz NOT NULL
+```
+
+## `tik_adgroups` (ad groups TikTok Ads — V10.1)
+```
+id                uuid NOT NULL
+org_id            uuid NOT NULL  -- FK organizations
+advertiser_id     text NOT NULL  -- compte publicitaire
+tik_campaign_id   text           -- FK logique campaigns.tik_campaign_id
+tik_adgroup_id    text NOT NULL  -- id native TikTok
+nom               text NOT NULL
+budget_mode       text           -- BUDGET_MODE_DAY | BUDGET_MODE_TOTAL
+budget            numeric        -- budget natif (devise compte)
+bid               numeric        -- enchère native
+bid_strategy      text
+operation_status  text           -- ACTIVE | PAUSED | DELETED
+status            text
+currency          text
+optimize_goal     text
+synced_at         timestamptz NOT NULL
+created_at        timestamptz NOT NULL
+-- unique (org_id, tik_adgroup_id)
+```
+
+## `tik_audiences` (audiences custom TikTok — V10.1)
+```
+id                uuid NOT NULL
+org_id            uuid NOT NULL  -- FK organizations
+advertiser_id     text NOT NULL
+tik_audience_id   text NOT NULL  -- id native
+nom               text NOT NULL
+calculate_type    text NOT NULL  -- PHONE_SHA256 | EMAIL_SHA256
+member_count      integer NOT NULL DEFAULT 0
+status            text           -- TRAITEMENT | statut TikTok
+synced_at         timestamptz NOT NULL
+created_at        timestamptz NOT NULL
+-- unique (org_id, tik_audience_id)
+```
+
+## `leads_tiktok` (leads Instant Forms importés — V10.1)
+```
+id            uuid NOT NULL
+org_id        uuid NOT NULL  -- FK organizations
+advertiser_id text
+page_id       text           -- Instant Form (page TikTok)
+page_name     text
+lead_key      text NOT NULL  -- dédup : page|phone/email/nom|date
+client_id     uuid           -- FK clients (fiche CRM créée/liée)
+nom           text
+phone         text
+email         text
+raw_data      jsonb          -- réponse brute TikTok
+imported_by   uuid
+imported_at   timestamptz NOT NULL
+created_at    timestamptz NOT NULL
+-- unique (org_id, lead_key)
 ```
 
 ## `integrations_oauth` (connexions OAuth Google Sheets / Notion, par espace)

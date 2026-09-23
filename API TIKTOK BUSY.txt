@@ -1,0 +1,24 @@
+# Configuration et Contexte - Application TikTok API for Business
+
+## 1. Informations générales de l'application
+- **Nom de l'application (App name) :** [À définir, ex: MonApplicationMarketing]
+- **Description de l'application (App description) :** [Expliquez brièvement l'utilité technique de l'app]
+- **URL de redirection (Advertiser redirect URL) :** [Votre URL de callback OAuth2, ex: https://votre-site.com/auth/tiktok/callback]
+
+## 2. Périmètre des permissions (Scopes & Endpoints)
+L'application doit demander uniquement les permissions et les endpoints nécessaires à son bon fonctionnement (principe du moindre privilège). 
+
+Catégories principales identifiées sur la plateforme :
+- **Gestion des comptes & Business Center (BC) :** Accès aux structures de compte, autorisations, pixels, etc.
+- **Gestion des campagnes publicitaires (Ads management) :** Création, modification et suivi des campagnes.
+- **Reporting & Mesure :** Récupération des rapports de performance et insights.
+
+### Endpoints cibles principaux (Version v2.0) :
+- /oauth2/advertiser/get/
+- /bc/pixel/get/
+- /bc/account/transaction/get/
+- [Ajoutez ici les autres routes nécessaires à votre intégration]
+
+## 3. Directives pour le code
+- **Authentification :** Implémenter le flux OAuth2 de TikTok en utilisant l'URL de redirection configurée.
+- **Migration / Évolution :** S'assurer que le code respecte les standards actuels de l'API (attention aux dépréciations annoncées pour les flux legacy sur les campagnes).

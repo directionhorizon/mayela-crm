@@ -1,0 +1,9 @@
+﻿MAYELA CRM is a customer-relationship management web app used by small businesses. It uses TikTok Login Kit (Web) so a business owner can connect their TikTok creator account and publish commercial offers they create in the CRM directly to that account.
+
+Login Kit (Web): an OAuth consent screen lets the creator authorize MAYELA CRM. The app exchanges the code server-side for an access/refresh token; passwords are never seen or stored.
+
+user.info.basic: reads the public nickname and avatar of the connected account, shown on the "Social accounts" screen so the user can confirm which TikTok account is connected. No private data is requested or stored.
+
+video.publish: used only when the user clicks "Publish the offer". The app uploads the offer's photo and text to the authorized creator account. A video is published only after an explicit click.
+
+Tokens are stored encrypted server-side in the user's workspace and can be revoked at any time. This is the initial submission.

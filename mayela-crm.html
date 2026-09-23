@@ -642,6 +642,11 @@
         <div class="topbar"><h1>Réseaux sociaux</h1></div>
         <div id="socialAccounts" style="margin:0 20px; display:flex; flex-direction:column; gap:10px;"></div>
         <div style="margin:8px 20px 0;"><button class="btn-ghost" data-nav="campaigns">📊 Campagnes publicitaires — saisir & mesurer</button></div>
+        <div style="margin:8px 20px 0; display:flex; flex-direction:column; gap:8px;">
+          <button class="btn-ghost" data-nav="tikmanage">🛠️ Gérer mes campagnes TikTok Ads</button>
+          <button class="btn-ghost" data-nav="audiences">🎯 Audiences TikTok (reciblage)</button>
+          <button class="btn-ghost" data-nav="leads">📥 Leads TikTok (Instant Forms)</button>
+        </div>
         <div id="tiktokSetupPanel" class="hidden" style="margin:0 20px;">
           <div class="section-title">Configurer TikTok (Login Kit)</div>
           <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
@@ -849,6 +854,92 @@
         </div>
         <div class="section-title">Campagnes saisies</div>
         <div id="campaignsList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- GESTION TIKTOK ADS (V10.1) -->
+      <div class="screen" id="tikmanage">
+        <div class="back" data-nav="social">← Réseaux</div>
+        <div class="section-title">Gérer mes campagnes TikTok Ads</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Créez, mettez en pause et ajustez le budget de vos campagnes directement depuis TikTok Ads Manager. Les coûts sont dans la devise du compte publicitaire (pas en FCFA).</div>
+          <div class="meta" id="tmMkStatus" style="color:var(--gold); min-height:1.2em;"></div>
+        </div>
+        <button class="btn-ghost" id="tmRefreshBtn" style="margin:12px 20px 0;">🔄 Synchroniser les campagnes</button>
+        <div class="section-title">Nouvelle campagne</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <input class="field" id="tmNom" placeholder="Nom de la campagne">
+          <select class="field" id="tmObjectif">
+            <option value="TRAFFIC">Trafic vers le site (TRAFFIC)</option>
+            <option value="LEAD_GENERATION">Leads (Instant Form)</option>
+            <option value="VIDEO_VIEWS">Vues vidéo</option>
+            <option value="REACH">Portée</option>
+            <option value="ENGAGEMENT">Engagement</option>
+            <option value="CONVERSIONS">Conversions</option>
+            <option value="APP_INSTALL">Installation app</option>
+          </select>
+          <div style="display:flex; gap:8px;">
+            <select class="field" id="tmBudgetMode" style="flex:1;">
+              <option value="BUDGET_MODE_DAY">Budget journalier</option>
+              <option value="BUDGET_MODE_TOTAL">Budget total</option>
+            </select>
+            <select class="field" id="tmStatus" style="flex:1;">
+              <option value="ENABLE">Démarrer (ENABLE)</option>
+              <option value="DISABLE">Créer en pause (DISABLE)</option>
+            </select>
+          </div>
+          <input class="field" id="tmBudget" type="number" min="1" placeholder="Budget (unité, pas en FCFA)" inputmode="numeric">
+          <button class="btn" id="tmCreateBtn">🚀 Créer la campagne</button>
+          <div class="err-msg" id="tmErr"></div>
+        </div>
+        <div class="section-title">Campagnes TikTok</div>
+        <div id="tmCampaignsList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <div class="screen" id="audiences">
+        <div class="back" data-nav="social">← Réseaux</div>
+        <div class="section-title">Audiences TikTok (reciblage)</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Créez une audience custom depuis vos clients (numéros de téléphone hachés en SHA-256 — jamais transmis en clair), puis ciblez-la dans vos campagnes Ads.</div>
+          <div class="meta" id="auMkStatus" style="color:var(--gold); min-height:1.2em;"></div>
+        </div>
+        <div class="section-title">Nouvelle audience</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <input class="field" id="auNom" placeholder="Nom de l'audience (ex : CLIENTS_PHARMACIE_2026)">
+          <select class="field" id="auType">
+            <option value="PHONE_SHA256">Numéros de téléphone (PHONE_SHA256)</option>
+            <option value="EMAIL_SHA256">Adresses e-mail (EMAIL_SHA256)</option>
+          </select>
+          <select class="field" id="auScope">
+            <option value="tous">Tous les clients</option>
+            <option value="consentement">Clients consentants uniquement</option>
+          </select>
+          <div class="meta" id="auCount" style="color:var(--sage);">—</div>
+          <button class="btn" id="auCreateBtn">🎯 Créer l'audience</button>
+          <div class="err-msg" id="auErr"></div>
+        </div>
+        <div class="section-title">Audiences existantes</div>
+        <button class="btn-ghost" id="auRefreshBtn" style="margin:0 20px 8px;">🔄 Relever les audiences</button>
+        <div id="auList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <div class="screen" id="leads">
+        <div class="back" data-nav="social">← Réseaux</div>
+        <div class="section-title">Leads TikTok (Instant Forms)</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Récupérez les leads de vos formulaires de génération, ils deviennent automatiquement des fiches clients (dédupliqués par téléphone) avec une interaction « TikTok » à traiter.</div>
+          <div class="meta" id="ldMkStatus" style="color:var(--gold); min-height:1.2em;"></div>
+          <select class="field" id="ldForm"><option value="">—</option></select>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input class="field" id="ldDays" type="number" min="1" max="90" value="30" style="flex:1;" aria-label="Nombre de jours">
+            <button class="btn" id="ldImportBtn" style="flex:1;">📥 Importer les leads</button>
+          </div>
+          <div class="err-msg" id="ldErr"></div>
+        </div>
+        <div class="section-title">Leads importés</div>
+        <div id="ldList" class="card-list" style="padding-top:0;"></div>
         <div style="height:16px;"></div>
       </div>
 
@@ -1537,6 +1628,9 @@ document.body.addEventListener('click', (e)=>{
   }
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
+  if(target === 'tikmanage'){ fillTikAdsStatus(); const td = document.getElementById('tmCampaignsList'); if(td) td.innerHTML=''; tikLoadCampaigns(); }
+  if(target === 'audiences'){ fillTikAdsStatus(); auScopeCount(); const ad = document.getElementById('auList'); if(ad) ad.innerHTML=''; auRefresh(); }
+  if(target === 'leads'){ fillTikAdsStatus(); const ll = document.getElementById('ldList'); if(ll) ll.innerHTML=''; ldLoadForms(); }
   if(target === 'social'){
     // Sections repliables : toujours repliées à l'ouverture de l'écran Réseaux.
     document.querySelectorAll('#social .col-collapse').forEach(c=>c.classList.add('collapsed'));
@@ -2090,6 +2184,360 @@ function renderTikTokMarketingStatus(){
     el.innerHTML = `<span class="sc-status no">Analyse publicitaire non connectée</span>`;
   }
 }
+// ================== GESTION TIKTOK ADS (V10.1) ==================
+async function tikAdsCall(action, params){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) throw new Error('Session expirée, reconnectez-vous.');
+  const r = await fetch(SUPABASE_URL + '/functions/v1/social-tiktok', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+    body: JSON.stringify(Object.assign({ action }, params || {}))
+  });
+  const out = await r.json();
+  if(!r.ok) throw new Error(out.error || "Échec de l'appel TikTok.");
+  return out;
+}
+function tikAdsConnected(){
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  const cfg = (acc && acc.config) || {};
+  return !!(acc && (acc.has_marketing || cfg.marketing_access_token));
+}
+function tikAdsStatusLines(){
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  const cfg = (acc && acc.config) || {};
+  const ids = cfg.marketing_advertiser_ids || [];
+  const names = cfg.marketing_advertiser_names || [];
+  if(tikAdsConnected()){
+    return `<span class="sc-status ok">Analyse publicitaire connectée</span>` +
+      (names.length ? `<div class="meta">Compte(s) : ${esc(names.join(', '))}</div>` : '') +
+      (ids.length ? `<div class="meta" style="color:var(--sage);">Advertiser ID : ${esc(ids.join(', '))}</div>` : '');
+  }
+  return `<span class="sc-status no">Analyse publicitaire non connectée — Réseaux → « Se connecter à l'analyse publicitaire »</span>`;
+}
+function fillTikAdsStatus(){
+  ['tmMkStatus','auMkStatus','ldMkStatus'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = tikAdsStatusLines();
+  });
+}
+function tikAdv(){
+  const acc = socialCache.find(a=>a.platform==='tiktok');
+  return (((acc && acc.config && acc.config.marketing_advertiser_ids) || [])[0] || '');
+}
+
+// ---- Campagnes ----
+async function tikLoadCampaigns(){
+  const el = document.getElementById('tmCampaignsList');
+  const errEl = document.getElementById('tmErr');
+  if(errEl) errEl.textContent = '';
+  if(!tikAdsConnected()){
+    if(el) el.innerHTML = '<div class="empty">' + tikAdsStatusLines() + '</div>';
+    return;
+  }
+  fillTikAdsStatus();
+  if(el) el.innerHTML = '<div class="empty">Chargement…</div>';
+  try{
+    const out = await tikAdsCall('ads_campaigns_get');
+    if(el) renderTikCampaigns(out.campaigns || []);
+    if(out.errors && out.errors.length && errEl) errEl.textContent = out.errors.join('\n');
+    toast(out.message || 'Campagnes à jour.');
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+}
+function renderTikCampaigns(list){
+  const el = document.getElementById('tmCampaignsList');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="empty">Aucune campagne TikTok synchronisée. Cliquez sur « Synchroniser les campagnes ».</div>'; return; }
+  el.innerHTML = list.map(function(c){
+    const active = c.tik_status === 'ACTIVE';
+    const adv = c.tik_advertiser_id || tikAdv();
+    const pill = active
+      ? 'background:rgba(94,156,113,0.12);color:var(--sage);border-color:var(--line);'
+      : 'background:rgba(214,93,93,0.12);color:var(--danger);border-color:var(--line);';
+    return '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:700;">' + esc(c.nom) + '</span>' +
+        '<span class="pill" style="' + pill + '">' + esc(c.tik_status || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' +
+        esc(c.tik_objective || '') +
+        (c.tik_budget != null ? ' · Budget : <b>' + esc(String(c.tik_budget)) + ' ' + esc(c.tik_currency || '') + '</b>' : '') +
+        (c.tik_budget_mode ? ' · ' + esc(String(c.tik_budget_mode).replace('BUDGET_MODE_','')) : '') +
+      '</div>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+        '<button class="btn-ghost" data-tik-status="' + esc(c.tik_campaign_id) + '" data-op="' + (active ? 'DISABLE' : 'ENABLE') + '" data-adv="' + esc(adv) + '">' + (active ? '⏸ Mettre en pause' : '▶ Reprendre') + '</button>' +
+        '<button class="btn-ghost" data-tik-budget="' + esc(c.tik_campaign_id) + '" data-cur="' + esc(c.tik_currency || '') + '" data-adv="' + esc(adv) + '">✎ Budget</button>' +
+        '<button class="btn-ghost" data-tik-ags="' + esc(c.tik_campaign_id) + '" data-adv="' + esc(adv) + '" style="margin-left:auto;">↓ Ad groups</button>' +
+      '</div>' +
+      '<div id="tmAgs-' + esc(c.tik_campaign_id) + '" style="display:none;"></div>' +
+    '</div>';
+  }).join('');
+}
+async function tikCampaignStatus(id, op, adv){
+  try{
+    const out = await tikAdsCall('ads_campaign_status', { advertiser_id: adv, campaign_ids: [id], operation_status: op });
+    toast(out.operation_status === 'ENABLE' ? 'Campagne relancée.' : 'Campagne mise en pause.');
+    tikLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+async function tikCampaignBudget(id, adv, cur){
+  const curBud = (document.querySelector('[data-tik-budget="' + id + '"]') || {}).dataset;
+  const v = prompt('Nouveau budget' + (cur ? ' (' + cur + ')' : '') + ' :', curBud ? '' : '');
+  if(v == null || v === '') return;
+  const budget = Number(v);
+  if(!(budget > 0)){ toast('Budget invalide.', true); return; }
+  try{
+    const out = await tikAdsCall('ads_campaign_update', { advertiser_id: adv, campaign_id: id, budget });
+    toast('Budget mis à jour : ' + esc(String(out.budget)) + ' ' + esc(cur));
+    tikLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+// Ad groups : chargement paresseux + rendu
+let __tikAgs = [];
+async function tikToggleAdgroups(cid, adv){
+  const wrap = document.getElementById('tmAgs-' + cid);
+  if(!wrap) return;
+  if(wrap.style.display !== 'none'){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  if(wrap.dataset.loaded === '1') return;
+  wrap.innerHTML = '<div class="empty">Chargement des ad groups…</div>';
+  try{
+    const out = await tikAdsCall('ads_adgroups_get', { campaign_id: cid });
+    __tikAgs = out.adgroups || [];
+    wrap.dataset.loaded = '1';
+    renderTikAdgroups(wrap, cid, adv);
+  }catch(ex){ wrap.innerHTML = '<div class="meta" style="color:var(--danger);">' + esc(ex.message) + '</div>'; }
+}
+function tikAgsOf(cid){ return __tikAgs.filter(a => !cid || a.tik_campaign_id === cid); }
+function renderTikAdgroups(wrap, cid, adv){
+  const ags = tikAgsOf(cid);
+  if(!ags.length){ wrap.innerHTML = '<div class="empty">Aucun ad group.' + ' Cliquez ci-dessus après synchronisation.</div>'; return; }
+  wrap.innerHTML = '<div style="margin:8px 0 4px; font-size:11px; font-weight:600; color:var(--gold);">AD GROUPS</div>' + ags.map(function(g){
+    const active = g.operation_status === 'ACTIVE';
+    const pill = active ? 'background:rgba(94,156,113,0.12);color:var(--sage);border-color:var(--line);' : 'background:rgba(214,93,93,0.12);color:var(--danger);border-color:var(--line);';
+    return '<div style="background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:600;">' + esc(g.nom) + '</span>' +
+        '<span class="pill" style="' + pill + '">' + esc(g.operation_status || g.status || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' +
+        (g.budget != null ? 'Budget : <b>' + esc(String(g.budget)) + ' ' + esc(g.currency || '') + '</b>' : '') +
+        (g.bid != null ? ' · Enchère : <b>' + esc(String(g.bid)) + '</b>' : '') +
+        (g.optimize_goal ? ' · ' + esc(g.optimize_goal) : '') +
+      '</div>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">' +
+        '<button class="btn-ghost" data-tik-ag-status="' + esc(g.tik_adgroup_id) + '" data-adv="' + esc(adv) + '" data-op="' + (active ? 'DISABLE' : 'ENABLE') + '">' + (active ? '⏸ Pause' : '▶ Reprendre') + '</button>' +
+        '<button class="btn-ghost" data-tik-ag-budget="' + esc(g.tik_adgroup_id) + '" data-cur="' + esc(g.currency || '') + '" data-adv="' + esc(adv) + '">✎ Budget</button>' +
+        '<button class="btn-ghost" data-tik-ag-bid="' + esc(g.tik_adgroup_id) + '" data-cur="' + esc(g.currency || '') + '" data-adv="' + esc(adv) + '">✎ Enchère</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+async function tikReloadAgs(cid, adv){
+  const wrap = document.getElementById('tmAgs-' + cid);
+  if(!wrap){ return; }
+  try{
+    const out = await tikAdsCall('ads_adgroups_get', { campaign_id: cid });
+    __tikAgs = out.adgroups || [];
+    wrap.dataset.loaded = '1';
+    renderTikAdgroups(wrap, cid, adv);
+  }catch(ex){ toast(ex.message, true); }
+}
+function tikCidOfAg(id){ const g = __tikAgs.find(function(x){ return x.tik_adgroup_id === id; }); return g ? (g.tik_campaign_id || '') : ''; }
+async function tikAdgroupStatus(id, op, adv){
+  try{
+    await tikAdsCall('ads_adgroup_status', { advertiser_id: adv, adgroup_ids: [id], operation_status: op });
+    toast(op === 'ENABLE' ? 'Ad group relancé.' : 'Ad group mis en pause.');
+    const cid = tikCidOfAg(id);
+    if(cid){ const w = document.getElementById('tmAgs-' + cid); if(w) w.dataset.loaded = '0'; tikToggleAdgroups(cid, adv); }
+    else tikLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+async function tikAdgroupBudget(id, adv, cur){
+  const v = prompt('Nouveau budget ad group' + (cur ? ' (' + cur + ')' : '') + ' :');
+  if(v == null || v === '') return;
+  const budget = Number(v);
+  if(!(budget > 0)){ toast('Budget invalide.', true); return; }
+  try{
+    await tikAdsCall('ads_adgroup_update', { advertiser_id: adv, adgroup_id: id, budget });
+    toast('Budget ad group mis à jour.');
+    const cid = tikCidOfAg(id);
+    if(cid) tikReloadAgs(cid, adv);
+  }catch(ex){ toast(ex.message, true); }
+}
+async function tikAdgroupBid(id, adv, cur){
+  const v = prompt('Nouvelle enchère ad group' + (cur ? ' (' + cur + ')' : '') + ' :');
+  if(v == null || v === '') return;
+  const bid = Number(v);
+  if(!(bid > 0)){ toast('Enchère invalide.', true); return; }
+  try{
+    await tikAdsCall('ads_adgroup_update', { advertiser_id: adv, adgroup_id: id, bid });
+    toast('Enchère ad group mise à jour.');
+    const cid = tikCidOfAg(id);
+    if(cid) tikReloadAgs(cid, adv);
+  }catch(ex){ toast(ex.message, true); }
+}
+async function tikCreateCampaign(){
+  const errEl = document.getElementById('tmErr');
+  if(errEl) errEl.textContent = '';
+  const nom = document.getElementById('tmNom').value.trim();
+  const objectif = document.getElementById('tmObjectif').value;
+  const budgetMode = document.getElementById('tmBudgetMode').value;
+  const status = document.getElementById('tmStatus').value;
+  const budget = Number(document.getElementById('tmBudget').value || 0);
+  if(!nom){ if(errEl) errEl.textContent = 'Nom de campagne manquant.'; return; }
+  if(!(budget > 0)){ if(errEl) errEl.textContent = 'Budget invalide (doit être > 0).'; return; }
+  try{
+    const out = await tikAdsCall('ads_campaign_create', {
+      advertiser_id: tikAdv(), campaign_name: nom, objective_type: objectif,
+      budget_mode: budgetMode, budget, operation_status: status
+    });
+    toast('Campagne « ' + out.nom + ' » créée');
+    document.getElementById('tmNom').value = '';
+    tikLoadCampaigns();
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+}
+
+// ---- Audiences ----
+function auClientsPhones(){
+  const clients = (typeof clientsCache !== 'undefined' && Array.isArray(clientsCache)) ? clientsCache : [];
+  const scope = document.getElementById('auScope').value;
+  return clients
+    .filter(c => c && c.phone && /^\d+$/.test(String(c.phone).replace(/\D/g, '')) && (scope !== 'consentement' || c.consentement !== false))
+    .map(c => String(c.phone).replace(/\D/g, ''))
+    .filter(Boolean);
+}
+function auScopeCount(){
+  const el = document.getElementById('auCount');
+  if(!el) return;
+  if(!clientsCache || !clientsCache.length){ el.textContent = '0 identifiants utilisables.'; return; }
+  const n = auClientsPhones().length;
+  el.textContent = 'Identifiants utilisables : ' + n + ' (téléphones hachés en SHA-256 avant envoi).';
+}
+async function auRefresh(){
+  const el = document.getElementById('auList');
+  const errEl = document.getElementById('auErr');
+  if(errEl) errEl.textContent = '';
+  if(!tikAdsConnected()){ if(el) el.innerHTML = '<div class="empty">' + tikAdsStatusLines() + '</div>'; return; }
+  fillTikAdsStatus();
+  if(el) el.innerHTML = '<div class="empty">Chargement…</div>';
+  try{
+    const out = await tikAdsCall('ads_audiences_get');
+    renderAu(out.audiences || []);
+    if(out.errors && out.errors.length && errEl) errEl.textContent = out.errors.join('\n');
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+}
+function renderAu(list){
+  const el = document.getElementById('auList');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="empty">Aucune audience relevée.</div>'; return; }
+  el.innerHTML = list.map(function(a){
+    const okStatus = /2|4|AVAILABLE/i.test(String(a.status));
+    return '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:700;">' + esc(a.nom) + '</span>' +
+        '<span class="pill" style="' + (okStatus ? 'background:rgba(94,156,113,0.12);color:var(--sage);' : 'background:rgba(243,237,224,0.06);color:var(--sage);border-color:var(--line);') + '">' + esc(a.status || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' + esc(a.calculate_type) + ' · <b>' + esc(String(a.member_count != null ? a.member_count : 0)) + '</b> personnes</div>' +
+    '</div>';
+  }).join('');
+}
+async function auCreate(){
+  const errEl = document.getElementById('auErr');
+  if(errEl) errEl.textContent = '';
+  const nom = document.getElementById('auNom').value.trim();
+  const calcType = document.getElementById('auType').value;
+  const phones = auClientsPhones();
+  if(!nom){ if(errEl) errEl.textContent = "Nom de l'audience manquant."; return; }
+  if(!phones.length){ if(errEl) errEl.textContent = "Aucun numéro utilisable (idem scope sélectionné)."; return; }
+  const ok = confirm("Créer l'audience « " + nom + " » avec " + phones.length + " téléphones hachés ?");
+  if(!ok) return;
+  try{
+    const out = await tikAdsCall('ads_audience_create', {
+      advertiser_id: tikAdv(), nom, calculate_type: calcType, identifiers: phones
+    });
+    toast('Audience créée (' + out.count + ' identifiants). Traitement en cours côté TikTok.');
+    document.getElementById('auNom').value = '';
+    auRefresh();
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+}
+document.getElementById('auScope').addEventListener('change', auScopeCount);
+
+// ---- Leads ----
+async function ldLoadForms(){
+  if(!tikAdsConnected()){ fillTikAdsStatus(); return; }
+  const sel = document.getElementById('ldForm');
+  if(!sel) return;
+  fillTikAdsStatus();
+  try{
+    const out = await tikAdsCall('leads_forms');
+    sel.innerHTML = '<option value="">—</option>' + (out.forms || []).map(function(f){
+      return '<option value="' + esc(f.page_id) + '" data-adv="' + esc(f.advertiser_id) + '" data-name="' + esc(f.page_name) + '">' + esc(f.page_name) + '</option>';
+    }).join('');
+    if(out.errors && out.errors.length) toast(out.errors.join('\n'), !!(out.forms && out.forms.length));
+  }catch(ex){ toast(ex.message, true); }
+}
+async function ldImport(){
+  const errEl = document.getElementById('ldErr');
+  if(errEl) errEl.textContent = '';
+  const sel = document.getElementById('ldForm');
+  const opt = sel.options[sel.selectedIndex];
+  const pid = sel.value;
+  const adv = opt ? opt.dataset.adv || tikAdv() : tikAdv();
+  const pname = opt ? opt.dataset.name || '' : '';
+  const days = Number(document.getElementById('ldDays').value || 30);
+  if(!pid){ if(errEl) errEl.textContent = 'Choisissez un formulaire (Instant Form) d\'abord.'; return; }
+  const btn = document.getElementById('ldImportBtn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Import…'; }
+  try{
+    const out = await tikAdsCall('leads_get', { advertiser_id: adv, page_id: pid, page_name: pname, days });
+    renderLd(out.leads || []);
+    toast(out.message || 'Import terminé.');
+    if(errEl && out.errors && out.errors.length) errEl.textContent = out.errors.join('\n');
+    loadClientsCache().then(function(){ renderClients(); });
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+  finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📥 Importer les leads'; }
+  }
+}
+function renderLd(list){
+  const el = document.getElementById('ldList');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="empty">Aucun lead importé pour ce formulaire.</div>'; return; }
+  el.innerHTML = list.map(function(l){
+    return '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:700;">' + esc(l.nom || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' +
+        (l.phone ? '📞 ' + esc(l.phone) + ' ' : '') +
+        (l.email ? '✉️ ' + esc(l.email) + ' ' : '') +
+        (l.page_name ? '· ' + esc(l.page_name) + ' ' : '') +
+        (l.imported_at ? '· ' + esc(String(l.imported_at).slice(0, 10)) : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ---- Événements UI Gestion Ads ----
+document.getElementById('tmRefreshBtn').addEventListener('click', tikLoadCampaigns);
+document.getElementById('tmCreateBtn').addEventListener('click', tikCreateCampaign);
+document.getElementById('auRefreshBtn').addEventListener('click', auRefresh);
+document.getElementById('auCreateBtn').addEventListener('click', auCreate);
+document.getElementById('ldImportBtn').addEventListener('click', ldImport);
+document.addEventListener('click', function(e){
+  const st = e.target.closest('[data-tik-status]');
+  if(st){ tikCampaignStatus(st.dataset.tikStatus, st.dataset.op, st.dataset.adv); return; }
+  const bg = e.target.closest('[data-tik-budget]');
+  if(bg){ tikCampaignBudget(bg.dataset.tikBudget, bg.dataset.adv, bg.dataset.cur); return; }
+  const ag = e.target.closest('[data-tik-ags]');
+  if(ag){ tikToggleAdgroups(ag.dataset.tikAgs, ag.dataset.adv); return; }
+  const agst = e.target.closest('[data-tik-ag-status]');
+  if(agst){ tikAdgroupStatus(agst.dataset.tikAgStatus, agst.dataset.op, agst.dataset.adv); return; }
+  const agb = e.target.closest('[data-tik-ag-budget]');
+  if(agb){ tikAdgroupBudget(agb.dataset.tikAgBudget, agb.dataset.adv, agb.dataset.cur); return; }
+  const agbid = e.target.closest('[data-tik-ag-bid]');
+  if(agbid){ tikAdgroupBid(agbid.dataset.tikAgBid, agbid.dataset.adv, agbid.dataset.cur); return; }
+});
 // ---- Panneau de configuration TikTok (Login Kit) ----
 const ttSetupPanel = document.getElementById('tiktokSetupPanel');
 function openTikTokSetup(){
@@ -2849,7 +3297,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-01c4ea24ec';
+const APP_VERSION = 'mayela-crm-da3a2e8ff6';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».

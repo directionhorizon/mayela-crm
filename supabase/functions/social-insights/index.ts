@@ -41,6 +41,15 @@ function pickMetric(data: unknown, name: string): number | null {
   return typeof v === "number" ? v : null;
 }
 
+// Première valeur d'une métrique Graph API : data → data[0].values[0].value.
+function firstMetricValue(data: unknown): unknown {
+  if (!Array.isArray(data)) return undefined;
+  const row = data[0] as Record<string, unknown> | undefined;
+  const vals = Array.isArray(row?.values) ? row.values : [];
+  const first = vals[0] as Record<string, unknown> | undefined;
+  return first?.value;
+}
+
 function normCities(raw: unknown): { name: string; count: number }[] {
   let list: { name: string; count: number }[] = [];
   if (Array.isArray(raw)) {
@@ -120,7 +129,7 @@ Deno.serve(async (req: Request) => {
     pageName = String(p.name ?? "");
     followers = (p.fan_count as number) ?? (p.followers_count as number) ?? null;
   } catch (e) {
-    warnings.push(`Abonnés indisponibles : ${e.message}`);
+    warnings.push(`Abonnés indisponibles : ${(e as Error).message}`);
   }
 
   let impressions_28d: number | null = null;
@@ -135,28 +144,28 @@ Deno.serve(async (req: Request) => {
     reach_28d = pickMetric(ins.data, "page_impressions_unique");
     engagements_28d = pickMetric(ins.data, "page_post_engagements");
   } catch (e) {
-    warnings.push(`Statistiques 28 jours indisponibles : ${e.message}`);
+    warnings.push(`Statistiques 28 jours indisponibles : ${(e as Error).message}`);
   }
 
   let cities: { name: string; count: number }[] = [];
   try {
     const ci = await graph(`${pageId}/insights?metric=page_fans_city&period=lifetime`, pageToken);
-    cities = normCities(ci.data?.[0]?.values?.[0]?.value);
+    cities = normCities(firstMetricValue(ci.data));
   } catch (e) {
-    warnings.push(`Répartition par ville indisponible : ${e.message}`);
+    warnings.push(`Répartition par ville indisponible : ${(e as Error).message}`);
   }
 
   let age_gender: Record<string, number> = {};
   try {
     const ag = await graph(`${pageId}/insights?metric=page_fans_gender_age&period=lifetime`, pageToken);
-    const raw = ag.data?.[0]?.values?.[0]?.value;
+    const raw = firstMetricValue(ag.data);
     if (raw && typeof raw === "object") {
       age_gender = Object.fromEntries(
         Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, Number(v) || 0])
       );
     }
   } catch (e) {
-    warnings.push(`Tranches d'âge indisponibles : ${e.message}`);
+    warnings.push(`Tranches d'âge indisponibles : ${(e as Error).message}`);
   }
 
   // ---- TikTok : stats de base du compte connecté (jamais bloquant pour Facebook) ----

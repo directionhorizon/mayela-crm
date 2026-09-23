@@ -1,0 +1,8 @@
+. Stade — date, contexte « V10.1 TikM / intégration TikTok Marketing API ».                                                                                                            
+     2. Déployé et vérifié — migration (34/34), social-tiktok (15 actions), front Vercel https://mayela-crm.vercel.app (PWA mayela-crm-                                                      
+        da3a2e8ff6), tables/colonnes vérifiées.                                                                                                            
+     3. Accès — emplacement .env.deploy (gitignoré), rappel de suppression du fichier clair ; aucun secret écrit dans le doc.                                                                
+     4. Plan UI/UX approuvé (3 points : scrollbar dorée 6px, bouton « Analyse publicitaire » visible, accordéons FB/TikTok/WhatsApp) +                 ⬖ Getting started                ✕    
+        arborescence exacte (lignes clés de mayela-crm.html) pour reprise immédiate.                                                                                                         
+     5. Blocages côté client — app TikTok Marketing API + 5 scopes + autorisation + App Review.                                                          OpenCode includes free models       
+     6. Actions de reprise — checklist ordonnée (implémentation UI → bump-sw → deploy → vérif prod → étape 2 client). 

@@ -1,0 +1,65 @@
+PLAN PRIORITAIRE RAPPORT 2 — état des items (mis à jour le 14/09/2026)
+
+1- ✅ FAIT — créé un sous-dossier "CLASSE MARKETING" dans lequel tu stockeras les    
+  ┃  données explicatives de la logique-métier "MARKETING" de l'application   
+  ┃  telle que l'explication sur la classification des segments mais aussi    
+  ┃  tous les autres paramètres actuels de cette logique'métiers marketing,     
+  ┃  par différents fichiers, et ce avant de faire autre chose
+  (Commit 265e4c3 : dossier créé + références de lignes réalignées sur le code actuel.)
+
+2- ✅ DÉCIDÉ — Déconnexion → écran authEmail : comportement volontaire, on y reste.
+   (#authEmail est la vraie porte d'entrée identifiée : e-mail + code OTP + « Se connecter
+   avec Google », l.346-361. doLogout l.3632, boot sans session l.1196, erreur d'auth l.1220
+   — tout route volontairement vers authEmail. Le PIN n'est qu'un verrou local, pas
+   l'authentification réelle. Aucun autre écran légitime après déconnexion.)
+
+X- ⏳ PLUS TARD — On peaufinera la logique des segments avec une vue marketing confère cours plus tard
+
+3- ✅ FAIT — règle le pb du menu pour qu'il ne dépende plus du flash
+  (Commits 419f022 / 4beb859 : menu rendu indépendant du flash avec cache ctx.)
+
+4- ✅ FAIT — Règle le pb de pouce figé pouce figé (l.974-986 vs l.278) au niveau
+   de la mollette dans la page Conseiller.
+   (Commit ce3ae6d : pouce custom suit le vrai sous-défileur.)
+
+5- ✅ FAIT — On doit garder les deux (Offres, Campagnes) mais clarifier l'UI.
+   (Commit f5cf38f : « Publier du contenu » (organique) + entrée bouton vers sous-page
+   Campagnes publicitaires ; libellés clarifiés.)
+
+6- ✅ FAIT — Analyse d'audience → garder en Réseaux (donnée live liée aux comptes    
+   connectés).
+   (Confirmé : écran Réseaux conserve l'analyse d'audience live.)
+
+7- ✅ FAIT — Impact opérationnel → déplacer dans Rapports (donnée interne, format    
+   rapport).
+   (Commit 9ad2130, hash PWA mayela-crm-a23e096991 : nouveau rapport « Impact
+   opérationnel (interne) » dans Rapports.)
+
+8- ⏳ ROADMAP (en cours) — APIs :
+   ➤ ✅ TIKTOK MARKETING API — implémenté (15/09/2026) : edge function `social-tiktok`
+     actions `exchange_marketing` (OAuth ads.tiktok.com → token longue durée + advertiser IDs)
+     et `marketing_sync` (report/integrated/get 30 j → table `campaigns` plateforme='tiktok') ;
+     UI « Analyse publicitaire » dans Réseaux → connexion TikTok + bouton « Relever les
+     campagnes (30 j) » ; migration V10 (`has_marketing` dans social_accounts_safe).
+     ⛔ Reste : app TikTok Developer avec produit Marketing API + App review (voir
+     docs/TIKTOK_MARKETING_API_SETUP_CLIENT.md), exécuter MIGRATION_V10 en base,
+     redéployer `social-tiktok`, puis test réel avec les credentials.
+   ➤ ⏳ Reste à faire : WhatsApp Cloud API + notifications push PWA + auto-sync Meta Ads,
+     puis auto-sync TikTok élargi et Sheets bidirectionnel.
+
+9- ✅ FAIT (14/09/2026) — Compte publicitaire TIKTOK BUSINESS créé côté client. Il reste
+   à créer l'app TikTok Developer (App ID/Secret) pour la connexion à la TikTok
+   Marketing API (rattaché à l'item 8). On cumulera les deux types d'analytics TikTok
+   (Organique et publicitaire).
+
+10- ✅ FAIT (14/09/2026) — Inclure des explications sur l'intêret pratique des deux types
+    d'analytics dans le dossier CLASSE MARKETING.
+    (Fichier analytics-tiktok-organique-vs-publicitaire.md + entrée README du dossier.)
+
+11- ⏳ À FAIRE (recette) — Tests de validation (voir config/SUIVI_PRIORITES.md) :
+    11a- Test manuel des Rapports (navigateur, toutes les catégories + exports PDF/Google Sheets),
+         y compris « Impact opérationnel (interne) » (calcul réel avec données).
+    11b- Test login bout-en-bout (saisie e-mail → réception du code OTP → saisie code → entrée dans
+         l'app). Non couvert jusqu'ici : nécessite une boîte e-mail réelle.
+    11c- Config Google Sheets (connecter le compte + exporter un rapport) — Vérifier aussi le mode A
+         (app Google par défaut GS_DEFAULT_CLIENT_ID/SECRET).

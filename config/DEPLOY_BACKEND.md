@@ -173,6 +173,29 @@ Vérification :
 - `select platform, connected, has_marketing from public.social_accounts_safe;` → OK
   (`has_marketing` = true une fois l'analyse publicitaire connectée).
 
+### 1f — Migration V10.1 (Gestion Ads TikTok) — À APPLIQUER (2026-09-22)
+
+1. Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V10_1_TIKTOK_MANAGE.sql`
+3. Cliquez **Run** (la migration est additive et idempotente)
+
+Cela ajoute :
+
+- **`campaigns`** : `source` ('manuel' | 'tik'), `tik_campaign_id`, `tik_advertiser_id`,
+  `tik_budget_mode`, `tik_budget`, `tik_currency`, `tik_status`, `tik_objective`,
+  `tik_synced_at` + index unique partiel `(org_id, tik_campaign_id)` pour les lignes `source='tik'` ;
+- **`tik_adgroups`** : ad groups Ads (budget / enchère / pause) ;
+- **`tik_audiences`** : audiences custom créées depuis la liste clients ;
+- **`leads_tiktok`** : leads Instant Forms importés (dédup `(org_id, lead_key)`) ;
+
+chacune avec RLS `current_org_id()` et GRANTs.
+
+⚠️ **Après cette migration, REDÉPLOYER la fonction `social-tiktok`** (elle référence les nouvelles tables — voir Étape 3).
+
+Vérification :
+- `select tablename from pg_tables where schemaname='public' and tablename in ('tik_adgroups','tik_audiences','leads_tiktok');`
+- `select column_name from information_schema.columns where table_schema='public' and table_name='campaigns' and column_name like 'tik%' order by 1;`
+
 ---
 
 ## Étape 2 — Clé Gemini + secrets

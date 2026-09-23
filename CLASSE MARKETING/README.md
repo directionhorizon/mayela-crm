@@ -14,6 +14,7 @@ Chaque fichier couvre un domaine distinct. Les paramètres, seuils, formules et 
 | `publication-offres.md` | Contenu / publications | Publier du contenu, événements TikTok, repli manuel |
 | `tracking-pixel-tiktok.md` | Tracking événements | Pixel client, événements serveur, événement Purchase |
 | `analyse-audience-et-insights.md` | Audience & insights | social-insights, clients les plus actifs par réseau |
+| `analytics-tiktok-organique-vs-publicitaire.md` | Analytics TikTok | Intérêt pratique des 2 types d'analytics (organique déjà en place / publicitaire via TikTok Marketing API, à brancher) |
 | `impact-operationnel.md` | Statistiques internes | Catégorie **Rapports** « Impact opérationnel » : offres publiées, échanges, clients suivis, achats (période sélectionnée) |
 | `kpis-tableau-de-bord.md` | KPIs accueil | Ventes du jour, CA 30 j, tâches, perf publicitaire |
 | `rapports-exports.md` | Moteur de reporting | Catégories, périodes, colonnes, export Google Sheets |
