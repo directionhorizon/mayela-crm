@@ -31,19 +31,23 @@ si dossier incomplet).
 
 ---
 
-## 2. E-mail OTP introuvable (création / bascule d'espace) — SMTP Supabase
+## 2. E-mail OTP introuvable (création / bascule d'espace) — RESOLU le 23/09/2026
 
 **Symptôme** : « Code envoyé à … » mais **aucun e-mail** ne parvient
-(500 « Error sending confirmation email » côté Supabase `/auth/v1/otp`).
+(500 « Error sending confirmation email » côté Supabase `/auth/v1/otp`, log réel Gmail :
+`535 Username and Password not accepted`).
 
-**Cause probable** : le mot de passe d'application Gmail (Sender password SMTP Supabase)
-a été **révoqué/expiré** chez Google — masqué, non récupérable, à remplacer.
+**Cause (confirmée)** : le **mot de passe d'application Gmail** (Sender password SMTP Supabase,
+compte `direction.horizon.cg@gmail.com`) date de l'ancien mot de passe principal du compte ;
+le changement de mot de passe Google **révoque tous les app passwords** → mort → rejet `535` à
+chaque essai (masqué, non récupérable → remplacé).
 
-- [ ] Recréer un app password : `myaccount.google.com/apppasswords`
-      (compte `direction.horizon@gmail.com`) → nom « Supabase » → copier le code 16-car.
-- [ ] Supabase Dashboard → Settings → Authentication → **SMTP Settings → Sender password** → coller → Save.
-- [ ] Re-tester la création / bascule d'espace bout-en-bout.
-- [ ] Vérifier le template « Magic Link » contient `{{ .Token }}`.
+- [x] Nouveau **app password** créé sur `myaccount.google.com/apppasswords`
+      (compte `direction.horizon.cg@gmail.com` — celui de `SMTP Settings`, PAS `@gmail.com`).
+- [x] **Sender password** remplacé dans Supabase Dashboard → Authentication → SMTP Settings → Save.
+- [x] Test d'envoi OTP relancé via `/auth/v1/otp` → **200 OK** (plus aucune erreur `535` dans les logs).
+- [x] Template « Magic Link » contient `{{ .Token }}` (vérifié, sujet personnalisé OK).
+- [ ] Re-test utilisateur : création / bascule d'espace bout-en-bout (réception du code).
 
 ---
 
@@ -85,7 +89,7 @@ a été **révoqué/expiré** chez Google — masqué, non récupérable, à rem
 ## 6. En attente de recette (item 11)
 
 - [ ] 11a · Test manuel Rapports (toutes catégories + exports PDF / Google Sheets).
-- [ ] 11b · Test login bout-en-bout (dépend du blocage SMTP n°2).
+- [ ] 11b · Test login bout-en-bout : saisie e-mail → **réception du code OTP** (SMTP réparé 23/09) → saisie code → entrée app.
 - [ ] 11c · Config Google Sheets + vérifier mode A (`GS_DEFAULT_CLIENT_ID/SECRET`).
 
 ---
