@@ -1,20 +1,28 @@
 # EN ATTENTE — MAYELA CRM
 
-> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 23/09/2026.
+> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 24/09/2026.
 > À faire : chaque blocage = 1 entrée, cochée quand résolu ; rien d'autre à dupliquer.
 
 ---
 
-## 1. Revue TikTok Marketing API (app TikTok for Business) — BLOQUANT CRM
+## 1. Revue TikTok Marketing API (app TikTok for Business) — REJETEE le 24/09/2026
 
-**Statut : `Pending`** soumis à la création de l'app (dossier déjà fourni : description
-d'usage + redirect URI). Durée estimée : **2–3 jours ouvrés** (jusqu'à ~7 ou 1–2 semaines
-si dossier incomplet).
+**Statut : `Rejected`** (précédemment `Pending`). Dossier soumis à la création de l'app
+(description d'usage + redirect URI + prérequis : Web, Login Kit, Content Posting API, Legal).
 
 ### Effet
-- Tant que `Pending` : TikTok ne délivre **ni App ID ni Secret** sur la page Basic Info.
+- TikTok ne délivre toujours **ni Client Key ni Secret** sur la page Basic Info.
 - Impossible de configurer les credentials dans le CRM ni de tester « Analyse publicitaire ».
 - Les comptes publicitaires de production ne peuvent pas autoriser l'app avant approbation.
+
+### Action (rejet)
+- [ ] **Lire la raison exacte du rejet** dans le portail business.tiktok.com
+      (page de l'app → app review → message/motif du rejet).
+- [ ] **Validation du numéro par code temporairement bloquée** (24/09/2026) → reprendre
+      la resoumission quand la validation passe.
+- [ ] Corriger le(s) motif(s) : description, use case, captures d'écran, URL légales, etc.
+- [ ] **Resoumettre** la revue.
+- [ ] Suivre le statut (2–3 jours ouvrés).
 
 ### Action à l'approbation
 - [ ] Récupérer **Client Key (App ID)** + **Client Secret** (portail business.tiktok.com → Basic Info).
@@ -28,6 +36,7 @@ si dossier incomplet).
 - [x] Migration **V10.1 appliquée** en base (tables `tik_adgroups`, `tik_audiences`,
       `leads_tiktok` + colonnes `tik_*` dans `campaigns`, RLS + grants).
 - [x] UI V10.1 déployée sur Vercel (sw.js `da3a2e8ff6` — 3 écrans TikTok Ads + boutons Réseaux).
+- [x] Domaine `mayela-crm.vercel.app` vérifié (meta tag + fichier racine, URLs 200).
 
 ---
 
@@ -96,6 +105,33 @@ chaque essai (masqué, non récupérable → remplacé).
 - [ ] 11a · Test manuel Rapports (toutes catégories + exports PDF / Google Sheets).
 - [ ] 11b · Test login bout-en-bout : saisie e-mail → **réception du code OTP** (SMTP réparé 23/09) → saisie code → entrée app.
 - [ ] 11c · Config Google Sheets + vérifier mode A (`GS_DEFAULT_CLIENT_ID/SECRET`).
+
+---
+
+## 7. Connexion Page Facebook (Meta) — côté code PRET le 24/09/2026
+
+Objectif : publier les offres sur la Page Facebook de la pharmacie et afficher
+l'analyse d'audience (comme la connexion TikTok). La connexion du compte se fera plus tard
+(app Meta à créer par la pharmacie).
+
+### Déjà prêt (ne pas refaire)
+- [x] Guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** (créer l'app Meta, permissions,
+      revue, autoriser la Page dans le CRM).
+- [x] Edge function **`social-facebook`** (OAuth : échange du code → user token longue durée →
+      Page Access Token, stocké dans `social_accounts.config` comme `page_id`/`access_token`).
+      **Déployée** sur le projet.
+- [x] UI **Connexion Facebook** en OAuth (panneau App ID/App Secret + redirect URI), le
+      prompt manuel page_id/token est supprimé. Publication et analyse réutilisent les
+      fonctions existantes (`social-publish` / `social-insights` / `social-health`).
+
+### Reste (manuel, portail developers.facebook.com + CRM)
+- [ ] Créer la **Business App** Meta (voir guide) + produit **Facebook Login** + URI de
+      redirection = `https://mayela-crm.vercel.app/mayela-crm.html`.
+- [ ] Permissions : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`,
+      `read_insights` (niveau advanced access / revue, ou rôles Admin/Tester en attendant).
+- [ ] Renseigner **App ID** + **App Secret** dans le CRM → **Connexion Facebook** → autoriser
+      la Page avec le compte admin → carte « Connecté ».
+- [ ] Publier une offre de test + vérifier l'écran Analyse d'audience.
 
 ---
 

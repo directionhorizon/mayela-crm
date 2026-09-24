@@ -274,67 +274,49 @@ Si l'IA répond → tout est branché.
 - **Analyse d'audience** : abonnés, portée/impressions/engagements 28 j, villes, âge + genre
   (fonction `social-insights`).
 
-Dans MAYELA, la connexion est manuelle : il faut lui fournir **2 valeurs** —
-l'**ID de la Page** et l'**Access Token de la Page** (longue durée). Voici comment les obtenir.
+La connexion est **entièrement en OAuth** (même principe que TikTok) : le navigateur dirige vers
+le portail Meta, et l'edge function `social-facebook` échange le code contre un **Page Access
+Token** longue durée, stocké côté serveur. L'utilisateur n'a plus rien à copier-coller à la main.
 
-### Étape 1 — Créer/configurer l'app Facebook
-1. https://developers.facebook.com → **My Apps** → **Create App** (type **Business**).
-   - Si vous avez déjà une app, réutilisez-la.
-2. Ajoutez les produits nécessaires si demandé (Page API / Graph API).
+### Étape 1 — Créer/configurer l'app Meta
+Suivre le guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** :
+1. https://developers.facebook.com → créer la Business App (type **Business**).
+2. Ajouter le produit **Facebook Login** ; dans **Configuration**, coller dans
+   **Valid OAuth Redirect URIs** : `https://mayela-crm.vercel.app/mayela-crm.html`.
+3. Permissions (App Review → Permissions and Features) : `pages_show_list`,
+   `pages_manage_posts`, `pages_read_engagement`, `read_insights`.
+4. Relever l'**App ID** et l'**App Secret** (Settings → Basic).
+5. En attendant la revue, ajouter le compte propriétaire en **Roles → Admin/Tester**.
 
-### Étape 2 — Ouvrir Graph API Explorer
-1. **Outils → Graph API Explorer** (dans le menu App).
-2. En haut à droite, **sélectionnez votre app**.
-3. Activez la **Graph API v21.0** (version utilisée par MAYELA).
-
-### Étape 3 — Générer le token avec les bonnes permissions
-1. Dans le selecteur de permissions, ajoutez :
-   - `pages_show_list` — lister les Pages du compte
-   - `pages_manage_posts` — publier des offres
-   - `pages_read_engagement` — lire l'analyse d'audience
-   - (recommandé) `pages_read_user_content`, `pages_show_list`
-2. Cliquez **Generate Access Token** → autorisez.
-
-### Étape 4 — Choisir la Page (token de Page)
-1. Dans le sélecteur de token : choisissez votre **Page**, pas votre profil
-   (le token devient alors un **Page Access Token**).
-2. Vérifiez l'**ID de la Page** : dans l'Explorer, requêtez `GET /me/accounts`
-   → copiez le champ `id` de votre Page (série de chiffres, ~15-17).
-
-### Étape 5 — Échanger contre un token longue durée (60 jours)
-Le token court expire en ~1 h. Échangez-le dans le navigateur
-(remplacez les valeurs entre `<>`) :
-
-```
-https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=<APP_ID>&client_secret=<APP_SECRET>&fb_exchange_token=<TOKEN_COURT>
-```
-
-- `<APP_ID>` et `<APP_SECRET>` : onglet **App settings → Basic** de votre app.
-- `<TOKEN_COURT>` : le token de Page généré à l'étape 4.
-- Réponse : un nouveau `access_token` valable **~60 jours**. Copiez-le.
-
-### Étape 6 — Renseigner dans MAYELA
+### Étape 2 — Connecter dans MAYELA
 1. App MAYELA → onglet **Réseaux** → carte **Page Facebook** → **Connecter**.
-2. Collez l'**ID de la Page** (chiffres).
-3. Collez le **token longue durée** → enregistrer.
+2. Renseigner **App ID** et **App Secret** → **Se connecter à Facebook**.
+3. Facebook demande l'autorisation : se connecter avec le compte **admin de la Page**
+   et approuver les permissions.
+4. Retour automatique au CRM : la carte affiche **« Connecté »** avec le nom de la Page.
+   Le `page_id` + Page Access Token sont stockés dans `social_accounts.config`
+   (jamais exposés au navigateur).
 
-> Le token reste côté serveur (table `social_accounts`), jamais envoyé aux autres membres.
-> **Pensez à le renouveler tous les ~60 jours** (refaire les étapes 3-5 puis reconnecter).
+> Le Page Access Token est longue durée (n'expire pas tant que l'app n'est pas révoquée) ;
+> le user token (~60 j) n'est utilisé que pour re-cur la Page — sinon, cliquer « Autoriser ».
 
 ### Permissions et usage
 | Permission | Utilisée par |
 |---|---|
-| `pages_show_list` | Lister/récupérer l'ID de la Page |
+| `pages_show_list` | Lister les Pages du compte (`social-facebook`) |
 | `pages_manage_posts` | Publication de l'offre (`social-publish`) |
-| `pages_read_engagement` | Analyse d'audience (`social-insights`) |
+| `pages_read_engagement` | Lecture de l'analyse d'audience (`social-insights`) |
+| `read_insights` | Statistiques détaillées : villes, âge+genre, portée 28 j |
 
-> **Mode dev** : la publication fonctionne immédiatement sur VOTRE Page, sans revue Meta.
-> La **revue** de `pages_manage_posts` n'est nécessaire que si **d'autres personnes** doivent utiliser l'app avec leurs propres Pages.
+> **Mode dev** : la publication fonctionne immédiatement sur VOTRE Page sans revue Meta
+> (compte admin/testeur de l'app). La **revue** n'est nécessaire que si **d'autres personnes**
+> doivent utiliser l'app avec leurs propres Pages, ou pour passer l'app en mode Live.
 
 ### Dépannage Facebook
 | Symptôme | Cause probable → solution |
 |---|---|
-| « Page Facebook non connectée » | Carte non connectée → faire les étapes 1-6 |
+| « Page Facebook non connectée » | Carte non connectée → faire les étapes 1-2 |
+| « Aucune Page gérée par ce compte » | Le compte qui autorise n'est pas **admin** de la Page → se connecter avec un admin |
 | Publication refuse avec erreur Graph | Token expiré (~60 j) ou permissions manquantes → regénérer le token |
 | Analyse d'audience vide/erreur | Token sans `pages_read_engagement`, ou fonction `social-insights` non déployée → redéployer + regénérer le token |
 | `(#200) Permission` | Permission non octroyée → regénérer le token avec le bon scope |

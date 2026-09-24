@@ -710,6 +710,63 @@
             </div>
           </div>
         </div>
+        <div id="facebookSetupPanel" class="hidden" style="margin:0 20px;">
+          <div class="section-title">Configurer Facebook (Meta)</div>
+          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+            <div class="meta" style="color:var(--sage); line-height:1.5;">
+              Pour publier vos offres sur votre Page Facebook et afficher vos
+              statistiques d'audience, créez d'abord une app sur
+              <b style="color:var(--text);">developers.facebook.com</b> (voir le guide
+              <b style="color:var(--text);">docs/FACEBOOK_META_SETUP_CLIENT.md</b>),
+              puis remplissez les 3 étapes ci-dessous dans l'ordre.
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>1 · Redirect URI (obligatoire)</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Dans votre app Meta → <b>Facebook Login → Configuration</b>, collez cette
+                URI exacte dans <b>Valid OAuth Redirect URIs</b> → <b>Save changes</b> :
+              </div>
+              <div class="tt-uri" id="fbRedirectUriView"></div>
+              <button class="btn-ghost" id="fbCopyUriBtn">📋 Copier le Redirect URI</button>
+              <div class="err-msg" id="fbCopyUriErr"></div>
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>2 · App ID</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Dans la page de votre app → <b>Settings → Basic</b>, copiez le champ
+                <b>App ID</b> :
+              </div>
+              <input class="field" id="fbClientId" placeholder="App ID (ex. 1234567890)" autocomplete="off">
+            </div>
+
+            <div class="tt-step">
+              <div class="meta"><b>3 · App Secret</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Toujours dans <b>Settings → Basic</b>, cliquez sur <b>Show</b> puis copiez
+                le champ <b>App Secret</b> :
+              </div>
+              <input class="field" id="fbClientSecret" placeholder="App Secret" type="password" autocomplete="off">
+            </div>
+
+            <button class="btn" id="fbConnectBtn">📘 Se connecter à Facebook</button>
+            <button class="btn-ghost" id="fbCancelBtn">Annuler</button>
+            <div class="err-msg" id="fbSetupErr"></div>
+
+            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
+              <div class="meta"><b>4 · Permissions de l'app</b> — pour publier + statistiques</div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Dans votre app Meta → <b>App Review → Permissions and Features</b>,
+                demandez l'accès aux permissions
+                <b>pages_show_list</b>, <b>pages_manage_posts</b>,
+                <b>pages_read_engagement</b> et <b>read_insights</b>
+                (ou, avant revue, ajoutez votre compte en <b>Roles → Admin/Tester</b>).
+                Voir le guide client ci-dessus.
+              </div>
+            </div>
+          </div>
+        </div>
         <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
         <div class="section-title">Publier du contenu</div>
         <div class="meta" style="margin:0 20px 8px; color:var(--sage); line-height:1.5;">Communication organique : promo, nouveauté, cadeau. Publie automatiquement sur TikTok ou prépare le post à copier sur vos autres réseaux.</div>
@@ -1716,7 +1773,7 @@ let socialCache = [];
 // Ne conserve jamais les secrets côté client. La publication, le tracking et le rafraîchissement
 // des jetons sont gérés par les Edge Functions (server-side) : le navigateur n'a besoin que des
 // champs publics (client_key, pixel_id) et d'un indicateur de connexion.
-const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token','marketing_access_token'];
+const SOCIAL_SECRET_KEYS = ['client_secret','access_token','refresh_token','open_id','page_id','pixel_access_token','adjust_app_token','adjust_s2s_token','marketing_access_token','user_access_token'];
 function sanitizeSocialAccount(acc){
   const cfg = (acc && acc.config) || {};
   // La vue SQL social_accounts_safe fournit déjà connected / has_pixel_token
@@ -2168,6 +2225,86 @@ async function syncMarketingCampaigns(){
     toast(ex.message, true);
   }
 }
+// ---- Connexion Facebook (Meta OAuth, mêmes principes que TikTok) ----
+function facebookRedirectUri(){
+  // Même origine que TikTok : l'URI enregistrée dans Facebook Login doit être cette valeur.
+  return tiktokRedirectUri();
+}
+async function startFbAuth(){
+  const acc = socialCache.find(a=>a.platform==='facebook');
+  const appId = (acc && acc.config && acc.config.client_id) || document.getElementById('fbClientId').value.trim();
+  if(!appId){ toast("Enregistrez d'abord l'App ID de votre app Meta.", true); return; }
+  const redirectUri = facebookRedirectUri();
+  const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  sessionStorage.setItem('fb_state', state);
+  sessionStorage.setItem('fb_redirect', redirectUri);
+  const qs = new URLSearchParams({
+    client_id: appId,
+    scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,read_insights',
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    state
+  });
+  location.href = 'https://www.facebook.com/v21.0/dialog/oauth/?' + qs.toString();
+}
+async function completeFbAuth(code){
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    const redirectUri = sessionStorage.getItem('fb_redirect') || facebookRedirectUri();
+    const r = await fetch(SUPABASE_URL + '/functions/v1/social-facebook', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+      body: JSON.stringify({ action:'exchange', code, redirect_uri:redirectUri })
+    });
+    const out = await r.json();
+    if(!r.ok) throw new Error(out.error || "Échec de la connexion Facebook.");
+    toast('Page Facebook connectée' + (out.display_name ? ' : ' + out.display_name : ''));
+  }catch(ex){ toast(ex.message, true); }
+  insightsData = null;
+  loadSocial();
+}
+// ---- Panneau de configuration Facebook (Meta) ----
+const fbSetupPanel = document.getElementById('facebookSetupPanel');
+function openFacebookSetup(){
+  document.getElementById('fbRedirectUriView').textContent = facebookRedirectUri();
+  fbSetupPanel.classList.remove('hidden');
+  fbSetupPanel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function closeFacebookSetup(){
+  fbSetupPanel.classList.add('hidden');
+  document.getElementById('fbSetupErr').textContent = '';
+}
+async function connectFacebookFromSetup(){
+  const errEl = document.getElementById('fbSetupErr');
+  errEl.textContent = '';
+  const appId = document.getElementById('fbClientId').value.trim();
+  const appSecret = document.getElementById('fbClientSecret').value.trim();
+  if(!appId || !appSecret){
+    errEl.textContent = "Renseignez l'App ID et l'App Secret.";
+    return;
+  }
+  const { data:{ user } } = await sb.auth.getUser();
+  const cfg = { client_id:appId, client_secret:appSecret };
+  const { data: existing } = await sb.from('social_accounts').select('id').eq('platform','facebook').maybeSingle();
+  const { error } = existing
+    ? await sb.from('social_accounts').update({ config:cfg }).eq('id', existing.id)
+    : await sb.from('social_accounts').insert({ org_id:activeOrgId(), platform:'facebook', display_name:'Page Facebook', config:cfg, connected_by:user.id });
+  if(error){ errEl.textContent = error.message; return; }
+  closeFacebookSetup();
+  await startFbAuth();
+}
+document.getElementById('fbConnectBtn').addEventListener('click', connectFacebookFromSetup);
+document.getElementById('fbCancelBtn').addEventListener('click', ()=>{ closeFacebookSetup(); });
+document.getElementById('fbCopyUriBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('fbCopyUriErr');
+  errEl.textContent = '';
+  try{
+    await navigator.clipboard.writeText(facebookRedirectUri());
+    toast('Redirect URI copié.');
+  }catch(_e){
+    errEl.textContent = "Impossible de copier automatiquement — sélectionnez le texte ci-dessus.";
+  }
+});
 function renderTikTokMarketingStatus(){
   const el = document.getElementById('ttMarketingStatus');
   if(!el) return;
@@ -2789,6 +2926,15 @@ const _origLoadSocial = window.__gs_hook;
     setTimeout(()=>completeMarketingAuth(authCode), 300);
     return;
   }
+  if(state === sessionStorage.getItem('fb_state')){
+    sessionStorage.removeItem('fb_state');
+    history.replaceState(null,'', sessionStorage.getItem('fb_redirect') || facebookRedirectUri());
+    sessionStorage.removeItem('fb_redirect');
+    const code = q.get('code'), fbErr = q.get('error');
+    if(fbErr || !code){ toast('Connexion Facebook annulée : ' + (q.get('error_description')||fbErr), true); return; }
+    setTimeout(()=>completeFbAuth(code), 300);
+    return;
+  }
   if(state !== sessionStorage.getItem('tt_state')) return;
   sessionStorage.removeItem('tt_state');
   history.replaceState(null,'', sessionStorage.getItem('tt_redirect') || tiktokRedirectUri());
@@ -2800,6 +2946,7 @@ document.body.addEventListener('click', async (e)=>{
   const authBtn = e.target.closest('[data-auth-social]');
   if(authBtn){
     if(authBtn.dataset.authSocial === 'tiktok') startTikTokAuth();
+    if(authBtn.dataset.authSocial === 'facebook') startFbAuth();
     return;
   }
   const conn = e.target.closest('[data-conn-social]');
@@ -2807,15 +2954,8 @@ document.body.addEventListener('click', async (e)=>{
     const pl = conn.dataset.connSocial;
     if(pl === 'whatsapp'){ toast(PLATFORM_META.whatsapp.hint); return; }
     if(pl === 'tiktok'){ openTikTokSetup(); return; }
-    if(pl !== 'facebook'){ toast(PLATFORM_META[pl].hint); return; }
-    const pageId = prompt("ID de votre Page Facebook (série de chiffres — Paramètres de la Page → Infos) :");
-    if(!pageId) return;
-    const token = prompt("Access Token de la Page (généré via developers.facebook.com — voir le guide MAYELA) :");
-    if(!token) return;
-    const { data:{ user } } = await sb.auth.getUser();
-    const { error } = await sb.from('social_accounts').insert({ org_id:activeOrgId(), platform:'facebook', display_name:'Page Facebook', config:{ page_id:pageId.trim(), access_token:token.trim() }, connected_by:user.id });
-    if(error){ toast(error.message, true); } else { toast('Page Facebook connectée'); insightsData = null; }
-    loadSocial();
+    if(pl === 'facebook'){ openFacebookSetup(); return; }
+    toast(PLATFORM_META[pl].hint);
     return;
   }
   const disc = e.target.closest('[data-disc-social]');
@@ -2841,7 +2981,7 @@ document.getElementById('publishOfferBtn').addEventListener('click', async ()=>{
   if(!text){ errEl.textContent = "Écrivez le texte de l'offre."; return; }
   const targets = ['facebook','tiktok'].filter(pl=>{
     const acc = socialCache.find(a=>a.platform===pl);
-    return pl === 'facebook' ? !!acc : !!(acc && acc.connected);
+    return !!(acc && acc.connected);
   });
   if(!targets.length){ errEl.textContent = "Connectez d'abord Facebook ou TikTok ci-dessus."; return; }
   const prodSel = document.getElementById('offerProduit');
@@ -3297,7 +3437,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-da3a2e8ff6';
+const APP_VERSION = 'mayela-crm-88648c3f61';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».

@@ -41,13 +41,14 @@ Pour **chaque** espace, répéter l'intégration souhaitée avec le compte/perso
 Page ou le compte TikTok de CET espace.
 
 ### 3.1 Facebook (par espace)
-1. **App Facebook** (développeur) : créer une app de type **Business** (ou réutiliser).
-   - Possible de réutiliser une app commune pour plusieurs Pages, MAIS chaque espace connecte sa
+1. **App Meta** (developers.facebook.com) : Business App avec produit **Facebook Login**.
+   - Possibilité de réutiliser une app commune pour plusieurs Pages, MAIS chaque espace connecte sa
      propre **Page** avec son propre **Page Access Token**.
-2. **Permissions** : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`.
-3. **ID de la Page** et **Access Token longue durée (60 j)** — via Graph API Explorer (v21.0).
+2. **Valid OAuth Redirect URIs** : `https://mayela-crm.vercel.app/mayela-crm.html`.
+3. **Permissions** : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`, `read_insights`.
 4. Dans l'espace MAYELA concerné → **Réseaux** → carte **Page Facebook** → **Connecter** :
-   coller ID Page + token.
+   saisir **App ID** + **App Secret** → autoriser la Page (flux OAuth, comme TikTok).
+   Voir le guide `docs/FACEBOOK_META_SETUP_CLIENT.md`.
 
 ### 3.2 TikTok (par espace)
 1. **App TikTok** (developers.tiktok.com) : platform **Web**, produits **Login Kit** + **Content Posting API**.
