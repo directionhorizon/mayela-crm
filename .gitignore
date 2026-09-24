@@ -7,4 +7,5 @@ node_modules/
 supabase/.temp/
 .env*
 supabase/Password*.txt
+supabase/.bw-session
 config/SUIVI_PRIORITES.md

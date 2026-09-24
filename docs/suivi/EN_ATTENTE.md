@@ -47,6 +47,11 @@ chaque essai (masqué, non récupérable → remplacé).
 - [x] **Sender password** remplacé dans Supabase Dashboard → Authentication → SMTP Settings → Save.
 - [x] Test d'envoi OTP relancé via `/auth/v1/otp` → **200 OK** (plus aucune erreur `535` dans les logs).
 - [x] Template « Magic Link » contient `{{ .Token }}` (vérifié, sujet personnalisé OK).
+- [x] **Secret sécurisé** : enregistré dans le coffre **Bitwarden** (item
+      « MAYELA CRM - Gmail App Password (smtp supabase) », user `direction.horizon.cg@gmail.com`,
+      daté 23/09/2026). Accessible via `config\bw-get.ps1`. Fichier en clair
+      `supabase/Password appgoogle.txt` supprimé + `.gitignore` renforcé
+      (`supabase/.bw-session`, `supabase/Password*.txt`).
 - [ ] Re-test utilisateur : création / bascule d'espace bout-en-bout (réception du code).
 
 ---
