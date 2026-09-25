@@ -1,14 +1,14 @@
 # EN ATTENTE — MAYELA CRM
 
-> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 24/09/2026.
+> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 25/09/2026.
 > À faire : chaque blocage = 1 entrée, cochée quand résolu ; rien d'autre à dupliquer.
 
 ---
 
-## 1. Revue TikTok Marketing API (app TikTok for Business) — REJETEE le 24/09/2026
+## 1. Revue TikTok Marketing API (app TikTok for Business) — REJETEE + MIS EN PAUSE le 24/09/2026
 
-**Statut : `Rejected`** (précédemment `Pending`). Dossier soumis à la création de l'app
-(description d'usage + redirect URI + prérequis : Web, Login Kit, Content Posting API, Legal).
+**Statut : `Rejected`** (précédemment `Pending`) et **mis en pause** (décision utilisateur) :
+ne pas relancer la resoumission tant que la **validation du numéro par code** ne repasse pas.
 
 ### Effet
 - TikTok ne délivre toujours **ni Client Key ni Secret** sur la page Basic Info.
@@ -56,6 +56,15 @@ chaque essai (masqué, non récupérable → remplacé).
 - [x] **Sender password** remplacé dans Supabase Dashboard → Authentication → SMTP Settings → Save.
 - [x] Test d'envoi OTP relancé via `/auth/v1/otp` → **200 OK** (plus aucune erreur `535` dans les logs).
 - [x] Template « Magic Link » contient `{{ .Token }}` (vérifié, sujet personnalisé OK).
+- [x] **Cause « e-mail SANS code » (25/09/2026)** : les templates **Confirm signup** et
+      **Email change** ne contenaient que `{{ .ConfirmationURL }}`, sans `{{ .Token }}`
+      (réservé au Magic Link des users existants). Or la création/bascule d'espace et le
+      changement d'e-mail passent par `signInWithOtp shouldCreateUser` → e-mail envoyé avec
+      le template Confirm signup → **aucun code affiché**. 
+- [x] **Correctif appliqué en prod (25/09/2026)** via API Management (`PATCH .../config/auth`) :
+      template **Confirm signup**, **Email change** et **Magic Link** réécrits en français,
+      tous à **8 chiffres** (`mailer_otp_length = 8`) avec `{{ .Token }}` en gros.
+      Sujets : « Votre code de confirmation MAYELA CRM » / « Code de changement d'e-mail MAYELA CRM ».
 - [x] **Secret sécurisé** : enregistré dans le coffre **Bitwarden** (item
       « MAYELA CRM - Gmail App Password (smtp supabase) », user `direction.horizon.cg@gmail.com`,
       daté 23/09/2026). Accessible via `config\bw-get.ps1`. Fichier en clair
@@ -132,6 +141,39 @@ l'analyse d'audience (comme la connexion TikTok). La connexion du compte se fera
 - [ ] Renseigner **App ID** + **App Secret** dans le CRM → **Connexion Facebook** → autoriser
       la Page avec le compte admin → carte « Connecté ».
 - [ ] Publier une offre de test + vérifier l'écran Analyse d'audience.
+
+---
+
+## 8. Gestion Meta Ads (V11) — côté code PRET le 24/09/2026
+
+Objectif : relire les **campagnes + ensembles de pubs** Meta (dépense, impressions, clics,
+portée — 30 j) et les **gérer** (pause/reprise, budget), comme TikTok Ads V10.1.
+La connexion des comptes se fera plus tard (app Meta à compléter par la pharmacie).
+
+### Déjà prêt (ne pas refaire)
+- [x] Migration **`config/MIGRATION_V11_META_ADS.sql`** écrite (source='meta', colonnes
+      `meta_*` dans `campaigns`, table `meta_adsets`, RLS + grants) — **appliquée en base**
+      le 25/09/2026 (colonnes + table vérifiées en 200 via REST).
+- [x] Edge function **`social-facebook`** : actions `ads_connect`, `ads_campaigns_get`,
+      `ads_campaign_status`, `ads_campaign_update`, `ads_adgroups_get`, `ads_adgroup_update`,
+      `ads_adgroup_status` + helpers conversions minor/major — **déployée** (version 4,
+      JWT rétabli après un déploiement `--no-verify-jwt` corrigé).
+- [x] UI V11 : panneau « Analyse publicitaire (Meta Ads Manager) » (étape 5 Réseaux), écran
+      **🛠️ Gérer mes campagnes Meta Ads** (pause/reprise + budget campagne + ad sets),
+      badge source Meta dans Campagnes. **Déployée sur Vercel** (sw.js `8b1a814ef0`).
+- [x] Edge function temporaire `db-inspect` **supprimée** après usage (aucune porte SQL ouverte).
+
+### Reste (manuel, portail developers.facebook.com + CRM)
+- [ ] Créer/compléter la **Business App** Meta (guide `docs/FACEBOOK_META_SETUP_CLIENT.md`) :
+      permissions `ads_management`, `ads_read`, `business_management` (en plus des 4 existantes).
+- [ ] Ré-autoriser : **Réseaux → Page Facebook → Se connecter à Facebook** puis
+      **« Se connecter à l'analyse publicitaire »** (compte admin du compte Ads Manager).
+- [ ] **Relever les campagnes (30 j)** → écran Gérer mes campagnes Meta Ads.
+- [ ] Tester pause/reprise + budget campagne et ad set (devise du compte publicitaire).
+
+### Note TikTok
+- [x] TikTok Ads (V10.1) reste **mis en pause** — voir section 1 (app rejetée, validation
+      téléphone bloquée). Le code V10.1 reste fonctionnel et déployé.
 
 ---
 

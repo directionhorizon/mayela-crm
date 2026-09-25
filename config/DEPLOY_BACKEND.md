@@ -196,6 +196,39 @@ Vérification :
 - `select tablename from pg_tables where schemaname='public' and tablename in ('tik_adgroups','tik_audiences','leads_tiktok');`
 - `select column_name from information_schema.columns where table_schema='public' and table_name='campaigns' and column_name like 'tik%' order by 1;`
 
+### 1g — Migration V11 (Gestion Meta Ads) — APPLIQUÉE le 25/09/2026
+> ✔️ **Statut : déjà appliquée en base** (colonnes `meta_*` + table `meta_adsets` vérifiées
+> en HTTP 200). Fonction temporaire `db-inspect` utilisée puis **supprimée** — aucune porte
+> SQL ouverte, mot de passe de la base **inchangé**.
+
+1. Dashboard Supabase → **SQL Editor** → **New query** (ou, si le SQL Editor renvoie « Backend
+   error » comme sur ce projet, Edge Function temporaire `db-migrate` avec le secret
+   **`SUPABASE_DB_URL`**, puis **suppression** de la fonction — procédure V2/V8/V10)
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V11_META_ADS.sql`
+3. Cliquez **Run**
+
+Cela ajoute :
+
+- **`campaigns`** : la valeur `'meta'` ajoutée à la contrainte `source`
+  (`'manuel'` | `'tik'` | `'meta'`) + colonnes `meta_ad_account_id`, `meta_campaign_id`,
+  `meta_currency`, `meta_status`, `meta_objective`, `meta_budget_mode`, `meta_budget`,
+  `meta_synced_at` + index unique partiel `(org_id, meta_campaign_id)` pour `source='meta'` ;
+- **`meta_adsets`** : ensembles de pubs (budget / enchère / pause) avec index
+  `(org_id)` et `(campaign_id)` ;
+- RLS `metaad_all_org` (`current_org_id()`) + GRANT `anon`/`authenticated`/`service_role`.
+
+> Les budgets/dépenses Meta sont stockés en **unités (major)** et convertis en minor units
+> (centimes, sauf devises sans décimales : JPY, KRW, VND…) uniquement dans la fonction
+> `social-facebook`.
+
+⚠️ **Après cette migration, REDÉPLOYER la fonction `social-facebook`** (elle référence les
+nouvelles colonnes/table — voir Étape 3).
+
+Vérification :
+- `select column_name from information_schema.columns where table_schema='public' and table_name='campaigns' and column_name like 'meta%' order by 1;`
+- `select tablename from pg_tables where schemaname='public' and tablename='meta_adsets';`
+- `select conname from pg_constraint where conname='campaigns_source_check';` → contrainte recréée.
+
 ---
 
 ## Étape 2 — Clé Gemini + secrets
@@ -246,6 +279,8 @@ et `supabase/functions/adjust-events/index.ts` (coquille MMP, inactive).
 8. Refaire : nom `google-sheets` → contenu de `supabase/functions/google-sheets/index.ts` → **Deploy**
 9. Refaire : nom `confirm-email-change` → contenu de `supabase/functions/confirm-email-change/index.ts` → **Deploy**
 10. (Optionnel, plus tard) nom `adjust-events` → contenu de `supabase/functions/adjust-events/index.ts` → **Deploy**
+11. Refaire : nom `social-facebook` → contenu de `supabase/functions/social-facebook/index.ts` → **Deploy**
+    (à chaque mise à jour de la fonction — ex. ajout des actions Meta Ads V11)
 
 ### Option B — CLI (si installé)
 ```bash
@@ -258,6 +293,7 @@ supabase functions deploy tiktok-events --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy google-sheets --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy confirm-email-change --project-ref ymqdmfsqtkmlmwffqskt
 supabase functions deploy adjust-events --project-ref ymqdmfsqtkmlmwffqskt
+supabase functions deploy social-facebook --project-ref ymqdmfsqtkmlmwffqskt
 ```
 
 Vérification immédiate : dans l'app, onglet **Conseils**, posez une question au conseiller.
@@ -273,6 +309,9 @@ Si l'IA répond → tout est branché.
 - **Publication d'offres** : texte + photo, directement sur votre Page (fonction `social-publish`).
 - **Analyse d'audience** : abonnés, portée/impressions/engagements 28 j, villes, âge + genre
   (fonction `social-insights`).
+- **Gestion Meta Ads** (V11) : relève des campagnes + ensembles de pubs (dépense, impressions,
+  clics, portée — 30 j) et contrôle pause/reprise + budget (fonction `social-facebook`,
+  actions `ads_*`).
 
 La connexion est **entièrement en OAuth** (même principe que TikTok) : le navigateur dirige vers
 le portail Meta, et l'edge function `social-facebook` échange le code contre un **Page Access
@@ -284,7 +323,8 @@ Suivre le guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** :
 2. Ajouter le produit **Facebook Login** ; dans **Configuration**, coller dans
    **Valid OAuth Redirect URIs** : `https://mayela-crm.vercel.app/mayela-crm.html`.
 3. Permissions (App Review → Permissions and Features) : `pages_show_list`,
-   `pages_manage_posts`, `pages_read_engagement`, `read_insights`.
+   `pages_manage_posts`, `pages_read_engagement`, `read_insights`,
+   `ads_management`, `ads_read`, `business_management` (pour la gestion Meta Ads V11).
 4. Relever l'**App ID** et l'**App Secret** (Settings → Basic).
 5. En attendant la revue, ajouter le compte propriétaire en **Roles → Admin/Tester**.
 
@@ -307,10 +347,17 @@ Suivre le guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** :
 | `pages_manage_posts` | Publication de l'offre (`social-publish`) |
 | `pages_read_engagement` | Lecture de l'analyse d'audience (`social-insights`) |
 | `read_insights` | Statistiques détaillées : villes, âge+genre, portée 28 j |
+| `ads_read` | Lecture des campagnes/adsets et statistiques (`social-facebook` — `ads_*`) |
+| `ads_management` | Pause/reprise + mise à jour budget des campagnes/adsets |
+| `business_management` | Lister les comptes publicitaires du Business Manager (`ads_connect`) |
 
 > **Mode dev** : la publication fonctionne immédiatement sur VOTRE Page sans revue Meta
 > (compte admin/testeur de l'app). La **revue** n'est nécessaire que si **d'autres personnes**
 > doivent utiliser l'app avec leurs propres Pages, ou pour passer l'app en mode Live.
+>
+> **Gestion Meta Ads** : ajoutez les permissions `ads_*` (étape 3), ré-autorisez la Page puis
+> activez l'analyse publicitaire (voir guide client `docs/FACEBOOK_META_SETUP_CLIENT.md` étape 7).
+> Les budgets s'affichent dans la **devise du compte publicitaire** (pas en FCFA).
 
 ### Dépannage Facebook
 | Symptôme | Cause probable → solution |
@@ -320,6 +367,8 @@ Suivre le guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** :
 | Publication refuse avec erreur Graph | Token expiré (~60 j) ou permissions manquantes → regénérer le token |
 | Analyse d'audience vide/erreur | Token sans `pages_read_engagement`, ou fonction `social-insights` non déployée → redéployer + regénérer le token |
 | `(#200) Permission` | Permission non octroyée → regénérer le token avec le bon scope |
+| « Aucun compte publicitaire » à l'analyse pub | Le compte autorisé n'est pas admin/Analyst-Advertiser du compte Ads Manager → se connecter avec un gestionnaire du Business Manager |
+| Meta Ads vide/erreur | Permissions `ads_read`/`ads_management` manquantes, ou Page connectée AVANT l'ajout des perms → ré-autoriser (« Se connecter à Facebook » puis « Se connecter à l'analyse publicitaire ») |
 
 ## Connecter TikTok (publication d'offres)
 
@@ -584,3 +633,5 @@ Deux modes possibles :
 | Changer l'e-mail : « Fonction non déployée » ou erreur réseau | Fonction `confirm-email-change` non déployée → voir Étape 3 ci-dessus |
 | Changer l'e-mail : « Code incorrect ou expiré » | Le code OTP a une validité limitée (~10 min) et est à usage unique ; renvoyer un nouveau code avec le bouton « Renvoyer le code » |
 | Changer l'e-mail : « cette adresse e-mail est déjà utilisée par un compte existant » | L'adresse cible appartient à un autre compte confirmé (plus de 15 min) → choisir une autre adresse |
+| Meta Ads : « Analyse publicitaire non connectée » | Réseaux → Page Facebook → « Se connecter à l'analyse publicitaire » ; ou fonction `social-facebook` non redéployée après V11 |
+| Meta Ads : montants dans une devise inattendue | Devise du compte publicitaire (USD/EUR…), pas FCFA — par conception |

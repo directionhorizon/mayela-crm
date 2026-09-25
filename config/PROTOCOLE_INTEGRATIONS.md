@@ -45,10 +45,17 @@ Page ou le compte TikTok de CET espace.
    - Possibilité de réutiliser une app commune pour plusieurs Pages, MAIS chaque espace connecte sa
      propre **Page** avec son propre **Page Access Token**.
 2. **Valid OAuth Redirect URIs** : `https://mayela-crm.vercel.app/mayela-crm.html`.
-3. **Permissions** : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`, `read_insights`.
+3. **Permissions** : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`,
+   `read_insights`, `ads_management`, `ads_read`, `business_management`
+   (les trois dernières pour la **gestion Meta Ads** : relève + pause/reprise + budget).
 4. Dans l'espace MAYELA concerné → **Réseaux** → carte **Page Facebook** → **Connecter** :
    saisir **App ID** + **App Secret** → autoriser la Page (flux OAuth, comme TikTok).
    Voir le guide `docs/FACEBOOK_META_SETUP_CLIENT.md`.
+5. **(Meta Ads)** → **Réseaux** → *Analyse publicitaire (Meta Ads Manager)* →
+   **Se connecter à l'analyse publicitaire** puis **Relever les campagnes (30 j)**.
+   Le compte autorisé doit être **gestionnaire du compte Ads Manager** (admin ou
+   Analyst/Advertiser). Budgets/dépenses en **devise du compte publicitaire**.
+   Gestion dans l'écran **🛠️ Gérer mes campagnes Meta Ads** (pause/reprise, budget).
 
 ### 3.2 TikTok (par espace)
 1. **App TikTok** (developers.tiktok.com) : platform **Web**, produits **Login Kit** + **Content Posting API**.

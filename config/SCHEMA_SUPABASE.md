@@ -51,6 +51,16 @@ tik_status          text           -- ACTIVE | PAUSED | DELETED | …
 tik_objective       text           -- objective_type TikTok
 tik_synced_at       timestamptz
 -- index unique partiel : (org_id, tik_campaign_id) où source='tik'
+-- V11 (Gestion Meta Ads) : lignes source='meta' = campagnes gérées via Meta Ads Manager
+meta_ad_account_id   text           -- AdAccount id (act_<num>)
+meta_campaign_id     text           -- id campagne Meta native
+meta_currency        text           -- devise du compte publicitaire (USD, EUR…)
+meta_status          text           -- ACTIVE | PAUSED | … (effective_status)
+meta_objective       text           -- objective Meta (OUTCOME_*)
+meta_budget_mode     text           -- daily_budget | lifetime_budget
+meta_budget          numeric        -- budget en unités (major), devise du compte pub
+meta_synced_at       timestamptz
+-- index unique partiel : (org_id, meta_campaign_id) où source='meta'
 ```
 - RLS `cam_all_org` : `org_id = current_org_id()`.
 - Alimente les rapports « Performance des campagnes », « Entonnoir », « CA attribuable » et « Rentabilité (ROAS) ».
@@ -263,6 +273,26 @@ created_at        timestamptz NOT NULL
 -- unique (org_id, tik_adgroup_id)
 ```
 
+## `meta_adsets` (ensembles de pubs Meta Ads — V11)
+```
+id                  uuid NOT NULL
+org_id              uuid NOT NULL       -- FK organizations
+meta_ad_account_id  text NOT NULL       -- AdAccount id (act_<num>)
+meta_campaign_id    text                -- FK logique campaigns.meta_campaign_id
+meta_adset_id       text NOT NULL       -- id native Meta
+nom                 text NOT NULL
+budget_mode         text                -- daily_budget | lifetime_budget
+budget              numeric             -- budget en unités (major), devise compte pub
+bid                 numeric             -- enchère (unités)
+bid_strategy        text                -- LOWEST_COST_WITHOUT_CAP | LOWEST_COST_WITH_BID_CAP
+status              text                -- ACTIVE | PAUSED (effective_status)
+currency            text                -- devise du compte publicitaire
+optimization_goal   text                -- REACH | LINK_CLICKS | …
+synced_at           timestamptz NOT NULL
+created_at          timestamptz NOT NULL
+-- unique (org_id, meta_adset_id)  +  index (org_id, meta_campaign_id)
+```
+
 ## `tik_audiences` (audiences custom TikTok — V10.1)
 ```
 id                uuid NOT NULL
@@ -367,6 +397,7 @@ Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles r�
 | `ia-conseiller` | oui | Chat & rapport personnalisé IA (Gemini, flux SSE) |
 | `social-publish` | oui | Publie une offre (Facebook Graph / TikTok Content Posting) |
 | `social-tiktok` | oui | Flux OAuth TikTok (échange du code / refresh) + Marketing API pub (exchange_marketing / marketing_sync) |
+| `social-facebook` | oui | OAuth Facebook (exchange / refresh des tokens Page) + **Gestion Meta Ads (V11)** : actions `ads_connect`, `ads_campaigns_get`, `ads_campaign_status`, `ads_campaign_update`, `ads_adgroups_get`, `ads_adgroup_update`, `ads_adgroup_status` |
 | `social-insights` | oui | Analyse d'audience (Facebook + TikTok) |
 | `social-health` | oui | Diagnostic de l'état des intégrations (absent/incomplet/complete) |
 | `tiktok-events` | oui | TikTok Events API (server-side, pixel) |
@@ -379,8 +410,9 @@ Les sources de toutes les fonctions vivent dans `supabase/functions/`. Celles r�
 > **Note sécurité (V7)** : depuis la migration V7, les colonnes `config` de
 > `social_accounts` / `integrations_oauth` ne sont plus lisibles par la session
 > utilisateur. Les fonctions qui lisent ces secrets (`ia-conseiller` non concernée ;
-> `social-publish`, `social-tiktok`, `social-insights`, `social-health`,
-> `tiktok-events`, `adjust-events`, `google-sheets`, `confirm-email-change`) utilisent
+> `social-publish`, `social-tiktok`, `social-facebook`, `social-insights`,
+> `social-health`, `tiktok-events`, `adjust-events`, `google-sheets`,
+> `confirm-email-change`) utilisent
 > un client `service_role` et filtrent `org_id` depuis le profil de l'appelant
 > (équivalent de `current_org_id()`). Toutes ont été **redéployées** dans ce mode
 > (voir `config/DEPLOY_BACKEND.md` → Étape 3).

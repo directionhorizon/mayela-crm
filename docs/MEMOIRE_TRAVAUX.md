@@ -116,10 +116,14 @@ destinataire, il n'a PAS besoin de correspondre à l'e-mail du nouvel espace)**
 
 ---
 
-## ÉTAT GLOBAL (au 15/09/2026)
+## ÉTAT GLOBAL (au 25/09/2026)
 
-- Plan prioritaire RAPPORT 2 : items 1–7, 9, 10 **faits** ; item 8 en cours (TikTok Marketing
-  fait côté code, reste App Review client + test réel) ; item 11 en attente de recette.
-- Base : migrations V1→V10 appliquées.
-- Frontend : `mayela-crm.html` (4488 lignes), déployé + poussé (33ab5cd).
+- Plan prioritaire RAPPORT 2 : items 1–7, 9, 10 **faits** ; item 8 en cours ; item 11 en
+  attente de recette. TikTok Ads (V10.1) **en pause** (app rejetée, validation téléphone
+  bloquée — voir `docs/suivi/EN_ATTENTE.md` §1). **Meta Ads (V11) prêt côté code** :
+  migration appliquée en base, `social-facebook` déployée (version 4), front déployé
+  (sw.js `8b1a814ef0`) — reste uniquement le côté manuel (app Meta, ré-autorisation,
+  test réel — voir `docs/suivi/EN_ATTENTE.md` §8).
+- Base : migrations V1→V11 appliquées.
+- Frontend : `mayela-crm.html`, déployé et versionné (sw.js `8b1a814ef0`).
 - App déployée : https://mayela-crm.vercel.app

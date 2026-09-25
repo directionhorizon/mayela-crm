@@ -3,8 +3,10 @@
 **À lire par** : la pharmacie (propriétaire de la Page Facebook et de l'infrastructure Meta).
 
 **Objectif** : créer l'application développeur Meta qui permettra au CRM de **publier des
-offres** sur la Page Facebook et d'afficher les **statistiques d'audience** (abonnés,
-portée/impressions 28 j, villes, âge + genre), comme la connexion TikTok.
+offres** sur la Page Facebook, d'afficher les **statistiques d'audience** (abonnés,
+portée/impressions 28 j, villes, âge + genre), comme la connexion TikTok, et de **gérer
+les campagnes publicitaires** (Meta Ads Manager) : relève des dépenses/impressions/clics/
+portée sur 30 jours, pause/reprise et ajustement de budget.
 
 **Prérequis** :
 - Une **Page Facebook** existante (celle de la pharmacie qui recevra les offres).
@@ -47,6 +49,9 @@ portée/impressions 28 j, villes, âge + genre), comme la connexion TikTok.
    - `pages_manage_posts` — publier les offres sur la Page.
    - `pages_read_engagement` — lire abonnés et statistiques d'audience.
    - `read_insights` — lire les statistiques détaillées (villes, âge+genre, portée).
+   - `ads_management` — créer/lire/mettre à jour les campagnes publicitaires.
+   - `ads_read` — lire les campagnes publicitaires et leurs statistiques.
+   - `business_management` — lister les comptes publicitaires du Business Manager.
 
    > Ces permissions sont du **niveau « advanced access »** : pour un usage en production
    > hors des rôles de l'app, une revue est nécessaire (étape 5). En attendant la revue,
@@ -84,9 +89,12 @@ complet fonctionne déjà pour le CRM.
 
 > MAYELA CRM est un logiciel de gestion de la relation client utilisé par la pharmacie.
 > L'application publie les offres promotionnelles de la pharmacie sur sa propre Page
-> Facebook et affiche les statistiques d'audience de la Page (abonnés, portée, villes,
-> âge et genre) dans son tableau de bord. Aucun contenu n'est publié sur d'autres Pages ;
-> les connexions se font avec l'autorisation explicite d'un administrateur de la Page.
+> Facebook, affiche les statistiques d'audience de la Page (abonnés, portée, villes,
+> âge et genre) dans son tableau de bord, et permet de consulter et gérer (pause/reprise,
+> budget) les campagnes publicitaires de la pharmacie via sa fonctionnalité Meta Ads.
+> Aucun contenu n'est publié sur d'autres Pages ; les connexions se font avec
+> l'autorisation explicite d'un administrateur de la Page et gestionnaire du compte
+> publicitaire.
 
 ## Après la revue
 
@@ -105,6 +113,28 @@ complet fonctionne déjà pour le CRM.
 
 > **Si la Page ne s'ajoute pas** : vérifier que le compte connecté est bien **admin** de la
 > Page, puis re-cliquer « Autoriser » sur la carte Facebook du CRM.
+
+## Étape 7 — Activer l'analyse publicitaire (Meta Ads)
+
+Une fois la Page connectée et l'app autorisée avec les permissions **ads** (étape 3),
+l'équipe CRM active la gestion des campagnes :
+
+1. Dans le CRM, **Réseaux sociaux → Page Facebook**, section **« Analyse publicitaire
+   (Meta Ads Manager) » → « Se connecter à l'analyse publicitaire »**.
+2. Si aucun compte publicitaire n'apparaît : vérifier que le compte connecté est bien
+   **administrateur d'un compte Ads Manager** (ou au moins **Analyst/Advertiser**) dans
+   le **Business Manager** de la pharmacie.
+3. **« Relever les campagnes (30 j) »** affiche les campagnes et ensembles de pubs
+   (dépense, impressions, clics, portée).
+4. Gérer ensuite librement dans **🛠️ Gérer mes campagnes Meta Ads** : pause/reprise et
+   ajustement du budget (journalier ou total).
+
+> **Ré-autorisation nécessaire** : si la Page avait été connectée **avant** l'ajout des
+> permissions ads, re-cliquer **« Se connecter à Facebook »** puis **« Se connecter à
+> l'analyse publicitaire »** pour re-passer par l'écran d'autorisation Meta.
+>
+> **Devises** : les budgets/dépenses s'affichent dans la **devise du compte publicitaire**
+> (ex. USD, EUR), pas en FCFA.
 
 ---
 

@@ -371,6 +371,7 @@
       <div class="ssub" id="otpSentTo">Entrez le code reçu par e-mail.</div>
       <input class="field" type="text" inputmode="numeric" id="otpInput" placeholder="Code reçu par e-mail" maxlength="10" style="text-align:center; letter-spacing:4px; font-family:'IBM Plex Mono';">
       <button class="btn" id="verifyOtpBtn">Valider</button>
+      <button class="btn-ghost" id="resendOtpBtn" disabled style="margin-top:4px;">Renvoyer le code</button>
       <div class="err-msg" id="authOtpErr"></div>
       <span class="link-sm" id="backToEmail">← changer d'e-mail</span>
     </div>
@@ -382,6 +383,7 @@
       <div class="ssub" id="switchCodeSentTo">Un code de vérification vous sera envoyé par e-mail.</div>
       <input class="field" type="text" inputmode="numeric" id="switchCodeInput" placeholder="Code reçu par e-mail" maxlength="10" style="text-align:center; letter-spacing:4px; font-family:'IBM Plex Mono';">
       <button class="btn" id="switchCodeBtn">Valider</button>
+      <button class="btn-ghost" id="switchCodeResendBtn" disabled style="margin-top:4px;">Renvoyer le code</button>
       <div class="err-msg" id="switchCodeErr"></div>
       <span class="link-sm" id="switchCodeCancel">← Annuler</span>
     </div>
@@ -644,6 +646,7 @@
         <div style="margin:8px 20px 0;"><button class="btn-ghost" data-nav="campaigns">📊 Campagnes publicitaires — saisir & mesurer</button></div>
         <div style="margin:8px 20px 0; display:flex; flex-direction:column; gap:8px;">
           <button class="btn-ghost" data-nav="tikmanage">🛠️ Gérer mes campagnes TikTok Ads</button>
+          <button class="btn-ghost" data-nav="fbmanage">🛠️ Gérer mes campagnes Meta Ads</button>
           <button class="btn-ghost" data-nav="audiences">🎯 Audiences TikTok (reciblage)</button>
           <button class="btn-ghost" data-nav="leads">📥 Leads TikTok (Instant Forms)</button>
         </div>
@@ -755,15 +758,36 @@
             <div class="err-msg" id="fbSetupErr"></div>
 
             <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
-              <div class="meta"><b>4 · Permissions de l'app</b> — pour publier + statistiques</div>
+              <div class="meta"><b>4 · Permissions de l'app</b> — publier + statistiques + publicité</div>
               <div class="meta" style="color:var(--sage); line-height:1.45;">
                 Dans votre app Meta → <b>App Review → Permissions and Features</b>,
                 demandez l'accès aux permissions
                 <b>pages_show_list</b>, <b>pages_manage_posts</b>,
-                <b>pages_read_engagement</b> et <b>read_insights</b>
+                <b>pages_read_engagement</b>, <b>read_insights</b>,
+                <b>ads_management</b>, <b>ads_read</b> et <b>business_management</b>
                 (ou, avant revue, ajoutez votre compte en <b>Roles → Admin/Tester</b>).
                 Voir le guide client ci-dessus.
+                <b>Important :</b> si vous avez déjà autorisé l'app avant cet ajout,
+                cliquez à nouveau sur <b>Se connecter à Facebook</b> pour ré-autoriser
+                avec les nouvelles permissions.
               </div>
+            </div>
+
+            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
+              <div class="meta"><b>5 · Analyse publicitaire (Meta Ads Manager)</b></div>
+              <div class="meta" style="color:var(--sage); line-height:1.45;">
+                Relit vos <b>campagnes</b> et <b>ensembles de pubs</b> (dépenses,
+                impressions, clics, portée — 30 derniers jours) et permet de mettre en
+                pause ou d'ajuster le budget depuis l'écran
+                <b style="color:var(--text);">🛠️ Gérer mes campagnes Meta Ads</b>.
+                Connectez-en au moins un compte publicitaire (Ads Manager) ci-dessous.
+              </div>
+              <div class="meta" id="fbMarketingStatus" style="color:var(--sage); min-height:1.2em;"></div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn-ghost" id="fbMarketingConnectBtn">📊 Se connecter à l'analyse publicitaire</button>
+                <button class="btn-ghost" id="fbMarketingSyncBtn">🔄 Relever les campagnes (30 j)</button>
+              </div>
+              <div class="err-msg" id="fbMarketingErr"></div>
             </div>
           </div>
         </div>
@@ -951,6 +975,21 @@
         </div>
         <div class="section-title">Campagnes TikTok</div>
         <div id="tmCampaignsList" class="card-list" style="padding-top:0;"></div>
+        <div style="height:16px;"></div>
+      </div>
+
+      <!-- GESTION META ADS (V11) -->
+      <div class="screen" id="fbmanage">
+        <div class="back" data-nav="social">← Réseaux</div>
+        <div class="section-title">Gérer mes campagnes Meta Ads</div>
+        <div class="info-block" style="margin:0 20px; display:flex; flex-direction:column; gap:8px;">
+          <div class="meta" style="color:var(--sage); line-height:1.5;">Mettez en pause et ajustez le budget de vos campagnes et ensembles de pubs directement depuis Meta Ads Manager. Les coûts sont dans la devise du compte publicitaire (pas en FCFA).</div>
+          <div class="meta" id="fmMkStatus" style="color:var(--gold); min-height:1.2em;"></div>
+        </div>
+        <button class="btn-ghost" id="fmRefreshBtn" style="margin:12px 20px 0;">🔄 Synchroniser les campagnes</button>
+        <div class="err-msg" id="fmErr"></div>
+        <div class="section-title">Campagnes Meta Ads</div>
+        <div id="fmCampaignsList" class="card-list" style="padding-top:0;"></div>
         <div style="height:16px;"></div>
       </div>
 
@@ -1465,9 +1504,36 @@ document.getElementById('sendOtpBtn').addEventListener('click', ()=>{
       return;
     }
     document.getElementById('otpSentTo').textContent = "Code envoyé à " + email;
+    armResendOtp();
   });
 });
 document.getElementById('backToEmail').addEventListener('click', ()=> showScreen('authEmail'));
+
+// ================== AUTH: RENVOYER LE CODE (OTP expiré/introuvable) ==================
+const resendOtpBtnEl = document.getElementById('resendOtpBtn');
+function armResendOtp(){
+  // Cooldown 60 secondes entre deux envois (parallèle au flux de changement d'e-mail)
+  resendOtpBtnEl.disabled = true;
+  setTimeout(()=>{ resendOtpBtnEl.disabled = false; }, 60000);
+}
+resendOtpBtnEl.addEventListener('click', ()=>{
+  if(!pendingEmail) return;
+  const errEl = document.getElementById('authOtpErr');
+  errEl.textContent = "";
+  document.getElementById('otpInput').value = "";
+  document.getElementById('otpSentTo').textContent = "Renvoi du code à " + pendingEmail + "…";
+  sb.auth.signInWithOtp({ email: pendingEmail, options:{ shouldCreateUser:true } }).then(({ error })=>{
+    if(error){
+      document.getElementById('otpSentTo').textContent = "Envoi du code à " + pendingEmail + "…";
+      errEl.textContent = error.message;
+      toast(error.message, true);
+      return;
+    }
+    document.getElementById('otpSentTo').textContent = "Code renvoyé à " + pendingEmail;
+    armResendOtp();
+    toast("Code de vérification renvoyé à " + pendingEmail);
+  });
+});
 
 // ================== AUTH: BASCULE D'ESPACE (reconnexion gmail) ==================
 document.getElementById('switchCodeBtn').addEventListener('click', async ()=>{
@@ -1488,6 +1554,32 @@ document.getElementById('switchCodeCancel').addEventListener('click', ()=>{
   document.getElementById('switchCodeInput').value = "";
   document.getElementById('switchCodeErr').textContent = "";
   showScreen('authEmail');
+});
+// AUTH: RENVOYER LE CODE (bascule/création d'espace)
+const switchCodeResendBtnEl = document.getElementById('switchCodeResendBtn');
+function armSwitchCodeResend(){
+  switchCodeResendBtnEl.disabled = true;
+  setTimeout(()=>{ switchCodeResendBtnEl.disabled = false; }, 60000);
+}
+switchCodeResendBtnEl.addEventListener('click', ()=>{
+  if(!pendingEmail) return;
+  const errEl = document.getElementById('switchCodeErr');
+  errEl.textContent = "";
+  document.getElementById('switchCodeInput').value = "";
+  document.getElementById('switchCodeSentTo').textContent = "Renvoi du code à " + pendingEmail + "…";
+  sb.auth.signInWithOtp({ email: pendingEmail, options:{ shouldCreateUser:true } }).then(({ error })=>{
+    if(error){
+      document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + pendingEmail + "…";
+      errEl.textContent = error.message;
+      toast(error.message, true);
+      return;
+    }
+    document.getElementById('switchCodeSentTo').textContent = document.getElementById('switchCodeTitle').textContent.indexOf('Création') === 0
+      ? "Code envoyé à " + pendingEmail + " — l'espace sera créé sur ce compte."
+      : "Code envoyé à " + pendingEmail;
+    armSwitchCodeResend();
+    toast("Code de vérification renvoyé à " + pendingEmail);
+  });
 });
 document.getElementById('verifyOtpBtn').addEventListener('click', async ()=>{
   const token = document.getElementById('otpInput').value.trim();
@@ -1645,6 +1737,7 @@ document.getElementById('createOrgBtn').addEventListener('click', async ()=>{
     const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
     if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
     document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail + " — l'espace sera créé sur ce compte.";
+    armSwitchCodeResend();
     return;
   }
   const { data, error } = await sb.rpc('create_organization', { org_name: name });
@@ -1686,6 +1779,7 @@ document.body.addEventListener('click', (e)=>{
   if(target === 'produits') loadProduits();
   if(target === 'ia') loadIaHistory();
   if(target === 'tikmanage'){ fillTikAdsStatus(); const td = document.getElementById('tmCampaignsList'); if(td) td.innerHTML=''; tikLoadCampaigns(); }
+  if(target === 'fbmanage'){ fillFbAdsStatus(); const fd = document.getElementById('fmCampaignsList'); if(fd) fd.innerHTML=''; fbLoadCampaigns(); }
   if(target === 'audiences'){ fillTikAdsStatus(); auScopeCount(); const ad = document.getElementById('auList'); if(ad) ad.innerHTML=''; auRefresh(); }
   if(target === 'leads'){ fillTikAdsStatus(); const ll = document.getElementById('ldList'); if(ll) ll.innerHTML=''; ldLoadForms(); }
   if(target === 'social'){
@@ -1830,6 +1924,7 @@ async function loadSocial(){
   document.getElementById('offerProduit').innerHTML = '<option value="">— Produit à mettre en avant (optionnel) —</option>' + (prodRes.data||[]).map(p=>`<option value="${esc(p.id)}" data-img="${esc(p.image_url||'')}" data-nom="${esc(p.nom)}" data-prix="${p.prix_defaut||''}">${esc(p.nom)}</option>`).join('');
   document.getElementById('socialPostsList').innerHTML = ((postRes.data||[]).length ? (postRes.data||[]).map(p=>`<div class="relance-card"><div style="min-width:0;"><div class="name">${PLATFORM_META[p.platform]?.img ? `<img src="${PLATFORM_META[p.platform].img}" alt="" style="width:18px;height:18px;object-fit:contain;vertical-align:-3px;margin-right:4px;">` : (PLATFORM_META[p.platform]?.icon||'')} ${esc(String(p.content||'').slice(0,80))}</div><div class="meta">${p.status==='sent' ? '✓ Publié' : '⚠ Échec'} · ${fmtDate(p.created_at)}</div>${p.error ? `<div class="meta">${esc(String(p.error).slice(0,120))}</div>` : ''}</div>${p.image_url ? `<img src="${esc(p.image_url)}" alt="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex:0 0 auto;">` : ''}</div>`).join('') : `<div class="empty">Aucune publication pour le moment.</div>`);
   renderTikTokMarketingStatus();
+  renderFbMarketingStatus();
   loadSocialTopClients();
   loadSocialHealth();
   if(socialCache.some(a=>a.platform==='facebook')){
@@ -2240,7 +2335,7 @@ async function startFbAuth(){
   sessionStorage.setItem('fb_redirect', redirectUri);
   const qs = new URLSearchParams({
     client_id: appId,
-    scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,read_insights',
+    scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,read_insights,ads_management,ads_read,business_management',
     response_type: 'code',
     redirect_uri: redirectUri,
     state
@@ -2534,6 +2629,226 @@ async function tikCreateCampaign(){
   }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
 }
 
+// ================== GESTION META ADS (V11) ==================
+async function fbMarketingCall(action, params){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) throw new Error('Session expirée, reconnectez-vous.');
+  const r = await fetch(SUPABASE_URL + '/functions/v1/social-facebook', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
+    body: JSON.stringify(Object.assign({ action }, params || {}))
+  });
+  const out = await r.json();
+  if(!r.ok) throw new Error(out.error || "Échec de l'appel Meta.");
+  return out;
+}
+function fbAdsConnected(){
+  const acc = socialCache.find(a=>a.platform==='facebook');
+  const cfg = (acc && acc.config) || {};
+  return !!(acc && (acc.has_marketing || cfg.marketing_access_token));
+}
+function fbAdsStatusLines(){
+  const acc = socialCache.find(a=>a.platform==='facebook');
+  const cfg = (acc && acc.config) || {};
+  const ids = cfg.marketing_ad_account_ids || [];
+  const names = cfg.marketing_ad_account_names || [];
+  if(fbAdsConnected()){
+    return `<span class="sc-status ok">Analyse publicitaire connectée</span>` +
+      (names.length ? `<div class="meta">Compte(s) : ${esc(names.join(', '))}</div>` : '') +
+      (ids.length ? `<div class="meta" style="color:var(--sage);">Ad account ID : ${esc(ids.join(', '))}</div>` : '');
+  }
+  return `<span class="sc-status no">Analyse publicitaire non connectée — Réseaux → « Se connecter à l'analyse publicitaire »</span>`;
+}
+function renderFbMarketingStatus(){
+  const el = document.getElementById('fbMarketingStatus');
+  if(!el) return;
+  el.innerHTML = fbAdsStatusLines();
+}
+function fillFbAdsStatus(){
+  const el = document.getElementById('fmMkStatus');
+  if(el) el.innerHTML = fbAdsStatusLines();
+}
+function fbAdAccount(){
+  const acc = socialCache.find(a=>a.platform==='facebook');
+  return (((acc && acc.config && acc.config.marketing_ad_account_ids) || [])[0] || '');
+}
+
+// ---- Campagnes ----
+async function fbLoadCampaigns(){
+  const el = document.getElementById('fmCampaignsList');
+  const errEl = document.getElementById('fmErr');
+  if(errEl) errEl.textContent = '';
+  if(!fbAdsConnected()){
+    if(el) el.innerHTML = '<div class="empty">' + fbAdsStatusLines() + '</div>';
+    return;
+  }
+  fillFbAdsStatus();
+  if(el) el.innerHTML = '<div class="empty">Chargement…</div>';
+  try{
+    const out = await fbMarketingCall('ads_campaigns_get');
+    if(el) renderFbCampaigns(out.campaigns || []);
+    if(out.errors && out.errors.length && errEl) errEl.textContent = out.errors.join('\n');
+    loadCampaigns().then(renderCampaigns);
+    toast(out.message || 'Campagnes à jour.');
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+}
+function renderFbCampaigns(list){
+  const el = document.getElementById('fmCampaignsList');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = '<div class="empty">Aucune campagne Meta synchronisée. Cliquez sur « Synchroniser les campagnes ».</div>'; return; }
+  el.innerHTML = list.map(function(c){
+    const active = c.meta_status === 'ACTIVE';
+    const accId = c.meta_ad_account_id || fbAdAccount();
+    const pill = active
+      ? 'background:rgba(94,156,113,0.12);color:var(--sage);border-color:var(--line);'
+      : 'background:rgba(214,93,93,0.12);color:var(--danger);border-color:var(--line);';
+    return '<div class="card" style="margin-bottom:10px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:700;">' + esc(c.nom) + '</span>' +
+        '<span class="pill" style="' + pill + '">' + esc(c.meta_status || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' +
+        esc(c.meta_objective || '') +
+        (c.meta_budget != null ? ' · Budget : <b>' + esc(String(c.meta_budget)) + ' ' + esc(c.meta_currency || '') + '</b>' : '') +
+        (c.meta_budget_mode ? ' · ' + esc(String(c.meta_budget_mode).replace('_budget','').replace('daily','journalier').replace('lifetime','total')) : '') +
+        (Number(c.depense_reelle)>0 ? ' · Dépense : <b>' + esc(String(c.depense_reelle)) + '</b>' : '') +
+        (Number(c.impressions)>0 ? ' · Impressions : <b>' + esc(String(c.impressions)) + '</b>' : '') +
+      '</div>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+        '<button class="btn-ghost" data-fb-status="' + esc(c.meta_campaign_id) + '" data-op="' + (active ? 'DISABLE' : 'ENABLE') + '" data-acc="' + esc(accId) + '">' + (active ? '⏸ Mettre en pause' : '▶ Reprendre') + '</button>' +
+        (c.meta_budget_mode ? '<button class="btn-ghost" data-fb-budget="' + esc(c.meta_campaign_id) + '" data-mode="' + esc(c.meta_budget_mode) + '" data-cur="' + esc(c.meta_currency || '') + '" data-acc="' + esc(accId) + '">✎ Budget</button>' : '') +
+        '<button class="btn-ghost" data-fb-ags="' + esc(c.meta_campaign_id) + '" data-acc="' + esc(accId) + '" style="margin-left:auto;">↓ Ensembles de pubs</button>' +
+      '</div>' +
+      '<div id="fmAgs-' + esc(c.meta_campaign_id) + '" style="display:none;"></div>' +
+    '</div>';
+  }).join('');
+}
+async function fbCampaignStatus(id, op, accId){
+  try{
+    const out = await fbMarketingCall('ads_campaign_status', { campaign_ids: [id], operation_status: op });
+    toast(out.operation_status === 'ENABLE' ? 'Campagne relancée.' : 'Campagne mise en pause.');
+    fbLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+async function fbCampaignBudget(id, accId, cur, mode){
+  const v = prompt('Nouveau budget' + (cur ? ' (' + cur + ')' : '') + ' :');
+  if(v == null || v === '') return;
+  const budget = Number(v);
+  if(!(budget > 0)){ toast('Budget invalide.', true); return; }
+  try{
+    const out = await fbMarketingCall('ads_campaign_update', { campaign_id: id, ad_account_id: accId, budget, budget_mode: mode || 'daily_budget', currency: cur });
+    toast('Budget mis à jour : ' + esc(String(out.budget)) + ' ' + esc(cur));
+    fbLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+// Ensembles de pubs (ad sets) : chargement paresseux + rendu
+let __fbAgs = [];
+function fbAdsOf(cid){ return __fbAgs.filter(a => !cid || a.meta_campaign_id === cid); }
+async function fbToggleAdsets(cid, accId){
+  const wrap = document.getElementById('fmAgs-' + cid);
+  if(!wrap) return;
+  if(wrap.style.display !== 'none'){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  if(wrap.dataset.loaded === '1'){ renderFbAdsets(wrap, cid, accId); return; }
+  wrap.innerHTML = '<div class="empty">Chargement des ensembles de pubs…</div>';
+  try{
+    const out = await fbMarketingCall('ads_adgroups_get', { campaign_id: cid });
+    __fbAgs = out.adgroups || [];
+    wrap.dataset.loaded = '1';
+    renderFbAdsets(wrap, cid, accId);
+  }catch(ex){ wrap.innerHTML = '<div class="meta" style="color:var(--danger);">' + esc(ex.message) + '</div>'; }
+}
+function renderFbAdsets(wrap, cid, accId){
+  const ags = fbAdsOf(cid);
+  if(!ags.length){ wrap.innerHTML = '<div class="empty">Aucun ensemble de pubs.</div>'; return; }
+  wrap.innerHTML = '<div style="margin:8px 0 4px; font-size:11px; font-weight:600; color:var(--gold);">ENSEMBLES DE PUBS</div>' + ags.map(function(g){
+    const active = g.status === 'ACTIVE';
+    const pill = active ? 'background:rgba(94,156,113,0.12);color:var(--sage);border-color:var(--line);' : 'background:rgba(214,93,93,0.12);color:var(--danger);border-color:var(--line);';
+    return '<div style="background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:8px;">' +
+      '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">' +
+        '<span style="font-weight:600;">' + esc(g.nom) + '</span>' +
+        '<span class="pill" style="' + pill + '">' + esc(g.status || '—') + '</span>' +
+      '</div>' +
+      '<div class="meta" style="color:var(--sage); margin-top:4px;">' +
+        (g.budget != null ? 'Budget : <b>' + esc(String(g.budget)) + ' ' + esc(g.currency || '') + '</b>' : '') +
+        (g.bid != null ? ' · Enchère : <b>' + esc(String(g.bid)) + '</b>' : '') +
+        (g.optimization_goal ? ' · ' + esc(g.optimization_goal) : '') +
+      '</div>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">' +
+        '<button class="btn-ghost" data-fb-ag-status="' + esc(g.meta_adset_id) + '" data-acc="' + esc(accId) + '" data-op="' + (active ? 'DISABLE' : 'ENABLE') + '">' + (active ? '⏸ Pause' : '▶ Reprendre') + '</button>' +
+        (g.budget_mode ? '<button class="btn-ghost" data-fb-ag-budget="' + esc(g.meta_adset_id) + '" data-mode="' + esc(g.budget_mode || 'daily_budget') + '" data-cur="' + esc(g.currency || '') + '" data-acc="' + esc(accId) + '">✎ Budget</button>' : '') +
+        '<button class="btn-ghost" data-fb-ag-bid="' + esc(g.meta_adset_id) + '" data-cur="' + esc(g.currency || '') + '" data-acc="' + esc(accId) + '">✎ Enchère</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+function fbCidOfAg(id){ const g = __fbAgs.find(function(x){ return x.meta_adset_id === id; }); return g ? (g.meta_campaign_id || '') : ''; }
+async function fbReloadAgs(cid, accId){
+  const wrap = document.getElementById('fmAgs-' + cid);
+  if(!wrap){ return; }
+  try{
+    const out = await fbMarketingCall('ads_adgroups_get', { campaign_id: cid });
+    __fbAgs = out.adgroups || [];
+    wrap.dataset.loaded = '1';
+    renderFbAdsets(wrap, cid, accId);
+  }catch(ex){ toast(ex.message, true); }
+}
+async function fbAdsetStatus(id, op, accId){
+  try{
+    await fbMarketingCall('ads_adgroup_status', { adgroup_ids: [id], operation_status: op });
+    toast(op === 'ENABLE' ? 'Ensemble de pubs relancé.' : 'Ensemble de pubs mis en pause.');
+    const cid = fbCidOfAg(id);
+    if(cid){ const w = document.getElementById('fmAgs-' + cid); if(w) w.dataset.loaded = '0'; fbToggleAdsets(cid, accId); }
+    else fbLoadCampaigns();
+  }catch(ex){ toast(ex.message, true); }
+}
+async function fbAdsetBudget(id, accId, cur, mode){
+  const v = prompt('Nouveau budget (ensemble de pubs)' + (cur ? ' (' + cur + ')' : '') + ' :');
+  if(v == null || v === '') return;
+  const budget = Number(v);
+  if(!(budget > 0)){ toast('Budget invalide.', true); return; }
+  try{
+    await fbMarketingCall('ads_adgroup_update', { ad_account_id: accId, adgroup_id: id, budget, budget_mode: mode || 'daily_budget' });
+    toast('Budget de l\'ensemble de pubs mis à jour.');
+    const cid = fbCidOfAg(id);
+    if(cid) fbReloadAgs(cid, accId);
+  }catch(ex){ toast(ex.message, true); }
+}
+async function fbAdsetBid(id, accId, cur){
+  const v = prompt('Nouvelle enchère (ensemble de pubs)' + (cur ? ' (' + cur + ')' : '') + ' :');
+  if(v == null || v === '') return;
+  const bid = Number(v);
+  if(!(bid > 0)){ toast('Enchère invalide.', true); return; }
+  try{
+    await fbMarketingCall('ads_adgroup_update', { ad_account_id: accId, adgroup_id: id, bid });
+    toast('Enchère de l\'ensemble de pubs mise à jour.');
+    const cid = fbCidOfAg(id);
+    if(cid) fbReloadAgs(cid, accId);
+  }catch(ex){ toast(ex.message, true); }
+}
+// ---- Connexion / relève des campagnes Meta (panneau Réseaux) ----
+async function startFbMarketingConnect(){
+  const errEl = document.getElementById('fbMarketingErr');
+  const btn = document.getElementById('fbMarketingConnectBtn');
+  if(errEl) errEl.textContent = '';
+  if(btn) btn.disabled = true;
+  try{
+    const out = await fbMarketingCall('ads_connect');
+    toast('Analyse publicitaire Meta connectée' + (out.display_name ? ' : ' + out.display_name : ''));
+    loadSocial();
+    fbLoadCampaigns();
+  }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
+  finally{ if(btn) btn.disabled = false; }
+}
+async function syncFbMarketingCampaigns(){
+  const errEl = document.getElementById('fbMarketingErr');
+  if(errEl) errEl.textContent = '';
+  await fbLoadCampaigns();
+}
+document.getElementById('fbMarketingConnectBtn').addEventListener('click', startFbMarketingConnect);
+document.getElementById('fbMarketingSyncBtn').addEventListener('click', syncFbMarketingCampaigns);
+document.getElementById('fmRefreshBtn').addEventListener('click', fbLoadCampaigns);
+
 // ---- Audiences ----
 function auClientsPhones(){
   const clients = (typeof clientsCache !== 'undefined' && Array.isArray(clientsCache)) ? clientsCache : [];
@@ -2674,6 +2989,18 @@ document.addEventListener('click', function(e){
   if(agb){ tikAdgroupBudget(agb.dataset.tikAgBudget, agb.dataset.adv, agb.dataset.cur); return; }
   const agbid = e.target.closest('[data-tik-ag-bid]');
   if(agbid){ tikAdgroupBid(agbid.dataset.tikAgBid, agbid.dataset.adv, agbid.dataset.cur); return; }
+  const fst = e.target.closest('[data-fb-status]');
+  if(fst){ fbCampaignStatus(fst.dataset.fbStatus, fst.dataset.op, fst.dataset.acc); return; }
+  const fbg = e.target.closest('[data-fb-budget]');
+  if(fbg){ fbCampaignBudget(fbg.dataset.fbBudget, fbg.dataset.acc, fbg.dataset.cur, fbg.dataset.mode); return; }
+  const fag = e.target.closest('[data-fb-ags]');
+  if(fag){ fbToggleAdsets(fag.dataset.fbAgs, fag.dataset.acc); return; }
+  const fagst = e.target.closest('[data-fb-ag-status]');
+  if(fagst){ fbAdsetStatus(fagst.dataset.fbAgStatus, fagst.dataset.op, fagst.dataset.acc); return; }
+  const fagb = e.target.closest('[data-fb-ag-budget]');
+  if(fagb){ fbAdsetBudget(fagb.dataset.fbAgBudget, fagb.dataset.acc, fagb.dataset.cur, fagb.dataset.mode); return; }
+  const fagbid = e.target.closest('[data-fb-ag-bid]');
+  if(fagbid){ fbAdsetBid(fagbid.dataset.fbAgBid, fagbid.dataset.acc, fagbid.dataset.cur); return; }
 });
 // ---- Panneau de configuration TikTok (Login Kit) ----
 const ttSetupPanel = document.getElementById('tiktokSetupPanel');
@@ -3208,7 +3535,7 @@ async function renderCampaigns(){
     const pl = PLATFORM_META[c.plateforme];
     return `<div class="relance-card" style="flex-direction:column; align-items:stretch; gap:5px;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <div style="min-width:0;"><div class="name">${esc(c.nom)}</div><div class="meta">${pl?.img ? `<img src="${pl.img}" alt="" style="width:15px;height:15px;object-fit:contain;vertical-align:-2px;margin-right:3px;">` : (pl?.icon||'')} ${pl?.label||esc(c.plateforme)} · ${esc(CAMPAIGN_TYPE_LABEL[c.type]||c.type||'—')}${c.categorie_promue?' · '+esc(c.categorie_promue):''}</div></div>
+        <div style="min-width:0;"><div class="name">${esc(c.nom)}</div><div class="meta">${pl?.img ? `<img src="${pl.img}" alt="" style="width:15px;height:15px;object-fit:contain;vertical-align:-2px;margin-right:3px;">` : (pl?.icon||'')} ${pl?.label||esc(c.plateforme)} · ${esc(CAMPAIGN_TYPE_LABEL[c.type]||c.type||'—')}${c.categorie_promue?' · '+esc(c.categorie_promue):''}${c.source==='meta' ? ' · <b style="color:var(--gold);">Meta Ads</b>' : c.source==='tik' ? ' · <b style="color:var(--gold);">TikTok Ads</b>' : ''}</div></div>
         <span class="link-sm" data-del-campaign="${c.id}" title="Supprimer la campagne">✕</span>
       </div>
       <div class="meta">📆 ${c.date_debut ? fmtDate(c.date_debut) : 'début libre'} → ${c.date_fin ? fmtDate(c.date_fin) : 'fin libre'} · Portée ${Number(c.portee)||0} · Impressions ${Number(c.impressions)||0} · Clics ${Number(c.clics)||0}</div>
@@ -3366,6 +3693,7 @@ document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
       const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
       if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
       document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail;
+      armSwitchCodeResend();
       return;
     }
   }
@@ -3408,6 +3736,7 @@ document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
     const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
     if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
     document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail + " — l'espace sera créé sur ce compte.";
+    armSwitchCodeResend();
     return;
   }
   const { data, error } = await sb.rpc('create_organization', { org_name: name });
@@ -3437,7 +3766,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-88648c3f61';
+const APP_VERSION = 'mayela-crm-8b1a814ef0';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
