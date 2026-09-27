@@ -1103,6 +1103,7 @@
       <!-- SETTINGS -->
       <div class="screen" id="settings">
         <div class="topbar"><h1>Réglages</h1></div>
+        <div class="section-title">Espace &amp; compte</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
           <div class="set-row"><div class="lbl">Espace géré par<small>Le Gmail qui administre cet espace (celui qui l'a créé)</small></div><span class="val" id="setOrgOwner">–</span></div>
@@ -1120,9 +1121,6 @@
           <div class="set-row hidden" id="allowTeamRenameRow" style="cursor:pointer;"><div class="lbl">Autoriser l'équipe à renommer<small>Sinon, seul vous pouvez le faire</small></div><span class="val" id="allowTeamRenameVal">→</span></div>
           <div class="set-row"><div class="lbl">Code d'invitation<small>Pour faire rejoindre cet espace par quelqu'un d'autre : il se connecte avec SON Gmail, puis saisit ce code dans « Rejoindre avec ce code ». Il verra alors les mêmes clients et publications que vous.</small></div><span class="val" id="setOrgCode">–</span></div>
           <div class="set-row" id="copyInviteRow" style="cursor:pointer;"><div class="lbl">Copier le code d'invitation<small>À envoyer par WhatsApp ou e-mail à votre équipe</small></div><span class="val">⧉</span></div>
-        </div>
-        <div class="section-title">Compte</div>
-        <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
           <div class="set-row"><div class="lbl">Cet accès ouvre<small>Ce Gmail donne accès à tous vos espaces : la liste complète est dans « Changer d'espace » ci-dessus</small></div><span class="val" id="setSpacesCount">–</span></div>
           <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
@@ -1143,7 +1141,7 @@
             <div class="err-msg" id="changeEmailErr"></div>
           </div>
           <div class="set-row" id="changePinRow" style="cursor:pointer;"><div class="lbl" id="pinRowLbl">Activer un code PIN (optionnel)</div><span class="val">→</span></div>
-          <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez rouvrir l'app sans code pendant 30 jours après ça, sur cet appareil</small></div><span class="val">→</span></div>
+          <div class="set-row" id="logoutRow" style="cursor:pointer;"><div class="lbl" style="color:var(--clay)">Se déconnecter<small>Vous pourrez ensuite rouvrir l'app sans ressaisir de code sur cet appareil</small></div><span class="val">→</span></div>
         </div>
         <div class="section-title">Profil</div>
         <div class="set-block">
@@ -3886,7 +3884,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-a3bc58b6a1';
+const APP_VERSION = 'mayela-crm-84c01c16b9';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
