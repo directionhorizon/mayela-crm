@@ -1615,8 +1615,9 @@ async function afterLogin(){
     }
   }
   profile = prof;
-  // Bascule espace = reconnexion gmail : une fois le nouveau compte connecté,
-  // rebascule automatiquement sur l'espace choisi juste avant la déconnexion.
+  // La bascule d'espace est désormais instantanée (switch_org ne demande qu'une
+  // appartenance) : plus de reconnexion gmail, donc plus de code à chaque changement
+  // d'espace. Filet de sécurité conservé pour un eventuel état résiduel de session.
   const pendingSwitch = sessionStorage.getItem('pendingSwitchOrg');
   if(pendingSwitch){
     sessionStorage.removeItem('pendingSwitchOrg');
@@ -3778,43 +3779,23 @@ document.getElementById('switchOrgRow').addEventListener('click', async ()=>{
 document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
   const row = e.target.closest('[data-switch-org]'); if(!row) return;
   const orgId = row.dataset.switchOrg;
-  const ownerEmail = row.dataset.ownerEmail || '';
   if(orgId === activeOrgId()){ document.getElementById('switchOrgList').classList.add('hidden'); return; }
-  // Bascule espace = reconnexion gmail : chaque espace est géré par son compte
-  // (espace = compte MAYELA CRM). Si le gmail de l'espace diffère du gmail connecté,
-  // on se déconnecte du compte courant puis on envoie un code sur le gmail de l'espace.
-  if(ownerEmail){
-    const { data: { user } } = await sb.auth.getUser();
-    const me = ((user && user.email) || '').toLowerCase();
-    if(ownerEmail.toLowerCase() !== me){
-      if(!window.confirm('Cet espace est géré par le compte « ' + ownerEmail + ' ».\nBasculer dessus en reconnectant avec ' + ownerEmail + ' ?')){
-        return;
-      }
-      sessionStorage.setItem('pendingSwitchOrg', orgId);
-      profile = null; pendingProfile = {}; pendingEmail = ownerEmail;
-      document.getElementById('appShell').classList.add('hidden');
-      // Page dédiée à la bascule : le gmail de l'espace cible est déjà connu,
-      // on envoie le code Supabase et on valide sur cet écran (pas de page de connexion générique).
-      document.getElementById('switchCodeTitle').textContent = "Bascule vers un espace";
-      document.getElementById('switchCodeSentTo').textContent = "Envoi du code à " + ownerEmail + "…";
-      document.getElementById('switchCodeInput').value = "";
-      document.getElementById('switchCodeErr').textContent = "";
-      showScreen('switchCode');
-      await sb.auth.signOut();
-      const swRes = await sb.auth.signInWithOtp({ email: ownerEmail, options:{ shouldCreateUser:true } });
-      if(swRes.error){ document.getElementById('switchCodeErr').textContent = swRes.error.message; return; }
-      document.getElementById('switchCodeSentTo').textContent = "Code envoyé à " + ownerEmail;
-      armSwitchCodeResend();
-      return;
-    }
-  }
+  // Bascule instantanée : switch_org exige seulement d'être MEMBRE de l'espace cible
+  // (vérifié en base). Un espace partagé via le code d'invitation appartient donc à
+  // plusieurs comptes : exiger ici un code au Gmail propriétaire aurait été incohérent
+  // (impossible de basculer sur un espace partagé sans devenir le compte du propriétaire)
+  // et aurait imposé un code à chaque changement d'espace.
   const { error } = await sb.rpc('switch_org', { org_id: orgId });
-  if(error){ toast(error.message, true); return; }
+  if(error){
+    toast(error.message, true);
+    if(/n'appartenez pas|appartenez pas/i.test(error.message || '')) await loadOrgMembers();
+    return;
+  }
   await refreshProfile();
   document.getElementById('switchOrgList').classList.add('hidden');
-  toast('Espace changé.');
   await loadEverything();
   saveAppContext();
+  toast('Espace changé.');
 });
 document.getElementById('createOrgRow').addEventListener('click', ()=>{
   const listEl = document.getElementById('createOrgList');
@@ -3879,7 +3860,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-68b2a6fec6';
+const APP_VERSION = 'mayela-crm-f3afcd29ac';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
