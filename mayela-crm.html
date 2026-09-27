@@ -1765,6 +1765,40 @@ async function refreshProfile(){
   profile = data;
 }
 
+// ---------- Resynchronisation de l'espace entre versions (mobile PWA <-> en ligne) ----------
+// Les deux versions lisent la meme base : rien n'est stocke sur l'appareil. En revanche
+// l'espace ACTIF (profiles.active_org_id) est lu UNE fois au demarrage. Une app laissee
+// ouverte en arriere-plan (telephone) continuait donc d'afficher l'ancien espace apres
+// une bascule faite sur l'ordi : l'espace paraissait ne pas exister "de ce cote".
+// Au retour au premier plan (et au retour du reseau), on relit le profil et on resynchronise.
+let _orgSyncBusy = false;
+async function syncOrgContext(){
+  if(!sb || !profile || !profile.id || _orgSyncBusy) return;
+  _orgSyncBusy = true;
+  const before = activeOrgId();
+  try{
+    const { data } = await sb.from('profiles').select('active_org_id,org_id').eq('id', profile.id).maybeSingle();
+    if(data){
+      profile.active_org_id = data.active_org_id || null;
+      if(data.org_id) profile.org_id = data.org_id;
+    }
+    const after = activeOrgId();
+    // Espace actif change sur l'autre appareil -> on recharge les donnees de cet espace.
+    if(after && after !== before){
+      await loadEverything();
+      saveAppContext();
+      toast('Espace synchronisé avec vos autres écrans.');
+    }
+    // Liste des espaces deja ouverte : on la recharge pour qu'elle ne soit jamais figee.
+    const listEl = document.getElementById('switchOrgList');
+    if(listEl && !listEl.classList.contains('hidden')) await loadOrgMembers();
+  }catch(e){}
+  finally{ _orgSyncBusy = false; }
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') syncOrgContext(); });
+addEventListener('pageshow', (e)=>{ if(e.persisted) syncOrgContext(); });
+addEventListener('online', ()=>{ syncOrgContext(); });
+
 // ================== NAV ==================
 document.body.addEventListener('click', (e)=>{
   const nav = e.target.closest('[data-nav]'); if(!nav) return;
@@ -3662,7 +3696,9 @@ document.getElementById('switchOrgRow').addEventListener('click', async ()=>{
   const listEl = document.getElementById('switchOrgList');
   const willShow = listEl.classList.contains('hidden');
   listEl.classList.toggle('hidden', !willShow);
-  if(willShow) await loadOrgMembers();
+  // Toujours rechargée (ouverte OU déjà ouverte) : sinon un espace créé depuis l'autre
+  // version n'apparaît qu'après un rechargement complet de la page.
+  await loadOrgMembers();
 });
 document.getElementById('switchOrgList').addEventListener('click', async (e)=>{
   const row = e.target.closest('[data-switch-org]'); if(!row) return;
@@ -3766,7 +3802,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-8b1a814ef0';
+const APP_VERSION = 'mayela-crm-b107e02db3';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
