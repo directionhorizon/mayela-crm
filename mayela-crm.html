@@ -421,6 +421,7 @@
       <div style="color:var(--sage); font-size:11px;">— ou —</div>
       <input class="field" type="text" id="orgCodeInput" placeholder="Code d'invitation">
       <button class="btn-ghost" id="joinOrgBtn">Rejoindre avec ce code</button>
+      <div style="color:var(--sage); font-size:11px; text-align:center;">Le code est fourni par la personne qui a créé l'espace (Réglages → Copier le code d'invitation). Vous rejoignez alors le même espace : mêmes clients, mêmes publications, sur tous vos écrans.</div>
       <div class="err-msg" id="onboardErr"></div>
     </div>
 
@@ -1115,7 +1116,8 @@
           </div>
           <div class="set-row" id="renameOrgRow" style="cursor:pointer;"><div class="lbl">Renommer l'espace</div><span class="val">→</span></div>
           <div class="set-row hidden" id="allowTeamRenameRow" style="cursor:pointer;"><div class="lbl">Autoriser l'équipe à renommer<small>Sinon, seul vous pouvez le faire</small></div><span class="val" id="allowTeamRenameVal">→</span></div>
-          <div class="set-row"><div class="lbl">Code d'invitation<small>À partager avec votre équipe</small></div><span class="val" id="setOrgCode">–</span></div>
+          <div class="set-row"><div class="lbl">Code d'invitation<small>Pour faire rejoindre cet espace par quelqu'un d'autre : il se connecte avec SON Gmail, puis saisit ce code dans « Rejoindre avec ce code ». Il verra alors les mêmes clients et publications que vous.</small></div><span class="val" id="setOrgCode">–</span></div>
+          <div class="set-row" id="copyInviteRow" style="cursor:pointer;"><div class="lbl">Copier le code d'invitation<small>À envoyer par WhatsApp ou e-mail à votre équipe</small></div><span class="val">⧉</span></div>
         </div>
         <div class="section-title">Compte</div>
         <div class="set-block">
@@ -1447,7 +1449,7 @@ if(sb) sb.auth.onAuthStateChange((event, session) => {
     sessionHandled = true;
     afterLogin();
   }
-  if(event === 'SIGNED_OUT'){ sessionHandled = false; }
+  if(event === 'SIGNED_OUT'){ sessionHandled = false; stopRealtime(); }
 });
 
 // ================== EMAIL DROPDOWN (Google) ==================
@@ -1698,6 +1700,8 @@ function onVerifyPinDigit(k){
   }
 }
 async function afterPinOk(){
+  // Interconnexion live : le canal reste actif tant que la session est ouverte.
+  startRealtime();
   if(!activeOrgId()){
     // Compte sans espace : on masque le shell (et sa barre de menu) pour afficher l'onboarding.
     const shell = document.getElementById('appShell');
@@ -1747,6 +1751,10 @@ document.getElementById('createOrgBtn').addEventListener('click', async ()=>{
   showScreen('dashboard');
   await loadEverything();
   saveAppContext();
+  startRealtime();
+  const code2 = ((data && data[0] && data[0].join_code) || '');
+  if(code2){ try{ await navigator.clipboard.writeText(code2); }catch(e){} }
+  toast('Espace « ' + name + ' » créé.' + (code2 ? ' Code d\'invitation copié : ' + code2 : ''));
 });
 document.getElementById('joinOrgBtn').addEventListener('click', async ()=>{
   const code = document.getElementById('orgCodeInput').value.trim();
@@ -1759,6 +1767,8 @@ document.getElementById('joinOrgBtn').addEventListener('click', async ()=>{
   showScreen('dashboard');
   await loadEverything();
   saveAppContext();
+  startRealtime();
+  toast('Vous avez rejoint l\'espace « ' + ((data && data[0] && data[0].name) || '') + ' ».');
 });
 async function refreshProfile(){
   const { data } = await sb.from('profiles').select('*').eq('id', profile.id).single();
@@ -1798,6 +1808,71 @@ async function syncOrgContext(){
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible') syncOrgContext(); });
 addEventListener('pageshow', (e)=>{ if(e.persisted) syncOrgContext(); });
 addEventListener('online', ()=>{ syncOrgContext(); });
+
+// ---------- Interconnexion live entre écrans (Supabase Realtime) ----------
+// Objectif : la PWA téléphone et la version en ligne ne sont pas deux applications
+// séparées mais deux affichages du MÊME espace. Sans Realtime, un écran garde en mémoire
+// l'état qu'il a au démarrage et l'autre ne le voit qu'après un rechargement manuel.
+// Avec Realtime, toute écriture faite sur un écran est transmise aux autres immédiatement.
+// (Tablees ajoutées à la publication supabase_realtime : profiles, org_members, clients,
+//  produits_services, social_*, campaigns, meta_adsets, leads_tiktok, tik_*, ia_messages,
+//  integrations_oauth.)
+const REALTIME_TABLES = [
+  'clients','produits_services','social_posts','social_accounts','social_events_log',
+  'campaigns','meta_adsets','leads_tiktok','tik_adgroups','tik_audiences',
+  'ia_messages','integrations_oauth'
+];
+let _rtChannel = null, _rtTimer = null, _rtReady = false;
+function stopRealtime(){
+  if(_rtTimer){ clearTimeout(_rtTimer); _rtTimer = null; }
+  if(_rtChannel && sb){ try{ sb.removeChannel(_rtChannel); }catch(e){} }
+  _rtChannel = null; _rtReady = false;
+}
+// Regroupement des rafales : plusieurs lignes modifiées d'un coup = un seul rechargement.
+function scheduleLiveRefresh(){
+  if(_rtTimer) clearTimeout(_rtTimer);
+  _rtTimer = setTimeout(async ()=>{
+    _rtTimer = null;
+    if(!profile || !profile.id || !activeOrgId()) return;
+    try{ await loadEverything(); }catch(e){}
+  }, 700);
+}
+function startRealtime(){
+  if(!sb || !profile || !profile.id) return;
+  stopRealtime();
+  const uid = profile.id;
+  const ch = sb.channel('mayela-live-' + uid);
+  // 1) Espace actif modifie depuis un autre ecran (bascule d'espace) -> on suit aussitot.
+  ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:'id=eq.'+uid }, async (p)=>{
+    const before = activeOrgId();
+    const nextActive = p.new?.active_org_id || p.new?.org_id || null;
+    if(p.new?.org_id) profile.org_id = p.new.org_id;
+    if(!nextActive || nextActive === before) return;
+    profile.active_org_id = p.new.active_org_id || null;
+    await loadEverything();
+    saveAppContext();
+    toast('Espace synchronisé avec vos autres écrans.');
+  });
+  // 2) Appartenance a un espace ajoutee/retiree (creation ou invitation depuis un autre
+  //    ecran, ou depuis un AUTRE compte qui vous invite) -> la liste se met a jour seule.
+  ch.on('postgres_changes', { event:'*', schema:'public', table:'org_members', filter:'user_id=eq.'+uid }, async (p)=>{
+    const listEl = document.getElementById('switchOrgList');
+    if(listEl && !listEl.classList.contains('hidden')) await loadOrgMembers();
+    if(p.eventType === 'INSERT' && p.new?.org_id && p.new.org_id !== activeOrgId())
+      toast('Un espace a été ajouté à votre compte.');
+  });
+  // 3) Donnees de l'espace modifiees ailleurs (clients, publications, campagnes...) ->
+  //    rafraichissement immediat de l'ecran, sans rechargement de page.
+  REALTIME_TABLES.forEach(t=>{
+    ch.on('postgres_changes', { event:'*', schema:'public', table:t }, (p)=>{
+      const org = p.new?.org_id || p.old?.org_id;
+      if(org && activeOrgId() && org !== activeOrgId()) return;
+      scheduleLiveRefresh();
+    });
+  });
+  ch.subscribe((status)=>{ _rtReady = (status === 'SUBSCRIBED'); });
+  _rtChannel = ch;
+}
 
 // ================== NAV ==================
 document.body.addEventListener('click', (e)=>{
@@ -3782,7 +3857,9 @@ document.getElementById('createSpaceBtn').addEventListener('click', async ()=>{
   await refreshProfile();
   await loadEverything();
   if(!document.getElementById('switchOrgList').classList.contains('hidden')) await loadOrgMembers();
-  toast('Espace « ' + name + ' » créé et activé.');
+  const newCode = ((data && data[0] && data[0].join_code) || '');
+  toast('Espace « ' + name + ' » créé et activé.' + (newCode ? ' Code d\'invitation : ' + newCode : ''));
+  if(newCode){ try{ await navigator.clipboard.writeText(newCode); }catch(e){} }
 });
 document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('profErr');
@@ -3802,7 +3879,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-b107e02db3';
+const APP_VERSION = 'mayela-crm-68b2a6fec6';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -4763,6 +4840,14 @@ async function doLogout(){
 }
 document.getElementById('logoutRow').addEventListener('click', doLogout);
 document.getElementById('lockLogout').addEventListener('click', doLogout);
+document.getElementById('copyInviteRow').addEventListener('click', async ()=>{
+  const code = (currentOrg && currentOrg.join_code) || '';
+  if(!code){ toast("Aucun code à copier.", true); return; }
+  try{
+    await navigator.clipboard.writeText(code);
+    toast('Code d\'invitation copié : ' + code);
+  }catch(e){ toast('Code d\'invitation : ' + code); }
+});
 document.getElementById('renameOrgRow').addEventListener('click', async ()=>{
   if(!currentOrg){ toast("Aucun espace à renommer.", true); return; }
   const { data:{ user } } = await sb.auth.getUser();
