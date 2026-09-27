@@ -1105,6 +1105,8 @@
         <div class="topbar"><h1>Réglages</h1></div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Espace<small id="setOrgName">–</small></div></div>
+          <div class="set-row"><div class="lbl">Espace géré par<small>Le Gmail qui administre cet espace (celui qui l'a créé)</small></div><span class="val" id="setOrgOwner">–</span></div>
+          <div class="set-row"><div class="lbl">Votre rôle dans cet espace<small>Administrateur : gestion complète de l'espace · Membre : accès aux données</small></div><span class="val" id="setOrgRole">–</span></div>
           <div class="set-row" id="switchOrgRow" style="cursor:pointer;"><div class="lbl">Changer d'espace<small>Basculer vers un autre business (TikTok/Facebook/Google Sheets suivent)</small></div><span class="val">→</span></div>
           <div id="switchOrgList" class="hidden" style="display:flex; flex-direction:column; gap:6px; padding:0 20px 10px;"></div>
           <div class="set-row" id="createOrgRow"><div class="lbl">Créer un espace<small>Nouveau business indépendant — les espaces existants restent</small></div></div>
@@ -1122,6 +1124,7 @@
         <div class="section-title">Compte</div>
         <div class="set-block">
           <div class="set-row"><div class="lbl">Connecté en tant que<small id="setEmail">–</small></div></div>
+          <div class="set-row"><div class="lbl">Cet accès ouvre<small>Ce Gmail donne accès à tous vos espaces : la liste complète est dans « Changer d'espace » ci-dessus</small></div><span class="val" id="setSpacesCount">–</span></div>
           <div class="set-row" style="flex-direction:column; align-items:stretch; gap:8px;">
             <div class="lbl">Changer l'e-mail de connexion<small>Un code de vérification est envoyé à votre nouvel e-mail ; l'espace, les clients et les connexions (Google Sheets) sont conservés</small></div>
             <input class="field" id="changeEmailInput" type="email" placeholder="Nouvel e-mail" autocomplete="off">
@@ -3740,13 +3743,36 @@ async function loadEverything(){
     document.getElementById('allowTeamRenameVal').textContent = org.members_can_rename ? 'Activé' : 'Désactivé';
   }
   else { document.getElementById('setOrgName').textContent = 'Espace personnel'; document.getElementById('setOrgCode').textContent = '–'; }
+  // Libellés Espace / Compte : qui administre cet espace, quel rôle j'y joue, et
+  // combien d'espaces ce Gmail ouvre. Rafraîchis à chaque bascule d'espace.
+  await fetchMySpaces();
+  renderSpaceOwnership();
 }
 
 // ---- Multi-espaces (EVO-001) : liste des espaces + bascule ----
+// my_spaces est la seule source qui relie les deux notions : le compte connecté
+// (Celui qui se connecte) et l'espace (avec le Gmail qui l'administre et le rôle joué).
+// Elle est mise en cache ici pour alimenter les libellés de Réglages.
+let mySpaces = [];
+async function fetchMySpaces(){
+  const { data, error } = await sb.rpc('my_spaces');
+  if(error) return { data: null, error };
+  mySpaces = data || [];
+  return { data: mySpaces, error: null };
+}
+function renderSpaceOwnership(){
+  const orgId = activeOrgId();
+  const mine = mySpaces.find(s => s.id === orgId) || null;
+  const g = id => document.getElementById(id);
+  if(g('setOrgOwner')) g('setOrgOwner').textContent = mine ? (mine.owner_email || '—') : (orgId ? 'Chargement…' : '—');
+  if(g('setOrgRole')) g('setOrgRole').textContent = mine ? (mine.role === 'admin' ? 'Administrateur' : 'Membre') : '—';
+  if(g('setSpacesCount')) g('setSpacesCount').textContent = mySpaces.length ? (mySpaces.length + (mySpaces.length > 1 ? ' espaces' : ' espace')) : 'Aucun';
+}
 async function loadOrgMembers(){
   const listEl = document.getElementById('switchOrgList');
-  const { data: spaces, error } = await sb.rpc('my_spaces');
+  const { data: spaces, error } = await fetchMySpaces();
   if(error){ listEl.innerHTML = '<div class="meta" style="color:#e88;font-size:11px;">Erreur de chargement : ' + esc(error.message) + '</div>'; return; }
+  renderSpaceOwnership();
   const mem = spaces || [];
   if(!mem.length){
     const cur = activeOrgId();
@@ -3860,7 +3886,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-f3afcd29ac';
+const APP_VERSION = 'mayela-crm-a3bc58b6a1';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
