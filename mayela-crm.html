@@ -1846,13 +1846,21 @@ function startRealtime(){
   stopRealtime();
   const uid = profile.id;
   const ch = sb.channel('mayela-live-' + uid);
-  // 1) Espace actif modifie depuis un autre ecran (bascule d'espace) -> on suit aussitot.
+  // 1) Profil modifie depuis un autre ecran :Preferences (top clients), nom, telephone...
+  //    = bascule d'espace ou simple edition -> on suit aussitot.
   ch.on('postgres_changes', { event:'UPDATE', schema:'public', table:'profiles', filter:'id=eq.'+uid }, async (p)=>{
+    if(!p.new) return;
     const before = activeOrgId();
-    const nextActive = p.new?.active_org_id || p.new?.org_id || null;
-    if(p.new?.org_id) profile.org_id = p.new.org_id;
-    if(!nextActive || nextActive === before) return;
-    profile.active_org_id = p.new.active_org_id || null;
+    ['full_name','job_title','company','phone','top_clients_limit','org_id','active_org_id','pin_hash','workspace_type','role']
+      .forEach(k=>{ if(k in p.new) profile[k] = p.new[k]; });
+    const nextActive = p.new.active_org_id || p.new.org_id || null;
+    if(!nextActive || nextActive === before){
+      // Pas de changement d'espace : on ne rafraichit que les libelles de Reglages.
+      if(typeof fillTopClientsSetting === 'function') fillTopClientsSetting();
+      const lbl = document.getElementById('pinRowLbl');
+      if(lbl) lbl.textContent = profile.pin_hash ? 'Changer le code PIN' : 'Activer un code PIN (optionnel)';
+      return;
+    }
     await loadEverything();
     saveAppContext();
     toast('Espace synchronisé avec vos autres écrans.');
@@ -2232,22 +2240,35 @@ document.body.addEventListener('click', (e)=>{
   if(pchip){ topClientsPeriod = pchip.dataset.np; loadSocialTopClients(); }
 });
 // ---- Réglage « top clients » (Réseaux sociaux) : limite paramétrable, défaut 15 (plage 3 à 50) ----
+// Stockée en base (profiles.top_clients_limit) ET en cache local : le cache sert d'affichage
+// immédiate et de repli hors ligne, la base fait foi — le réglage survit donc à un effacement
+// du stockage par l'appareil et se partage entre téléphone et version en ligne.
 const TOP_CLIENTS_KEY = 'mayela_topClientsCount';
+const TOP_CLIENTS_DEFAULT = 15;
 function topClientsLimit(){
-  const v = parseInt(localStorage.getItem(TOP_CLIENTS_KEY) || '', 10);
-  return (v && v >= 3 && v <= 50) ? v : 15;
+  const v = parseInt((profile && profile.top_clients_limit) ?? localStorage.getItem(TOP_CLIENTS_KEY) ?? '', 10);
+  return (v && v >= 3 && v <= 50) ? v : TOP_CLIENTS_DEFAULT;
 }
 function fillTopClientsSetting(){
   const el = document.getElementById('topClientsCount');
   if(el) el.value = topClientsLimit();
 }
-document.getElementById('saveTopClientsBtn').addEventListener('click', ()=>{
+document.getElementById('saveTopClientsBtn').addEventListener('click', async ()=>{
   const el = document.getElementById('topClientsCount');
   const errEl = document.getElementById('topClientsErr');
   const v = parseInt(el.value, 10);
   if(!v || v < 3 || v > 50){ if(errEl) errEl.textContent = 'Entrez un nombre entre 3 et 50.'; return; }
   if(errEl) errEl.textContent = '';
+  // Cache local d'abord (affichage immédiat), puis la base qui fait foi.
   localStorage.setItem(TOP_CLIENTS_KEY, String(v));
+  if(profile && profile.id){
+    const { data, error } = await sb.from('profiles').update({ top_clients_limit: v }).eq('id', profile.id).select('top_clients_limit').maybeSingle();
+    if(error){
+      if(errEl) errEl.textContent = 'Réglage enregistré sur cet appareil, mais pas synchronisé : ' + error.message;
+    }else if(data){
+      profile.top_clients_limit = data.top_clients_limit;
+    }
+  }
   toast('Limite top clients enregistrée : ' + v + '.');
   loadSocialTopClients();
 });
@@ -3886,7 +3907,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-b91cd2486f';
+const APP_VERSION = 'mayela-crm-5f6568af70';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
