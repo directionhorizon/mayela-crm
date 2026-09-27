@@ -1,6 +1,6 @@
 # EN ATTENTE — MAYELA CRM
 
-> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 25/09/2026.
+> Fichier UNIQUE de suivi des points en attente. Dernière mise à jour : 27/09/2026.
 > À faire : chaque blocage = 1 entrée, cochée quand résolu ; rien d'autre à dupliquer.
 
 ---
@@ -119,13 +119,92 @@ chaque essai (masqué, non récupérable → remplacé).
 
 ## 7. Connexion Page Facebook (Meta) — côté code PRET le 24/09/2026
 
-Objectif : publier les offres sur la Page Facebook de la pharmacie et afficher
-l'analyse d'audience (comme la connexion TikTok). La connexion du compte se fera plus tard
-(app Meta à créer par la pharmacie).
+Objectif : publier les offres sur la Page Facebook de chaque entreprise cliente et afficher
+l'analyse d'audience (comme la connexion TikTok).
+
+> **Multi-entreprises** : l'app Meta est partagée par tous les espaces. Le code est déjà
+> multi-tenant (tokens par `org_id`, `ads_connect` liste `/me/adaccounts` du token de la personne
+> qui autorise) : chaque entreprise branche sa propre Page et ses propres comptes pub.
+> L'app doit donc appartenir au **développeur (agence)**, pas à un client.
+
+### Reprise du 27/09/2026 — app Meta à recréer (nouveau modèle « use cases ») — PROCÉDURE CLAIRE
+
+**Constat** : une 1re app a été créée le 26/09 avec le **compte de la pharmacie** et le use case
+« Authentifier et demander les données d'utilisateurs avec Facebook Login ». Elle est **inutilisable** :
+les permissions `pages_*`, `ads_*` et `business_management` n'y sont pas disponibles. Le type d'app
+ne peut pas être changé et un use case ne peut pas être retiré après création (doc Meta
+« App Types » : *app types cannot be changed*, *use cases cannot be removed*).
+→ **App #1 : à supprimer** une fois l'app #2 opérationnelle.
+
+**Règles 2026 (vérifiées sur la doc Meta)** : les permissions ne se cochent plus une à une — elles
+sont **apportées par les use cases** choisis à la création, et le type d'app en découle. La
+catégorie « Autres » ne propose que des use cases consumer (Login, dons, Thread Exchange, IDFA,
+App Events). Les use cases **incompatibles avec la sélection sont grisés** dans l'assistant.
+
+**Recommandation(app #2) — `https://developers.facebook.com/apps/creation/` :**
+
+1. Se connecter avec le **compte développeur de l'agence** (pas celui de la pharmacie : l'app est
+   partagée par tous les espaces clients).
+2. **App details** : nom `Mayela CRM` (⚠️ Meta refuse les noms contenant FB/Face/Book/Insta/Gram)
+   + e-mail de contact de l'agence → **Next**.
+3. **Use cases — cocher EXACTEMENT ces deux lignes** (filtre à gauche : les deux ne sont pas
+   dans la même catégorie ; repasser sur « Toutes » avant de valider) :
+   - ✅ **« Tout gérer sur votre Page »** (*Manage everything on your Page*, cat. **Gestion du
+     contenu**) → apporte `business_management`, `pages_show_list`, `public_profile`
+     (non retirables) + le produit **Facebook Login for Business** ;
+   - ✅ **« Créer et gérer des publicités avec l'API Marketing »** (*Create & manage ads with
+     Marketing API*, cat. **Publicités**) → apporte `ads_read`, `ads_management`,
+     `business_management` (non retirables) + la feature **Ads Management Standard Access** ;
+   - ❌ **ne pas** prendre « Créer et gérer des publicités d'**application** avec Meta Ads
+     Manager » (= promotions d'app mobiles ; la doc Meta précise *« Does not include access to
+     Marketing API »* → zéro permission `ads_*`) — même catégorie, libellé presque identique :
+     c'est le piège principal ;
+   - ❌ « Authentifier et demander les données des utilisateur·rice·s avec Facebook Login » =
+     l'erreur de l'app #1 (incompatible avec le use case Page, n'apporte rien d'utile) ;
+   - ❌ « Accéder à l'API Threads », « Tisser des liens avec votre clientèle via WhatsApp »,
+     « Messagerie professionnelle » (hors périmètre) ;
+   - ❌ « Mesurer les performances publicitaires avec l'API Marketing » (lecture seule ; la
+     pause/reprise + budget exigent l'écriture de « Créer et gérer… »).
+   - ⚠️ Si « Gérer tout sur votre Page » est **absent** de la liste → ne pas créer l'app sans
+     lui (aucune permission `pages_*` ne peut exister) ; il est ajoutable après coup
+     (*Use cases → + Add use case*), l'inverse étant impossible.
+4. **Business** : rattacher le **Business Portfolio de l'agence** → **Créer l'app**.
+5. **Use cases → Customize** : bouton **Add** sur le use case Page pour
+   `pages_manage_posts` (publication), `pages_read_engagement` (dépendance de `ads_management`/
+   `business_management`), `read_insights` (analyse d'audience) ; **retirer** `pages_manage_engagement`
+   (ajoutée par défaut, inutile). Ne rien demander d'autre (ni `catalog_management`, ni
+   `leads_retrieval`, ni `page_manage_ads`, ni `email`). Sur le use case Marketing API : attacher
+   le portfolio + au moins un compte publicitaire `act_…` (sandbox pour un test sans argent).
+6. **Facebook Login for Business → Settings → Valid OAuth Redirect URIs** =
+   `https://mayela-crm.vercel.app/mayela-crm.html` (identique, sans slash final).
+7. **App settings → Basic** → App ID + App Secret ; icône 1024², Privacy Policy
+   `https://mayela-crm.vercel.app/politique-confidentialite.html`, Terms `…/terms.html`,
+   catégorie Business, domaine `mayela-crm.vercel.app`.
+8. **App settings → Roles → Add People** : le compte FB de la pharmacie (admin de la Page et des
+   comptes pub) en rôle Administrator. **Sans cela, l'app « In Development » bloque l'écran
+   d'autorisation** — donc la recette complète est possible **immédiatement**, sans attendre la revue.
+9. **Ready to test** sur chaque use case (obligatoire avant la revue) + contrôle dans le
+   **Graph API Explorer** : `GET /me/accounts` (Pages) et `GET /me/adaccounts` (comptes pub).
+10. **App Review** : Complete App Settings → reviewer instructions + screencast (connexion →
+    publication → audience → pause/reprise campagne) → **Request Advanced Access** pour
+    `pages_manage_posts`, `pages_read_engagement`, `read_insights`, `business_management` et
+    **Standard Access** pour Ads Management → Business verification → **Submit**.
+11. **Publish** → l'app passe en Live. Puis **supprimer l'app #1**.
+12. App ID/App Secret → **par espace** dans le CRM (identiques partout : une seule app).
+
+> **À ne surtout pas demander** : les 12 permissions `user_*` (`user_friends`, `user_likes`,
+> `user_location`, `user_posts`…) — le profilage individuel est interdit (RGPD) et les refus sont
+> quasi garantis. L'analyse d'audience passe par les **insights agrégés** de la Page et des pubs
+> (âge, genre, ville, centres d'intérêt), croisés avec les données du CRM. Seul `email` serait
+> utile (identifier l'utilisateur qui se connecte) — non requis en l'état.
+
+**Procédure détaillée, écran par écran** : `docs/FACEBOOK_META_SETUP_CLIENT.md` (réécrit le
+27/09/2026, flow « use cases » + tableau d'erreurs fréquentes).
 
 ### Déjà prêt (ne pas refaire)
-- [x] Guide client **`docs/FACEBOOK_META_SETUP_CLIENT.md`** (créer l'app Meta, permissions,
-      revue, autoriser la Page dans le CRM).
+- [x] Guide **`docs/FACEBOOK_META_SETUP_CLIENT.md`** — procédure de création de l'app Meta
+      **écran par écran (flow « use cases »)** + tableau d'erreurs fréquentes ; **réécrit le
+      27/09/2026** (l'ancienne version décrivait l'ancien flow « Business app + produits »).
 - [x] Edge function **`social-facebook`** (OAuth : échange du code → user token longue durée →
       Page Access Token, stocké dans `social_accounts.config` comme `page_id`/`access_token`).
       **Déployée** sur le projet.
@@ -134,13 +213,23 @@ l'analyse d'audience (comme la connexion TikTok). La connexion du compte se fera
       fonctions existantes (`social-publish` / `social-insights` / `social-health`).
 
 ### Reste (manuel, portail developers.facebook.com + CRM)
-- [ ] Créer la **Business App** Meta (voir guide) + produit **Facebook Login** + URI de
-      redirection = `https://mayela-crm.vercel.app/mayela-crm.html`.
-- [ ] Permissions : `pages_show_list`, `pages_manage_posts`, `pages_read_engagement`,
-      `read_insights` (niveau advanced access / revue, ou rôles Admin/Tester en attendant).
+- [ ] **Créer l'app #2** selon la procédure « Reprise du 27/09/2026 » ci-dessus (2 use cases :
+      *Gérer tout sur votre Page* + *Créer et gérer des annonces avec l'API Marketing*, compte +
+      portfolio de l'agence), puis supprimer l'app #1.
+- [ ] **Use cases → Customize** : ajouter `pages_manage_posts` + `pages_read_engagement` +
+      `read_insights`, retirer `pages_manage_engagement`, attacher le portfolio + un compte
+      publicitaire `act_…`.
+- [ ] URI de redirection dans **Facebook Login for Business** :
+      `https://mayela-crm.vercel.app/mayela-crm.html`.
+- [ ] **Roles → Add People** : compte FB de la pharmacie en Administrator (sinon « App In
+      Development » bloque l'autorisation) → recette possible sans attendre la revue.
+- [ ] **Ready to test** sur chaque use case + contrôle `GET /me/accounts` / `GET /me/adaccounts`
+      dans le Graph API Explorer.
 - [ ] Renseigner **App ID** + **App Secret** dans le CRM → **Connexion Facebook** → autoriser
       la Page avec le compte admin → carte « Connecté ».
 - [ ] Publier une offre de test + vérifier l'écran Analyse d'audience.
+- [ ] Revue (Advanced Access `pages_manage_posts` / `pages_read_engagement` / `read_insights` /
+      `business_management` + **Standard Access** Ads Management, screencast fourni) → **Publish**.
 
 ---
 
