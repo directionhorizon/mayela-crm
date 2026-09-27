@@ -266,6 +266,37 @@ La connexion des comptes se fera plus tard (app Meta à compléter par la pharma
 
 ---
 
+## 9. Duree de session (code OTP) - SANS LIMITE, a reactiver plus tard si besoin
+
+**Decision du 28/09/2026** : suppression de toute duree de validite du code de connexion.
+Un code n'est plus redemande au fil du temps, sur aucun appareil. Le code n'est demande que
+dans 3 cas reels : premiere connexion sur un appareil, **« Se deconnecter »** (bouton manuel
+des Reglages), ou **changement d'e-mail de connexion** (preuve de propriete de la nouvelle
+adresse). La purge automatique du stockage par l'appareil (iOS apres ~7 jours sans usage,
+reinstallation, onglet prive) peut aussi reseter la session : c'est le systeme qui decide,
+pas l'application.
+
+**Configuration Supabase en place (verifiee) :**
+
+| Reglage | Valeur | Effet |
+|---|---|---|
+| `sessions_timebox` | `0` | pas de duree maximale de session |
+| `sessions_inactivity_timeout` | `0` | pas de fermeture pour inactivite |
+| `jwt_exp` | `3600` | jeton technique 1 h, renouvele **silencieusement** (ce n'est pas une expiration) |
+| `mailer_otp_exp` | `3600` | validite du code **quand il est envoye** (1 h pour le saisir) |
+
+**Pour reacter une duree plus tard** (aucune ligne de code a ecrire, uniquement la config) :
+`PATCH /v1/projects/<ref>/config/auth` avec `{"sessions_timebox": <secondes>}`
+(2592000 = 30 jours) et/ou `{"sessions_inactivity_timeout": <secondes>}`.
+Valeurs remises a 0 = retour immediat au comportement actuel.
+
+**Point de vigilance** : `sessions_timebox` ne s'applique qu'aux sessions creees apres le
+changement. Les sessions deja ouvertes avant le reglage restent valides jusqu'a leur echeance
+(qui peut donc depasser la nouvelle duree). Pour appliquer retroactivement, il faut forcer
+une reconnexion (deconnexion puis nouveau code sur chaque appareil).
+
+---
+
 ## Rappel de vigilance
 
 - **Ne jamais ouvrir `mayela-crm.html` en `file://`** — toujours via serveur / Vercel.

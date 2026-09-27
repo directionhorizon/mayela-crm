@@ -1216,7 +1216,7 @@
           <div class="set-row"><div class="lbl">Version installée<small>Version qui tourne sur cet appareil</small></div><span class="val" id="verInstalled">–</span></div>
           <div class="set-row"><div class="lbl">Version publiée<small>Dernière version mise en ligne</small></div><span class="val" id="verPublished">–</span></div>
           <div class="set-row hidden" id="verDiffRow"><div class="lbl" style="color:var(--gold)">Mise à jour disponible<small>Une version plus récente est en ligne</small></div><span class="val" id="verDiffVal">→</span></div>
-          <div class="set-row"><div class="lbl">Session de connexion<small>Si elle est « expirée », le code est demandé. Une session perdue = stockage effacé (onglet privé, app réinstallée, ou nettoyage automatique iOS après 7 jours sans usage)</small></div><span class="val" id="verSession">–</span></div>
+          <div class="set-row"><div class="lbl">Session de connexion<small>Aucune limite de durée : le code n'est redemandé qu'après une déconnexion, un effacement du stockage par l'appareil, ou un changement d'e-mail. Le jeton technique (1 h) est renouvelé tout seul en arrière-plan, ce n'est pas une expiration.</small></div><span class="val" id="verSession">–</span></div>
           <div class="set-row"><div class="lbl">Connexion temps réel<small>État du canal qui synchronise le téléphone et la version en ligne</small></div><span class="val" id="verRealtime">–</span></div>
           <div class="set-row" style="border-bottom:none;">
             <button class="btn" id="verUpdateBtn" style="width:100%;" onclick="forceUpdate()">⟳ Mettre à jour</button>
@@ -3886,7 +3886,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-8615e2a024';
+const APP_VERSION = 'mayela-crm-b91cd2486f';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -3926,8 +3926,7 @@ async function refreshVersionInfo(){
       sEl.textContent = 'Aucune (code demandé)';
       sEl.style.color = '#e88';
     }else{
-      const exp = session.expires_at ? new Date(session.expires_at * 1000) : null;
-      sEl.textContent = 'Valide' + (exp ? ' jusqu\'à ' + exp.toLocaleTimeString() : '');
+      sEl.textContent = 'Active';
       sEl.style.color = '';
     }
   }catch(e){ if(sEl) sEl.textContent = 'Erreur de lecture'; }
