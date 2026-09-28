@@ -1859,6 +1859,9 @@ function startRealtime(){
       if(typeof fillTopClientsSetting === 'function') fillTopClientsSetting();
       const lbl = document.getElementById('pinRowLbl');
       if(lbl) lbl.textContent = profile.pin_hash ? 'Changer le code PIN' : 'Activer un code PIN (optionnel)';
+      // La limite « top clients » pilote une liste affichee : sans ce rechargement
+      // le telephone gardait l'ancienne liste malgre la valeur mise a jour.
+      if(typeof loadSocialTopClients === 'function') loadSocialTopClients();
       return;
     }
     await loadEverything();
@@ -3907,7 +3910,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-5f6568af70';
+const APP_VERSION = 'mayela-crm-97feb3f21f';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
@@ -4822,6 +4825,10 @@ async function sendIaMessage(){
       iaThread.push({ role:'user', text:msg }, { role:'assistant', text:result.text });
       const uid = sessionData && sessionData.session ? sessionData.session.user.id : null;
       if(uid){
+        // L'espace n'est pas envoye par le navigateur : un trigger BEFORE INSERT
+        // le renseigne depuis current_org_id(). Si le client se trompait d'espace
+        // (cache local en retard sur la base), l'ecriture serait refusee par la
+        // politique RLS et la conversation ne serait pas enregistree.
         const saved = await sb.from('ia_messages').insert([
           { user_id: uid, role:'user', content:msg, conversation_id: iaConvId },
           { user_id: uid, role:'assistant', content:result.text, conversation_id: iaConvId }
