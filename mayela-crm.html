@@ -252,6 +252,15 @@
   .change-code-step{ display:flex; flex-direction:column; gap:8px; }
   .tt-step{ display:flex; flex-direction:column; gap:6px; padding:2px 0; }
   .tt-uri{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; word-break:break-all; }
+/* Repli natif <details> : sert a demarrer l'ecran de connexion sur un
+   formulaire, pas sur un tutoriel. Le detail reste accessible mais range. */
+.fb-guide{ margin:8px 0; border:1px solid var(--line); border-radius:10px; background:var(--panel-2); overflow:hidden; }
+.fb-guide > summary{ cursor:pointer; user-select:none; padding:11px 14px; font-size:12px; color:var(--sage); list-style:none; display:flex; align-items:center; gap:8px; }
+.fb-guide > summary::-webkit-details-marker{ display:none; }
+.fb-guide > summary::before{ content:'▸'; color:var(--gold); font-size:10px; transition:transform .18s ease; }
+.fb-guide[open] > summary::before{ transform:rotate(90deg); }
+.fb-guide[open] > summary{ color:var(--text); border-bottom:1px solid var(--line); }
+.fb-guide > .info-block{ padding:12px 14px 14px; }
   .toast{ position:absolute; bottom:100px; left:16px; right:16px; background:var(--panel-2); border:1px solid var(--gold); border-radius:12px; padding:10px 14px; font-size:12px; z-index:99; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.4); }
 
   /* ---- Améliorations responsive ---- */
@@ -656,45 +665,23 @@
           <button class="btn-ghost" data-nav="leads">📥 Leads TikTok (Instant Forms)</button>
         </div>
         <div id="tiktokSetupPanel" class="hidden" style="margin:0 20px;">
-          <div class="section-title">Configurer TikTok (Login Kit)</div>
-          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+          <div class="section-title">Connexion TikTok</div>
+
+          <!-- Meme decoupage que Facebook : formulaire et action d'abord,
+               tutoriels ranges dans des replis. -->
+          <div class="info-block" style="display:flex; flex-direction:column; gap:10px;">
             <div class="meta" style="color:var(--sage); line-height:1.5;">
-              Pour publier vos offres sur TikTok, créez d'abord une app sur
-              <b style="color:var(--text);">developers.tiktok.com</b>, puis remplissez
-              les 3 étapes ci-dessous dans l'ordre.
+              Renseignez les identifiants de votre app TikTok, puis cliquez sur
+              <b style="color:var(--text);">Se connecter</b>.
             </div>
 
-            <div class="tt-step">
-              <div class="meta"><b>1 · Redirect URI (obligatoire)</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Sur <b>developers.tiktok.com</b> → icône de profil (en haut à droite) →
-                <b>Manage apps</b> → ouvrez votre app.<br>
-                <b>Important :</b> dans <b>App details → Platforms</b>, cochez d'abord
-                <b>Web</b> (sinon aucun champ Redirect URI n'apparaît dans Login Kit),
-                puis <b>Products → Add products → Login Kit</b>.<br>
-                Dans la section <b>Web</b> de Login Kit, collez cette URI exacte dans
-                <b>Redirect URI</b> → <b>+ Add a URI</b> → <b>Save</b> :
-              </div>
-              <div class="tt-uri" id="ttRedirectUriView"></div>
-              <button class="btn-ghost" id="ttCopyUriBtn">📋 Copier le Redirect URI</button>
-              <div class="err-msg" id="ttCopyUriErr"></div>
-            </div>
-
-            <div class="tt-step">
-              <div class="meta"><b>2 · Client Key</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Dans la page de votre app → section <b>App details → Credentials</b>,
-                copiez le champ <b>Client key</b> :
-              </div>
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta" style="margin-bottom:5px;"><b>Client Key</b></div>
               <input class="field" id="ttClientKey" placeholder="Client key (ex. awdio...)" autocomplete="off">
             </div>
 
-            <div class="tt-step">
-              <div class="meta"><b>3 · Client Secret</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Toujours dans <b>App details → Credentials</b>, copiez le champ
-                <b>Client secret</b> :
-              </div>
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta" style="margin-bottom:5px;"><b>Client Secret</b></div>
               <input class="field" id="ttClientSecret" placeholder="Client secret" type="password" autocomplete="off">
             </div>
 
@@ -702,8 +689,37 @@
             <button class="btn-ghost" id="ttCancelBtn">Annuler</button>
             <div class="err-msg" id="ttSetupErr"></div>
 
-            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
-              <div class="meta"><b>4 · Analyse publicitaire (TikTok Marketing API)</b> — optionnel</div>
+            <div class="meta" style="color:var(--sage); line-height:1.5; border-top:1px solid var(--line); padding-top:10px;">
+              Où les trouver : developers.tiktok.com → votre app →
+              <b style="color:var(--text);">App details → Credentials</b>.
+              Avant la première connexion, configurez le Redirect URI dans TikTok
+              (voir « Préparation dans TikTok » ci-dessous).
+            </div>
+          </div>
+
+          <details class="fb-guide">
+            <summary>Préparation dans TikTok (une fois pour toutes)</summary>
+            <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+              <div class="tt-step" style="border:none; padding:0; margin:0;">
+                <div class="meta"><b>Redirect URI (obligatoire)</b></div>
+                <div class="meta" style="color:var(--sage); line-height:1.45;">
+                  Sur <b>developers.tiktok.com</b> → icône de profil (en haut à droite) →
+                  <b>Manage apps</b> → ouvrez votre app.<br>
+                  <b>Important :</b> dans <b>App details → Platforms</b>, cochez d'abord
+                  <b>Web</b> (sinon aucun champ Redirect URI n'apparaît dans Login Kit),
+                  puis <b>Products → Add products → Login Kit</b>.<br>
+                  Dans la section <b>Web</b> de Login Kit, collez cette URI exacte dans
+                  <b>Redirect URI</b> → <b>+ Add a URI</b> → <b>Save</b> :
+                </div>
+                <div class="tt-uri" id="ttRedirectUriView"></div>
+                <button class="btn-ghost" id="ttCopyUriBtn">📋 Copier le Redirect URI</button>
+                <div class="err-msg" id="ttCopyUriErr"></div>
+              </div>
+            </div>
+          </details>
+          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta"><b>Analyse publicitaire (TikTok Marketing API)</b> — optionnel</div>
               <div class="meta" style="color:var(--sage); line-height:1.45;">
                 Synchronise automatiquement vos campagnes publicitaires (dépense, impressions,
                 clics) dans l'écran <b>Campagnes</b>. Votre app doit avoir le produit
@@ -712,49 +728,33 @@
                 30 derniers jours seront relevées.
               </div>
               <div class="meta" id="ttMarketingStatus" style="color:var(--sage); min-height:1.2em;"></div>
-              <button class="btn-ghost" id="ttMarketingConnectBtn" style="margin-right:6px;">📊 Se connecter à l'analyse publicitaire</button>
-              <button class="btn-ghost" id="ttMarketingSyncBtn">🔄 Relever les campagnes (30 j)</button>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn-ghost" id="ttMarketingConnectBtn">📊 Se connecter à l'analyse publicitaire</button>
+                <button class="btn-ghost" id="ttMarketingSyncBtn">🔄 Relever les campagnes (30 j)</button>
+              </div>
               <div class="err-msg" id="ttMarketingErr"></div>
             </div>
           </div>
         </div>
         <div id="facebookSetupPanel" class="hidden" style="margin:0 20px;">
-          <div class="section-title">Configurer Facebook (Meta)</div>
-          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+          <div class="section-title">Connexion Facebook</div>
+
+          <!-- FORMULAIRE : les deux champs a remplir, puis l'action. Tout le reste
+               est du tutoriel et se trouve en dessous, replie. -->
+          <div class="info-block" style="display:flex; flex-direction:column; gap:10px;">
             <div class="meta" style="color:var(--sage); line-height:1.5;">
-              Pour publier vos offres sur votre Page Facebook et afficher vos
-              statistiques d'audience, créez d'abord une app sur
-              <b style="color:var(--text);">developers.facebook.com</b> (voir le guide
-              <b style="color:var(--text);">docs/FACEBOOK_META_SETUP_CLIENT.md</b>),
-              puis remplissez les 3 étapes ci-dessous dans l'ordre.
+              Renseignez les identifiants de votre app Meta, puis cliquez sur
+              <b style="color:var(--text);">Se connecter</b>. Vous Authorisez votre Page
+              dans la fenêtre Facebook qui s'ouvre.
             </div>
 
-            <div class="tt-step">
-              <div class="meta"><b>1 · Redirect URI (obligatoire)</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Dans votre app Meta → <b>Facebook Login → Configuration</b>, collez cette
-                URI exacte dans <b>Valid OAuth Redirect URIs</b> → <b>Save changes</b> :
-              </div>
-              <div class="tt-uri" id="fbRedirectUriView"></div>
-              <button class="btn-ghost" id="fbCopyUriBtn">📋 Copier le Redirect URI</button>
-              <div class="err-msg" id="fbCopyUriErr"></div>
-            </div>
-
-            <div class="tt-step">
-              <div class="meta"><b>2 · App ID</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Dans la page de votre app → <b>Settings → Basic</b>, copiez le champ
-                <b>App ID</b> :
-              </div>
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta" style="margin-bottom:5px;"><b>App ID</b></div>
               <input class="field" id="fbClientId" placeholder="App ID (ex. 1234567890)" autocomplete="off">
             </div>
 
-            <div class="tt-step">
-              <div class="meta"><b>3 · App Secret</b></div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Toujours dans <b>Settings → Basic</b>, cliquez sur <b>Show</b> puis copiez
-                le champ <b>App Secret</b> :
-              </div>
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta" style="margin-bottom:5px;"><b>App Secret</b> — cliquez sur « Show » pour l'afficher</div>
               <input class="field" id="fbClientSecret" placeholder="App Secret" type="password" autocomplete="off">
             </div>
 
@@ -762,28 +762,37 @@
             <button class="btn-ghost" id="fbCancelBtn">Annuler</button>
             <div class="err-msg" id="fbSetupErr"></div>
 
-            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
-              <div class="meta"><b>4 · Permissions de l'app</b> — publier + statistiques + publicité</div>
-              <div class="meta" style="color:var(--sage); line-height:1.45;">
-                Dans votre app Meta → <b>App Review → Permissions and Features</b>,
-                demandez l'accès aux permissions
-                <b>pages_show_list</b>, <b>pages_manage_posts</b>,
-                <b>pages_read_engagement</b>, <b>read_insights</b>,
-                <b>ads_management</b>, <b>ads_read</b> et <b>business_management</b>
-                (ou, avant revue, ajoutez votre compte en <b>Roles → Admin/Tester</b>).
-                Voir le guide client ci-dessus.
-                <b>Important :</b> si vous avez déjà autorisé l'app avant cet ajout,
-                cliquez à nouveau sur <b>Se connecter à Facebook</b> pour ré-autoriser
-                avec les nouvelles permissions.
+            <div class="meta" style="color:var(--sage); line-height:1.5; border-top:1px solid var(--line); padding-top:10px;">
+              Où les trouver : developers.facebook.com → votre app →
+              <b style="color:var(--text);">Settings → Basic</b>.
+              Avant la première connexion, collez aussi le Redirect URI dans Meta
+              (voir « Préparation dans Meta » ci-dessous).
+            </div>
+          </div>
+
+          <details class="fb-guide">
+            <summary>Préparation dans Meta (une fois pour toutes)</summary>
+            <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+              <div class="tt-step" style="border:none; padding:0; margin:0;">
+                <div class="meta"><b>Redirect URI (obligatoire)</b></div>
+                <div class="meta" style="color:var(--sage); line-height:1.45;">
+                  Dans votre app Meta → <b>Facebook Login → Configuration</b>, collez cette
+                  URI exacte dans <b>Valid OAuth Redirect URIs</b> → <b>Save changes</b> :
+                </div>
+                <div class="tt-uri" id="fbRedirectUriView"></div>
+                <button class="btn-ghost" id="fbCopyUriBtn">📋 Copier le Redirect URI</button>
+                <div class="err-msg" id="fbCopyUriErr"></div>
               </div>
             </div>
+          </details>
 
-            <div class="tt-step" style="border-top:1px solid var(--line); padding-top:12px; margin-top:6px;">
-              <div class="meta"><b>5 · Analyse publicitaire (Meta Ads Manager)</b></div>
+          <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+            <div class="tt-step" style="border:none; padding:0; margin:0;">
+              <div class="meta"><b>Analyse publicitaire (Meta Ads Manager)</b></div>
               <div class="meta" style="color:var(--sage); line-height:1.45;">
                 Relit vos <b>campagnes</b> et <b>ensembles de pubs</b> (dépenses,
-                impressions, clics, portée — 30 derniers jours) et permet de mettre en
-                pause ou d'ajuster le budget depuis l'écran
+                impressions, clics, portée — 30 derniers jours) et permet de mettre
+                en pause ou d'ajuster le budget depuis l'écran
                 <b style="color:var(--text);">🛠️ Gérer mes campagnes Meta Ads</b>.
                 Connectez-en au moins un compte publicitaire (Ads Manager) ci-dessous.
               </div>
@@ -795,6 +804,27 @@
               <div class="err-msg" id="fbMarketingErr"></div>
             </div>
           </div>
+
+          <details class="fb-guide">
+            <summary>Permissions à demander à Meta</summary>
+            <div class="info-block" style="display:flex; flex-direction:column; gap:9px;">
+              <div class="tt-step" style="border:none; padding:0; margin:0;">
+                <div class="meta"><b>Publier + statistiques + publicité</b></div>
+                <div class="meta" style="color:var(--sage); line-height:1.45;">
+                  Dans votre app Meta → <b>App Review → Permissions and Features</b>,
+                  demandez l'accès aux permissions
+                  <b>pages_show_list</b>, <b>pages_manage_posts</b>,
+                  <b>pages_read_engagement</b>, <b>read_insights</b>,
+                  <b>ads_management</b>, <b>ads_read</b> et <b>business_management</b>
+                  (ou, avant revue, ajoutez votre compte en <b>Roles → Admin/Tester</b>).
+                  Voir le guide client <b>docs/FACEBOOK_META_SETUP_CLIENT.md</b>.
+                  <b>Important :</b> si vous avez déjà autorisé l'app avant cet ajout,
+                  cliquez à nouveau sur <b>Se connecter à Facebook</b> pour ré-autoriser
+                  avec les nouvelles permissions.
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
         <div style="margin:8px 20px 0;color:var(--sage);font-size:10.5px;line-height:1.5;">🔒 Connexions partagées par tout votre espace&nbsp;: une seule personne les configure, toute l'équipe en profite.</div>
         <div class="section-title">Publier du contenu</div>
@@ -3937,7 +3967,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-cb1d03dea8';
+const APP_VERSION = 'mayela-crm-35477dd651';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
