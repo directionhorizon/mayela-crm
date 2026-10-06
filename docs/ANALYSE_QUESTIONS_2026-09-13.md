@@ -1,154 +1,194 @@
-# MAYELA CRM — Réponses aux 7 questions d'analyse
-*Document d'analyse (13 septembre 2026) — aucune modification d'application n'accompagne ce document.*
+# MAYELA CRM — Réponses aux 8 questions d'analyse
 
-Références : `mayela-crm.html` (les numéros de ligne désignent ce fichier), `supabase/functions/*` (Edge Functions). Numérotation re-numérotée proprement (la question « Conseiller » était numérotée 3 comme la barre de menu) :
+> **Questions posées le 13 septembre 2026. Réponses vérifiées et mises à jour le 29 septembre 2026.**
+> Les références pointent vers des **noms de fonctions**, pas vers des numéros de ligne : le fichier principal dépasse 5 800 lignes et les positions changent à chaque évolution.
 
-| N° | Question |
-|----|----------|
-| 1 | Page de connexion au démarrage |
-| 2 | Logique de classification des segments |
-| 3 | Barre de menu au « deuxième allumage » |
-| 4 | Conseiller : défilement bloqué |
-| 5 | « Publier une offre » vs « Nouvelle campagne » |
-| 6 | Place de l'analyse d'audience |
-| 7 | Place de l'impact opérationnel |
-| 8 | API / intégrations à implémenter |
+## En clair
+
+Ce document garde les 8 questions qui ont été posées sur l'application, et y répond **en l'état du 29 septembre 2026**. Plusieurs réponses ont changé depuis : c'est signalé explicitement dans chaque section.
+
+| N° | Question | État de la réponse |
+|----|----------|--------------------|
+| 1 | Page de connexion au démarrage |inchangée |
+| 2 | Logique de classification des segments | inchangée |
+| 3 | Barre de menu au « deuxième allumage » | inchangée |
+| 4 | Conseiller : défilement bloqué | inchangée |
+| 5 | « Publier une offre » vs « Nouvelle campagne » | clarifiée dans l'interface |
+| 6 | Place de l'analyse d'audience | tranchée : reste dans Réseaux |
+| 7 | Place de l'impact opérationnel | **appliquée** : déplacé dans Rapports |
+| 8 | API / intégrations à implémenter | **fortement avancé** : 2 des 3 principales sont faites |
 
 ---
 
-## 1 — Pourquoi la page de connexion s'affiche toujours au début puis disparaît seule ?
+## 1 — Pourquoi la page de connexion s'affiche au début, puis disparaît seule ?
 
-**CORRIGÉ le 13/09/2026 — un splash logo est maintenant affiché par défaut.**
+**En clair** : c'est un écran d'accueil (splash) qui cède la place. Ce n'est pas un bug.
 
-Ce qui est en place désormais :
+**Détail technique.** L'écran `#splash` — le logo centré — porte la classe `active` par défaut dans le balisage, tandis que l'écran de connexion `#authEmail` ne la porte pas. Le conteneur principal `#appShell`, qui contient le menu et tous les écrans, reste masqué.
 
-- Dans le HTML, l'écran `#splash` (logo centré) porte **la classe `active` par défaut** (l.339) ; `#authEmail` (connexion) ne la porte plus (l.346). Le shell de l'app `#appShell` — qui contient tout le menu et les écrans — reste masqué par `hidden` (l.421).
-- Au chargement, `boot()` (l.1150) appelle `sb.auth.getSession()` : si une session existe, il enchaîne `afterLogin()` (l.1258) puis `afterPinOk()` (l.1348) qui démasque `#appShell` et affiche le tableau de bord.
-- L'utilisateur connecté voit donc **splash (logo) → app**, sans flash de login. La page de connexion n'apparaît que si aucune session n'est trouvée (`showScreen('authEmail')`).
+`boot()` appelle `sb.auth.getSession()` :
+- **session existante** → `afterLogin()`, puis `afterPinOk()` démasquent `#appShell` et affichent le tableau de bord ;
+- **aucune session** → `showScreen('authEmail')` affiche la page de connexion.
+
+Un utilisateur déjà connecté voit donc **logo → application**, sans apparition fugace du formulaire de connexion.
+
+---
 
 ## 2 — Logique de classification des segments (Centre d'action)
 
-La classification vit dans `renderCentreAction()` (l.2564+). Elle est **recalculée à chaque ouverture de l'accueil** à partir de `clientsCache`, des achats (cache partagé) et des produits — elle n'est **pas persistée**.
+**En clair** : les segments sont des **cartes d'information**, recalculées à chaque ouverture de l'accueil. Rien n'est déclenché automatiquement à partir d'eux — c'est un choix délibéré : c'est une aide à la décision, pas une machine à envoyer des messages.
+
+**Détail technique.** La classification vit dans `renderCentreAction()`. Elle est recalculée à partir du cache des clients, des achats et des produits. **Elle n'est pas persistée** en base.
 
 Les seuils sont **fixes** : 30 jours et 45 jours.
 
-| Segment | Règle exacte | Source |
-|---|---|---|
-| 🆕 **Nouveaux** | Client créé il y a **≤ 30 j** (`clients.created_at ≥ date−30 j`) | l.2608 |
-| 🔁 **Réguliers** | **Au moins 2 achats** ET **dernier achat ≤ 45 j** | l.2611 |
-| ⏳ **Inactifs** | A acheté mais **dernier achat > 45 j**, OU n'a **jamais acheté** et n'est pas « nouveau » (créé il y a > 30 j) | l.2612 |
-| 🏷️ **Intérêt catégorie** | Catégorie de produit la plus achetée, classée par **nombre d'acheteurs distincts** | l.2613, 2620-21 |
+| Segment | Règle exacte |
+|---|---|
+| 🆕 **Nouveaux** | client créé il y a 30 jours ou moins |
+| 🔁 **Réguliers** | au moins 2 achats **et** dernier achat il y a 45 jours ou moins |
+| ⏳ **Inactifs** | a acheté mais dernier achat > 45 jours, **ou** n'a jamais acheté et n'est pas nouveau |
+| 🏷️ **Intérêt catégorie** | catégorie de produit la plus achetée, classée par nombre d'acheteurs distincts |
 
-Détails complémentaires :
-- **Consentement** : compté uniquement pour le segment « Inactifs » (`x consentent / y`) ; le lien de relance WhatsApp n'est généré que si `consentement !== false` (l.2615, 2619).
-- **Relances prioritaires** : les inactifs triés de la plus ancienne activité à la plus récente, **top 6**, avec lien `wa.me` pré-rempli (l.2623-2640).
-- **« À traiter »** (liste du haut) : interactions dont `statut_traitement = 'en_attente'` (messages/clics/demandes prix non traités), triées de la plus ancienne à la plus récente (l.2565-2587).
-
-**Ligne de conduite actuelle** : la classification est purement **descriptive** (cartes d'information). Rien n'est automatisé à partir d'elle (pas de création de tâche de relance, pas de rappel). C'est volontaire : c'est une brique d'aide à la décision.
+Précisions :
+- **Consentement** : compté uniquement pour le segment « Inactifs ». Le lien de relance WhatsApp n'est généré que si le consentement n'est pas explicitement refusé.
+- **Relances prioritaires** : les inactifs, de la plus ancienne à la plus récente activité, **limités à 6**, avec lien `wa.me` pré-rempli.
+- **« À traiter »** : interactions dont `statut_traitement` vaut `en_attente` (messages, clics, demandes de prix non traités), de la plus ancienne à la plus récente.
 
 ---
 
-## 3 — Pourquoi la barre de menu ne s'affiche qu'au « deuxième allumage » ?
+## 3 — Pourquoi la barre de menu ne s'affiche-t qu'au « deuxième allumage » ?
 
-**CORRIGÉ avec la question 1.** Le splash `#splash` (l.339) est affiché par défaut, puis la bascule se fait vers `#authEmail` (aucune session) **ou** `#appShell` (session présente). La barre de menu (`nav-btn`, l.1019-1024) n'est démasquée que lorsque `#appShell` sort de `hidden` — directement après le splash, sans flash de connexion.
+**En clair** : c'est le comportement attendu, et il est voulu. Le premier allumage sert à vous connecter ; les suivants vont directement à l'application.
 
-**Durcissement (13/09/2026) :** depuis `boot()` (l.1150), une session **locale** présente démasque immédiatement `#appShell` (donc le menu) **avant** toute requête réseau (`getUser`, `profiles`). Le menu ne dépend plus du flash de chargement : le shell s'affiche, puis les données se chargent en arrière-plan via `afterLogin()`. Cas protégé : compte sans espace → `afterPinOk()` remasque le shell et dirige vers l'onboarding ; session locale invalide → retour écran de connexion.
+**Détail technique.** La barre de menu n'est démasquée qu'au moment où `#appShell` sort de l'état `hidden`, c'est-à-dire après le splash.
+
+`boot()` démasque le shell dès qu'une **session locale** est présente, **avant** toute requête réseau (`getUser`, `profiles`). Le menu ne dépend donc plus du temps de chargement : le shell s'affiche, puis les données se chargent en arrière-plan via `afterLogin()`.
+
+Deux cas sont protégés :
+- **compte sans espace** → `afterPinOk()` remasque le shell et dirige vers l'onboarding ;
+- **session locale invalide** → retour à l'écran de connexion.
 
 Concrètement :
-- **1er allumage après installation** : aucune session locale → après le splash, l'app **reste sur la page de connexion**. Dès que vous vous connectez, le shell s'affiche et le menu apparaît.
-- **Allumages suivants** : session restaurée → **splash → shell directement**, le menu est disponible tout de suite.
+- **1er allumage après installation** : aucune session → splash, puis page de connexion. Le menu apparaît dès que vous êtes connecté.
+- **allumages suivants** : session restaurée → splash, puis application, menu disponible immédiatement.
 
-Le code revendiquait déjà l'intention — « Accès direct à l'app : le verrou PIN est volontairement ignoré à l'ouverture pour entrer instantanément. La barre de navigation en bas est alors immédiatement disponible » (l.1305-1307). L'expérience réelle (splash neutre puis app) correspond maintenant à cette intention.
-
----
-
-## 4 — Pourquoi la discussion du Conseiller défile mais la barre reste bloquée ?
-
-**CORRIGÉ le 13/09/2026.** La molette custom (`#sbWrap`/`#sbThumb`) suivait `document.querySelector('.screen.active')` — sur le Conseiller (`#ia`), le défilement réel se produit dans un **sous-conteneur** (`#iaChatLog`, `#iaEmpty`, ou `#iaHistoryList`), pas dans l'écran : le pouce restait donc « figé » à zéro pendant que le contenu bougeait.
-
-Correctif appliqué (l.1095-1135) : nouvelle résolution `sbScroller()` qui renvoie l'élément qui défile réellement
-- écran normal → `.screen.active` (inchangé) ;
-- écran Conseiller → `#iaChatLog` si une conversation est affichée et défilable, sinon `#iaEmpty` (accueil), sinon `#iaHistoryList` quand le panneau historique est ouvert.
-
-`updateSb()`, le glisser (pointer) et les `ResizeObserver` utilisent désormais `sbScroller()` au lieu de `.screen.active` — la molette reflète et pilote le bon conteneur. Aucun changement CSS : un seul défileur reste présent par vue (l'écran, ou le sous-conteneur du Conseiller).
+Le code revendique cette intention : « Accès direct à l'app : le verrou PIN est volontairement ignoré à l'ouverture pour entrer instantanément. La barre de navigation en bas est alors immédiatement disponible. »
 
 ---
 
-## 5 — « Publier une offre » vs « Nouvelle campagne » : commentaire et recommandation
+## 4 — Pourquoi la discussion du Conseiller défile, mais la barre reste bloquée ?
 
-Ce sont **deux objets différents** qui semblent faire double emploi parce qu'ils vivent tous les deux dans l'écran Réseaux.
+**En clair** : c'était un bug de ciblage, corrigé. La zone défilante à piloter n'était pas toujours la même selon l'écran.
 
-| | **Publier une offre** (l.665-687) | **NOUVELLE CAMPAGNE** (sous-page, l.714+) |
+**Détail technique.** La barre de défilement custom (`#sbWrap` / `#sbThumb`) suivait `.screen.active`. Or, sur l'écran Conseiller, le défilement réel se produit dans un **sous-conteneur** — `#iaChatLog`, `#iaEmpty` ou `#iaHistoryList` — et non dans l'écran. Le pouce restait donc figé pendant que le contenu bougeait.
+
+Le correctif introduit `sbScroller()`, qui renvoie l'élément qui défile réellement :
+- écran normal → `.screen.active`, comportement inchangé ;
+- écran Conseiller → `#iaChatLog` si une conversation est affichée et défilable, sinon `#iaEmpty`, sinon `#iaHistoryList` si le panneau historique est ouvert.
+
+`updateSb()`, le glisser au pointeur et les `ResizeObserver` utilisent désormais `sbScroller()`. Aucun changement CSS : un seul conteneur défilant reste présent par vue.
+
+---
+
+## 5 — « Publier une offre » vs « Nouvelle campagne » : que faire ?
+
+**En clair** : ce sont deux objets différents qui semblaient faire double emploi parce qu'ils vivaient au même endroit. L'interface a été clarifiée, **et les deux sont conservés**.
+
+| | **Publier du contenu** | **Campagnes publicitaires** |
 |---|---|---|
-| Nature | **Création de contenu** à publier | **Enregistrement de la performance pub** |
-| Ce qu'on saisit | Texte d'offre + produit + événement TikTok optionnel + image | Nom, plateforme, type, dates, budget, **dépense réelle, portée, impressions, clics** |
-| Ce que ça fait | Envoie le post via `social-publish` (si TikTok connecté), sinon fallback manuel (copier texte / télécharger image, l.680-684) | Alimente les rapports Performance, Entonnoir, **CA attribué et ROAS** |
-| Nature de la donnée | `social_posts` (publié) | `campaigns` (dépense) |
+| Nature | création de contenu | enregistrement de la performance publicitaire |
+| Ce qu'on saisit | texte, produit, événement TikTok optionnel, image | nom, plateforme, type, dates, budget, dépense, portée, impressions, clics |
+| Ce que ça fait | envoie le post, ou prépare le post à copier manuellement | alimente Performance, Entonnoir, CA attribué et ROAS |
+| Table | `social_posts` | `campaigns` |
 
-- « Publier une offre » = **communication organique** : poster une promo, suivre l'événement sur le pixel TikTok.
-- « Nouvelle campagne » = **pilotage publicitaire** : ce qu'on lit dans Meta/TikTok Ads Manager, pour mesurer coût/prospect et rentabilité.
+- **Publier du contenu** = communication organique : poster une promotion, mesurer l'événement sur le pixel.
+- **Campagnes publicitaires** = pilotage publicitaire : ce qu'on lit dans Meta ou TikTok Ads Manager, pour mesurer coût, prospect et rentabilité.
 
-**Décision appliquée le 13/09/2026 : garder les deux, UI clarifiée.**
+**Décision appliquée le 13/09/2026** : les deux sont conservés, l'interface est clarifiée.
+- Le bloc s'appelle **« Publier du contenu »**, avec un sous-titre explicite.
+- Les campagnes sont accessibles par un bouton dédié **« 📊 Campagnes publicitaires — saisir & mesurer »**, qui ouvre une sous-page titrée « Enregistrer une campagne », avec un rappel « ≠ Publier du contenu ».
+- **Non fait, pour plus tard** : rattacher une publication à une campagne, pour mesurer l'effet « contenu → vente ».
 
-- « Publier du contenu » (Réseaux) = **communication organique** : renommé depuis « Publier une offre » avec une sous-titre explicite (« Publie automatiquement sur TikTok ou prépare le post à copier sur vos autres réseaux »). La publication reste le pont CRM → réseaux (`social_posts`).
-- « Campagnes publicitaires » = la **sous-page** `#campaigns` (Réseaux) : entrée simple par bouton « 📊 Campagnes publicitaires — saisir & mesurer » — pas de bloc dédié sur l'écran principal ; la clarification est portée par la sous-page elle-même. On y saisit ce qu'on lit dans Ads Manager, ce qui alimente Performance / Entonnoir / CA attribué / ROAS (`campaigns`).
-- Sous-page `#campaigns` : titre « Enregistrer une campagne » + rappel doré « ≠ Publier du contenu » pour lever toute ambiguïté.
-- Non fait (optionnel, plus tard) : rattacher un post publié à une campagne pour les rapports « contenu → vente ».
-
----
-
-## 6 — Analyse d'audience : Réseaux ou Rapports ?
-
-**Aujourd'hui : Réseaux** (l.694-699). Le bouton « Analyser mon audience » appelle l'Edge Function `social-insights`, qui interroge **en direct** Meta Graph API (abonnés, portée/impressions 28 j, villes, âge+genre) et TikTok (compteur de base). **Prérequis : un compte connecté.**
-
-Analyse :
-- C'est une **télémesure du compte connecté**, pas un KPI métier de l'espace. Elle n'a de sens que là où l'on **gère les connexions** et voit leur état (sinon, elle affiche « Connectez votre Page… »).
-- Les rapports, eux, sont pensés « période + dimension + exportable » (synthèse textuelle + tableaux + Google Sheets, l.3781+). Or l'audience live est **figée sur des fenêtres API** (28 j Meta) et ne se croise pas avec la période choisie → elle s'exporte mal.
-
-**Recommandation : laisser en Réseaux.** La seule chose à prévoir dans Rapports est un bloc **« Portée / Impressions par campagne »** — mais issu de la saisie campagnes (ou de la future auto-sync V2), c'est-à-dire une donnée pilotable par période et exportable. C'est lui, pas l'audience API brute, qui a sa place dans Rapports.
+**Depuis le 13/09** : la saisie manuelle n'est plus la seule voie. Les campagnes sont désormais **synchronisées automatiquement** depuis Meta Ads et TikTok Marketing API. Voir `CLASSE MARKETING/suivi-publicite-meta-tiktok.md`.
 
 ---
 
-## 7 — Impact opérationnel : Réseaux ou Rapports ?
+## 6 — Analyse d'audience : dans Réseaux ou dans Rapports ?
 
-**Aujourd'hui : Réseaux** (l.704-707). `loadOperationalImpact()` (l.1589+) calcule des **KPIs internes** dérivés du CRM : offres publiées (comptes `social_posts`), échanges enregistrés (interactions), clients suivis, achats 30 j, répartition par canal. Le code le dit lui-même : il « remplace les statistiques réseaux non disponibles ».
+**En clair** : la décision a été de la **laisser dans Réseaux**.
 
-Analyse :
-- C'est **par nature un rapport**, pas une fonctionnalité de réseau : il n'a **aucun prérequis de connexion**, se calcule sur vos propres données et se croise naturellement avec les autres catégories (achats, interactions, clients).
-- Dans Réseaux, il est « caché » sous l'angle comptes/publier ; il exceptionne la logique de l'écran (qui est : comptes, santé, publications).
+**Détail technique.** Le bouton « Analyser mon audience » appelle l'Edge Function `social-insights`, qui interroge en direct la Meta Graph API (abonnés, portée et impressions sur 28 jours, villes, âge et genre) ainsi que TikTok (compteurs de base). Un compte connecté est obligatoire.
 
-**Recommandation : le déplacer dans Rapports** comme nouvelle catégorie « Impact opérationnel » (avec le sélecteur de période et l'export, comme les autres).
+Raisons de ce choix :
+- c'est une **télémesure du compte connecté**, pas un indicateur métier de l'espace ; elle n'a de sens que là où sont gérées les connexions et où l'on voit leur état ;
+- les rapports sont conçus « période + dimension + exportable », alors que l'audience en direct est **figée sur des fenêtres imposées par les API** (28 jours côté Meta) et ne se croise pas avec la période choisie. Elle s'exporte mal.
 
-**Décision appliquée le 13/09/2026** : catégorie `impact` ajoutée aux Rapports (`<option>` à partir de l.856 ; `reportRows()` l.3971+, `reportSummaryText()` l.3897+, libellé `REPORT_TYPE_LABEL` l.4227). La section « Impact opérationnel (interne) » est retirée de Réseaux ; la fonctions `loadOperationalImpact()` est supprimée. Les KPIs (offres publiées / en échec, échanges enregistrés, achats, clients suivis, répartition par canal) sont désormais calculés sur la **période choisie** et s'exportent en Google Sheets / PDF comme les autres catégories. `docs/CLASSE MARKETING/impact-operationnel.md` mis à jour.
-
-**Synthèse des deux questions** : *analyse d'audience* → reste en Réseaux (donnée externe liée aux comptes) ; *impact opérationnel* → part en Rapports (donnée interne, format rapport).
+**Ce qu'il faudrait prévoir dans Rapports**, ce n'est pas l'audience brute, mais un bloc « Portée / Impressions par campagne », issu de la synchronisation des campagnes : une donnée pilotable par période et exportable. C'est lui qui aurait sa place dans les rapports, pas les chiffres bruts des plateformes.
 
 ---
 
-## 8 — API / intégrations à implémenter par rapport au calibre de l'app
+## 7 — Impact opérationnel : dans Réseaux ou dans Rapports ?
 
-**Déjà en place aujourd'hui :**
-- **Auth** : e-mail + code à 6 chiffres (OTP) et Google OAuth (Supabase Auth) ; multi-espaces avec RLS.
-- **Base** : Supabase PostgreSQL + RLS multi-org, stockage d'images.
-- **Export** : Google Sheets (Edge Function `google-sheets`).
-- **Réseaux** : TikTok (Login Kit → publication `social-publish` + événements serveur `tiktok-events`/pixel Purchase/Lead…), Facebook Page (insights `social-insights`), contrôle d'état `social-health`.
-- **IA** : Conseiller conversationnel sur les données CRM (Edge Function `ia-conseiller`, moteur **Google Gemini**).
-- **PWA** : service worker (offline + mise à jour).
+**En clair** : la décision a été **appliquée** — il est passé dans les Rapports.
 
-**Recommandation (par ordre de ROI pour un CRM petite pharmacie/parapharmacie, mobile, plan Free) :**
+**Détail technique.** `loadOperationalImpact()` calculait des indicateurs internes au CRM : offres publiées, échanges enregistrés, clients suivis, achats sur 30 jours, répartition par canal. Le code précisait lui-même qu'il « remplace les statistiques réseaux non disponibles ».
 
-| # | Intégration | Pourquoi | Effort | Priorité |
-|---|------------|----------|--------|----------|
-| 1 | **WhatsApp Business (Cloud API)** | Le cœur de votre centre d'action est la **relance WhatsApp** (aujourd'hui des liens `wa.me` sans suivi). Avec l'API : templates de relance certifiés, statut de livraison, réponses centralisées dans la fiche client. | Moyen (Meta Business + modération templates) | 🔥 Haute |
-| 2 | **Meta Pages / Marketing API — auto-sync campagnes (V2)** | Supprime la saisie manuelle dépense/portée/impressions/clics et alimente Performance / Entonnoir / ROAS automatiquement. Déjà prévue comme V2 dans le plan. | Moyen | 🔥 Haute |
-| 3 | **TikTok Marketing API (`report/integrated/get`)** | Comble le manque de remontée réelle des métriques TikTok (le point faible actuel, noté dans le plan). | Moyen | Haute |
-| 4 | **Notifications push PWA (Notification API + VAPID)** | Relances dues, demandes en attente, tâches : rappelle l'équipe sans ouvrir l'app. Léger et gratuit. | Faible | Haute |
-| 5 | **Google Sheets / Drive bidirectionnel** | Import de clients en masse (avec déduplication) pour faciliter la migration ; aujourd'hui seul l'export existe. | Faible-Moyen | Moyenne |
-| 6 | **Mobile Money (MTN MoMo / Airtel MoMo)** | Clôturer la boucle « créance → payée » au moment de l'encaissement. Forte valeur si pertinente pour votre marché, mais lourde (approbation commerçant + intégration paiement). | Élevé | À planifier à part |
-| 7 | **SMS (envoi transactionnel/relance)** | Uniquement si le canal WhatsApp est bloquant (clientèle sans smartphone). | Faible | Basse (optionnel) |
+Le raisonnement : c'est **par nature un rapport**, pas une fonctionnalité de réseau. Il n'a aucun prérequis de connexion, se calcule sur vos propres données, et se croise naturellement avec les autres catégories.
 
-**À NE PAS faire maintenant** (au-delà du calibre) : CRM tiers, marketing automation lourd, tableaux analytics temps réel, à moins de croissance nette. Le trio qui maximise le rapport valeur/effort : **WhatsApp Cloud API + push PWA + auto-sync Meta Ads (V2)**.
+**Décision appliquée le 13/09/2026** : la catégorie `impact` a été ajoutée aux Rapports (option de sélection, lignes de tableau, synthèse textuelle, libellé). La section « Impact opérationnel » a été retirée de l'écran Réseaux, et `loadOperationalImpact()` supprimée. Les indicateurs sont désormais calculés **sur la période choisie** et s'exportent en Google Sheets et PDF comme les autres catégories.
+
+**Synthèse des questions 6 et 7** : l'analyse d'audience reste dans Réseaux, car c'est une donnée externe liée aux comptes ; l'impact opérationnel est parti dans Rapports, car c'est une donnée interne, au format rapport.
 
 ---
 
-*Fin du document. Questions posées par l'utilisateur ; réponses factuelles fondées sur le code. Les « correctifs possibles » cités sont des pistes, aucune modification n'a été appliquée.*
+## 8 — API et intégrations : où en est-on ?
+
+### Déjà en place
+
+| Domaine | État |
+|---|---|
+| **Authentification** | e-mail + code à **8 chiffres**, Google OAuth, multi-espaces avec RLS |
+| **Session** | **sans limite de durée** (décision du 28/09) |
+| **Base** | Supabase PostgreSQL, RLS multi-espaces, stockage d'images |
+| **Export** | Google Sheets (Edge Function `google-sheets`) |
+| **Facebook** | Login + Page (publication) et **Meta Ads** (campagnes, dépenses), insights via `social-insights`, diagnostic via `social-health` |
+| **TikTok** | Login Kit (publication `social-publish`), **Marketing API** (campagnes, dépenses, leads, audiences), événements serveur `tiktok-events` |
+| **IA** | Conseiller conversationnel sur les données du CRM (Edge Function `ia-conceiller`, moteur **Google Gemini**) |
+| **PWA** | service worker : hors-ligne et mise à jour |
+
+### Ce qui a avancé depuis le 13/09
+
+Les trois recommandations principales du document d'origine ont été traitées :
+
+| Recommandation du 13/09 | État au 29/09 |
+|---|---|
+| **Meta Marketing API — synchronisation auto des campagnes** | ✅ **Fait** (migration V11, fonction `social-facebook`) |
+| **TikTok Marketing API** — remontée des métriques | ✅ **Fait côté code** (migrations V10 et V10.1). ⚠️ **bloqué côté TikTok** : application rejetée à la revue, mise en pause |
+| **Séparation des autorisations Meta** | ✅ **Fait** : les permissions Page et Ads sont demandées séparément, pour que le refus de la revue publicitaire ne bloque plus l'accès à la page |
+
+### Ce qui reste à faire
+
+| Intégration | Pourquoi | Effort | Priorité |
+|---|---|---|---|
+| **WhatsApp Business (Cloud API)** | Le centre d'action repose sur la relance WhatsApp, aujourd'hui par simple lien `wa.me` sans suivi. L'API apporterait des modèles de message certifiés, un statut de livraison et des réponses centralisées dans la fiche client. | Moyen (Meta Business + modération des modèles) | 🔥 Haute |
+| **Sélecteur de compte publicitaire** | La synchronisation importe **tous** les comptes accessibles au profil qui a autorisé. Aucun écran ne permet d'en choisir un. | Faible | 🔥 Haute |
+| **Notifications push PWA** | Relances dues, demandes en attente, tâches : prévenir l'équipe sans ouvrir l'application. Le service worker existe déjà, seule la couche notification manque. | Faible | Haute |
+| **Google Sheets / Drive bidirectionnel** | L'export existe, pas l'import. Un import avec déduplication faciliterait la migration de clients. | Faible-Moyen | Moyenne |
+| **Conversion de devises** | Les dépenses publicitaires sont enregistrées dans la devise du compte, les ventes en FCFA, sans conversion. Les ratios sont faussés si les devises diffèrent. | Moyen | Moyenne |
+| **Mobile Money (MTN MoMo / Airtel MoMo)** | Clôturer la boucle « créance → payée » au moment de l'encaissement. Forte valeur si le marché s'y prête, mais intégration lourde. | Élevé | À planifier à part |
+| **SMS transactionnel** | Uniquement si WhatsApp devient bloquant (clientèle sans smartphone). | Faible | Basse, optionnel |
+
+### À ne pas faire maintenant
+
+Au-delà du calibre de l'application : CRM tiers, automatisation marketing lourde, tableaux analytiques temps réel — sauf si la croissance le justifie clairement.
+
+Le trio qui maximise le rapport valeur/effort reste : **WhatsApp Cloud API + sélecteur de compte publicitaire + notifications push**.
+
+---
+
+## Détail technique — comment ce document est maintenu
+
+- Vérifié contre `mayela-crm.html` et les Edge Functions de `supabase/functions/`.
+- Schéma de base défini par les migrations de `config/`, de V1_1 à V15.
+- Aucune modification d'application n'est décrite ici comme acquise : lorsqu'une proposition est appliquée, la section indique la décision **et** sa date.
+- La documentation marketing correspondante vit dans `CLASSE MARKETING/` ; ce document y renvoie plutôt que de la dupliquer.

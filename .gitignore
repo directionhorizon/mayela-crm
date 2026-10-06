@@ -9,3 +9,7 @@ supabase/.temp/
 supabase/Password*.txt
 supabase/.bw-session
 config/SUIVI_PRIORITES.md
+config/reports/
+config/scripts/__pycache__/
+.omo/
+.opencode/

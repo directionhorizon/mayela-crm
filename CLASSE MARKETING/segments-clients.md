@@ -1,102 +1,87 @@
-# Segmentation des clients (Centre d'action)
+# Segmentation des clients
 
-**Fichier source** : `mayela-crm.html`, fonction `renderCentreAction()` (l.2800).
+**Vérifié le 29 septembre 2026.** Code : `renderCentreAction`.
 
 ---
 
-## Fenêtres temporelles
+## En clair
 
-| Paramètre | Valeur | Origine code |
+Quand vous ouvrez l'écran d'accueil, MAYELA CRM classe automatiquement vos clients en trois groupes, sans que vous ayez à trier une liste :
+
+- **🆕 Nouveaux** — créés il y a moins de 30 jours. À traiter avec un remerciement et la présentation d'une offre.
+- **🔁 Réguliers** — au moins deux achats, dont le dernier il y a moins de 45 jours. À traiter avec une offre de fidélité.
+- **⏳ Inactifs** — soit ils ont déjà acheté mais pas depuis plus de 45 jours, soit ils n'ont jamais acheté et ne sont pas nouveaux. Ce sont vos clients prioritaires à relancer.
+
+Un quatrième indicateur indique votre **catégorie d'intérêt dominante** : la catégorie de produit achetée par le plus grand nombre de clients distincts. Il sert à orienter la prochaine campagne.
+
+---
+
+## Trois choses à savoir
+
+**Les seuils sont fixes.** 30 jours et 45 jours ne sont pas réglables. Ils sont écrits dans le code.
+
+**Un client peut être dans deux groupes.** Par exemple, un client créé il y a 20 jours qui a déjà acheté deux fois est à la fois « nouveau » et « régulier ». Ce n'est pas un bug, c'est le fonctionnement actuel.
+
+**La segmentation est recalculée à chaque affichage.** Elle n'est pas enregistrée : si vous corrigez une date de vente, le classement change immédiatement. En revanche, les segments ne créent aucune tâche ni aucun envoi automatique.
+
+---
+
+## Détail technique
+
+### Les fenêtres
+
+| Seuil | Calcul | Usage |
 |---|---|---|
-| `since30` | date du jour – **30 jours** | `new Date(Date.now() - 30*86400000)` → `localDateStr()` |
-| `since45` | date du jour – **45 jours** | `new Date(Date.now() - 45*86400000)` → `localDateStr()` |
+| `since30` | aujourd'hui − 30 jours | détermine si un client est « nouveau » |
+| `since45` | aujourd'hui − 45 jours | détermine si un client est « régulier » ou « inactif » |
 
-**Mode de calcul** : les deux seuils sont comparés aux **chaînes de date locales** (`YYYY-MM-DD`). Les seuils sont fixes ; il n'existe pas d'interface utilisateur pour les modifier.
+Les deux sont calculés en millisecondes (`Date.now() - N*86400000`) puis convertis en chaînes locales `AAAA-MM-JJ`. Toutes les comparaisons se font sur ces chaînes, donc une date de vente est incluse si elle est **égale** au seuil.
 
----
+### Les règles
 
-## Règles de classification
-
-### 🆕 Nouveaux (`novos`)
-```
-created_at >= since30
-```
-Règle : le client a été créé dans les 30 derniers jours.
-
-### 🔁 Réguliers (`regs`)
-```
-nb >= 2  ET  dernier achat >= since45
-```
-Règle : au moins 2 achats enregistrés **et** dernier achat dans les 45 derniers jours.
-
-### ⏳ Inactifs (`inacts`)
-```
-(a déjà acheté  ET  dernier achat < since45)
-OU
-(n'a jamais acheté  ET  n'est pas nouveau)
-```
-Règle : a eu un historique d'achat mais plus actif, ou ancien sans activité.
-
-### 🏷️ Intérêt catégorie
-Règle : la catégorie de produit avec le **plus grand nombre d'acheteurs distincts** est affichée comme indicateur de centre d'intérêt (« Campagne sur une catégorie »). Un seul segment affiché (le top 1).
-
----
-
-## Données précalculées par client
-
-Chaque client est enrichi d'un objet `byClient[id]` :
-
-| Clé | Contenu |
+| Segment | Règle exacte |
 |---|---|
-| `nb` | Nombre total d'achats |
-| `first` | Date du premier achat (plus ancien) |
-| `last` | Date du dernier achat (plus récent) |
-| `cats` | Objet `{ catégorie: nombre_achats }` (décompte par catégorie) |
+| Nouveaux | `created_at >= since30` |
+| Réguliers | au moins 2 achats **et** dernier achat `>= since45` |
+| Inactifs | (a déjà acheté **et** dernier achat `< since45`) **ou** (n'a jamais acheté **et** n'est pas nouveau) |
 
-Calculé dans la boucle `achats.forEach(a => ...)` (l.2830-2838).
+**Cas limite à connaître** : un client créé il y a 50 jours, qui n'a jamais acheté, n'est **ni nouveau ni régulier**, mais il est **inactif**. C'est la deuxième branche de la règle qui le récupère.
 
----
+### Le calcul par client
 
-## Consentement
+Avant de classer, l'application construit un résumé par client à partir de tous les achats :
 
-```
-consentCount = clients.filter(c => c.consentement !== false).length
-```
-Le champ `consentement` est un booléen **nullable** :
-- `null` ou `true` → consentent
-- `false` → ne consent pas
+| Information | Contenu |
+|---|---|
+| Nombre d'achats | Total sur l'historique |
+| Premier achat | Date la plus ancienne |
+| Dernier achat | Date la plus récente |
+| Catégories | Décompte par catégorie de produit |
 
-Seuls les clients **non « false »** (null ou true) sont autorisés à recevoir une relance WhatsApp.
+Le décompte par catégorie sert au calcul de l'intérêt dominant : la catégorie qui cumule le plus de **clients distincts** l'emporte, pas celle qui cumule le plus d'achats. Un client qui achète dix fois la même catégorie ne pèse donc qu'une fois.
 
-**Affichage** : `X / Y consentent` dans la carte « Inactifs » (l.2855-2856).
+### Le consentement
 
----
+Le champ `consentement` est un booléen qui peut être vide :
 
-## Relances prioritaires (top 6)
+| Valeur | Interprétation |
+|---|---|
+| vide ou `true` | le client accepte d'être relancé |
+| `false` | le client refuse |
 
-| Paramètre | Valeur | Réf. |
-|---|---|---|
-| Pool | Clients **inactifs** uniquement | l.2861 |
-| Tri | Par **date de dernière activité** (ou date de création) croissante (plus ancien d'abord) | l.2861-2863 |
-| Limite | **6 clients** maximum | `.slice(0,6)` (l.2864) |
-| Lien WhatsApp | `wa.me/{phone}?text=Bonjour {name} 👋 Ici Mayela...` | l.2869 |
+L'écran affiche « X / Y consentent » sur la carte des inactifs. **Seuls les clients dont le consentement n'est pas `false`** reçoivent un lien de relance WhatsApp.
 
-**Condition d'affichage** : le lien WhatsApp n'est généré que si :
-1. Le client possède un `phone` (non vide)
-2. Le client consent (`consentement !== false`)
+### Les relances prioritaires
 
-**Affichage par client** : nombre d'achats · dernier achat il y a X j (ou créé il y a X j) · « sans consentement » (en rouge) si non consentant.
+L'application prépare une liste de **6 clients inactifs au maximum** :
 
-**Marquer traité** : cliquer sur ✓ met à jour l'interaction associée (`statut_traitement → 'traite'`) puis recharge le centre d'action (l.2879-2884).
+1. tri par date de dernière activité (ou de création si le client n'a jamais acheté), **du plus ancien au plus récent** ;
+2. le bouton de relance n'apparaît que si le client a un téléphone **et** qu'il n'a pas refusé le consentement.
 
----
+Le message est pré-rempli : « Bonjour {prénom} 👋 Ici Mayela. Un petit message pour prendre de vos nouvelles… »
 
-## Comportement
+**Le clic ouvre WhatsApp ; il n'envoie rien.** L'envoi reste entièrement manuel.
 
-- **Non persistant** : la segmentation est recalculée à chaque appel de `renderCentreAction()`, déclenché par l'ouverture de l'écran Accueil.
-- **Pas d'automatisation** : aucune tâche, aucun rappel n'est automatiquement créé à partir des segments.
-- **Pas de recherche SQL** : tout est calculé côté client (cache mémoire `clientsCache` + `getAchatsAll()`).
+### Performance
 
----
-
-*Fichier figé au 13/09/2026*
+Tout est calculé côté navigateur, à partir d'un cache en mémoire des clients et des achats. Aucune requête SQL dédiée à la segmentation n'est envoyée. C'est rapide, mais cela suppose de charger les données en mémoire à chaque affichage.

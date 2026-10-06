@@ -1,12 +1,25 @@
 # Plan de mise en œuvre — App CRM opérationnelle
 
-> Reprend la logique définie dans les documents « LOGIQUE CRM », « modèles de données CRM » et
-> « Modèles rapports CRM » et la confronte à l'existant de MAYELA CRM (`mayela-crm.html` +
-> `config/SCHEMA_SUPABASE.md`).
->
-> **Mise au point — objectif :** on prépare une **app performante et opérationnelle**, pas une app
-> de « mémoire ». L'ordre de priorité optimise donc la **valeur opérationnelle quotidienne**
-> (CA, fidélisation, réactivité) rapportée à l'effort, et non la rapidité d'une démonstration.
+> **Plan exécuté. Dernière mise à jour : 29 septembre 2026.**
+> Reprend la logique des documents « LOGIQUE CRM », « modèles de données CRM » et « Modèles rapports CRM »,
+> et la confronte à l'existant de MAYELA CRM (`mayela-crm.html` + `config/SCHEMA_SUPABASE.md`).
+
+## En clair
+
+Ce document est le **plan de construction** du volet « pilotage » de MAYELA CRM : capter les données
+au point de vente, transformer le fichier clients en outil de relance quotidienne, puis mesurer ce que
+rapporte la publicité.
+
+**Les 5 étapes prévues ont été appliquées** entre le 12 et le 13 septembre 2026.
+
+Ce qui a changé depuis : l'étape 6 prévue — la **synchronisation automatique** des campagnes — a
+elle aussi été réalisée (migrations V10, V10.1 et V11), puis renforcée par un historique de dépense
+quotidien (V15). Le comportement marketing qui découle de tout cela est expliqué dans
+**`CLASSE MARKETING/`** ; ce document explique **pourquoi** les choses ont été faites ainsi.
+
+**Objectif de la mise au point** : préparer une app **performante et opérationnelle**, pas une app
+de « mémoire ». L'ordre de priorité optimise la **valeur opérationnelle quotidienne** (CA,
+fidélisation, réactivité) rapportée à l'effort, et non la rapidité d'une démonstration.
 
 ---
 
@@ -23,57 +36,60 @@
 
 ---
 
-## 2. État de l'existant dans l'app
+## 2. État de l'existant — aujourd'hui
 
 | Brique | État | Détail |
 |--------|------|--------|
-| 3. CRM mobile | ✅ Solide | Fiches clients, interactions (+ « en attente »), achats, devis, créances, tâches, **Centre d'action** (`renderCentreAction`) |
-| 4. Module IA | 🟡 Débuté | Conseiller IA (`ia-conseiller`), classification, segmentation, historique des conversations |
-| 5. Moteur de reporting | 🟢 Fait | Résumés + tableaux par catégorie, export Google Sheets (`loadReports`), campagnes (Performance, Entonnoir, CA attribué, ROAS, coût d'acquisition). **Reste (interne)** : réachat |
-| 1. Meta Business Suite | 🟡 Partiel | Suivi social / santé des intégrations. Pas de remontée réelle des résultats FB/IG par campagne |
-| 2. TikTok Ads Manager | 🟡 Partiel | Auth TikTok, Pixel, suivi d'achat (`trackTikTokPurchase`). Pas de remontée des métriques Ads par campagne |
-| 6. Tableau de bord | 🟢 Fait | KPIs accueil : clients, à traiter, tâches en retard, ventes du jour, devis & achats 30 j (`renderDashboardKpis`) + section Performance publicitaire (ROAS, coût/prospect, panier moyen, réachat, graphique CA par campagne via `renderDashboardPerf`) |
+| 3. CRM mobile | 🟢 Opérationnel | Fiches clients, interactions (+ « en attente »), achats, devis, créances, tâches, Centre d'action (`renderCentreAction`) |
+| 4. Module IA | 🟡 Débuté | Conseiller IA (`ia-conseiller`, moteur Gemini), classification, segmentation, historique des conversations |
+| 5. Moteur de reporting | 🟢 Opérationnel | Résumés + tableaux par catégorie, export Google Sheets (`loadReports`), catégories Campagnes (Performance, Entonnoir, CA attribué, ROAS) et Impact opérationnel |
+| 1. Meta Business Suite | 🟢 Intégré | Publication sur la Page **et** synchronisation Meta Ads (dépenses, impressions, clics) via `social-facebook`. Revue Meta encore requise pour les permissions publicitaires |
+| 2. TikTok Ads Manager | 🟡 Code prêt, accès bloqué | Synchronisation `marketing_sync` opérationnelle côté code (campagnes, dépenses, leads, audiences). **Bloqué par la revue TikTok**, application rejetée puis mise en pause |
+| 6. Tableau de bord | 🟢 Opérationnel | KPIs accueil (`renderDashboardKpis`) + section Performance publicitaire (`renderDashboardPerf`) |
 
-**Verdict** : la colonne vertébrale (le « CRM mobile ») est opérationnelle mais capte trop peu de
-données au quotidien (pas de campagne, pas de quantité, pas de traitement des demandes). Le potentiel
-de CA « laissé sur la table » (demandes sans réponse, relances aveugles) est le premier chantier.
+**Point de vigilance sur la brique 5 et 6** : le calcul de rentabilité existe en **deux versions** qui
+ne coïncident pas. Les rapports utilisent l'historique de dépense quotidien (V15) et respectent la
+période ; le tableau de bord et le résumé « Campagnes — Performance » utilisent encore le cumul
+`campaigns.depense_reelle`, non borné par la période. Voir `CLASSE MARKETING/README.md`.
 
 ---
 
-## 3. Écart « données requises » vs « données existantes »
+## 3. Écadre « données requises » vs « données existantes »
 
-Modèle de données attendu confronté au schéma Supabase.
+*État constaté au moment du plan, avant migration. La colonne « Action » indique ce qui a été fait.*
 
-| Donnée du modèle | Existe dans le schéma ? | Action |
+| Donnée du modèle | Existait dans le schéma ? | Action |
 |---|---|---|
-| **Campagne** : budget prévu, dépense réelle, portée, impressions, clics/messages, type, période, catégorie | ❌ Aucune table `campaigns` (`social_posts` = journal de pubs, pas un modèle campagne) | **Créer la table** `campaigns` |
+| **Campagne** : budget prévu, dépense réelle, portée, impressions, clics/messages, type, période, catégorie | ❌ Aucune table `campaigns` (`social_posts` est un journal de publications, pas un modèle campagne) | ✅ Table `campaigns` créée (V8) |
 | Prospect : source | ✅ `clients.source` | — |
-| Prospect : **campagne d'origine** | ❌ | Ajouter `clients.campagne_origine` |
-| Prospect : **consentement promotionnel** | ❌ | Ajouter `clients.consentement` (booléen) |
-| Prospect : date premier contact | ✅ `clients.created_at` | — |
+| Prospect : **campagne d'origine** | ❌ | ✅ `clients.campagne_origine` |
+| Prospect : **consentement promotionnel** | ❌ | ✅ `clients.consentement` |
+| Prospect : date de premier contact | ✅ `clients.created_at` | — |
 | Prospect : statut | ✅ `clients.stage_override` | — |
 | Vente : montant, date, client, produit | ✅ `achats` | — |
-| Vente : **quantité** | ❌ | Ajouter `achats.quantite` (entier) |
-| Vente : **campagne associée** | ❌ | Ajouter `achats.campagne_id` → `campaigns` |
-| Vente : initiale / réachat | ⚠️ Calculable | ≥ 2 achats = réachat, sans colonne |
-| Interaction : **canal** | ✅ `interactions.type` (fb/tiktok/whatsapp/appel/visite) | — |
-| Interaction : **type** (message/clic/demande de prix) | ❌ Confondu avec le canal | Ajouter `interactions.type_interaction` |
-| Interaction : statut traité/en attente + délai de réponse | ❌ | Ajouter `interactions.statut_traitement` (+ calcul du délai) |
-| Produit : **catégorie** | ❌ (`produits_services` sans catégorie) | Ajouter `produits_services.categorie` |
+| Vente : **quantité** | ❌ | ✅ `achats.quantite` |
+| Vente : **campagne associée** | ❌ | ✅ `achats.campagne_id` |
+| Vente : initiale / réachat | ⚠️ Calculable | ≥ 2 achats = réachat, sans colonne dédiée |
+| Interaction : **canal** | ✅ `interactions.type` (facebook / tiktok / whatsapp / appel / visite) | — |
+| Interaction : **type** (message / clic / demande de prix) | ❌ Confondu avec le canal | ✅ `interactions.type_interaction` |
+| Interaction : statut traité / en attente | ❌ | ✅ `interactions.statut_traitement` |
+| Produit : **catégorie** | ❌ | ✅ `produits_services.categorie` |
 
 ---
 
-## 4. Impact sur les 5 rapports du mémoire
+## 4. Les 5 rapports et leur faisabilité
 
-| Rapport | Données bloquantes | Faisable aujourd'hui ? |
-|---|---|---|
-| **5. Clients & réachat** → devient un **outil d'action** (relances) | segments, CA, dernier achat, réachats, action suggérée | ✅ **Oui, données actuelles** — aucun changement de schéma |
-| **2. Entonnoir de conversion** | comptage par campagne | ✅ global / ❌ par campagne |
-| **1. Performance des campagnes** | table `campaigns` + `clients.campagne_origine` | ❌ |
-| **3. Ventes & CA attribués** | + `achats.campagne_id` | ❌ |
-| **4. Rentabilité publicitaire** | + dépense réelle des campagnes | ❌ |
+*Faisabilité **avant** exécution du plan, puis état obtenu.*
 
-Rappel des formules :
+| Rapport | Données bloquantes | Faisable avant ? | État |
+|---|---|---|---|
+| **Clients & réachat** → devenu un **outil d'action** (relances) | segments, CA, dernier achat, réachats, action suggérée | ✅ Oui, données actuelles | ✅ Réalisé (étape 2) |
+| **Entonnoir de conversion** | comptage par campagne | ✅ global / ❌ par campagne | ✅ Réalisé (étape 3) |
+| **Performance des campagnes** | table `campaigns` + `clients.campagne_origine` | ❌ | ✅ Réalisé (étape 3) |
+| **Ventes & CA attribués** | + `achats.campagne_id` | ❌ | ✅ Réalisé (étape 4) |
+| **Rentabilité publicitaire (ROAS)** | + dépense réelle des campagnes | ❌ | ✅ Réalisé (étape 4) |
+
+**Formules de référence :**
 - Coût par prospect = dépense réelle ÷ prospects CRM créés
 - Taux de conversion = prospects ayant acheté × 100 ÷ prospects CRM
 - CA attribuable = Σ montants des ventes liées à la campagne
@@ -84,160 +100,114 @@ Rappel des formules :
 
 ---
 
-## 5. Ordre de priorité opérationnel
+## 5. Les 5 étapes, exécutées
 
 **Principe :** chaque étape maximise la valeur opérationnelle quotidienne (CA / réactivité /
 fidélisation) ÷ effort, en s'appuyant sur l'existant.
 
-### Étape 1 — Fondation : capturer au point de vente (~1–2 h) 🔑 ✅ APPLIQUÉE
-*Une seule migration (`config/MIGRATION_V8_CAMPAGNES.sql`, appliquée en base le 12/09/2026)
-+ micro-ajustements de formulaires.*
+### Étape 1 — Fondation : capturer au point de vente 🔑 APPLIQUÉE
+*Migration `MIGRATION_V8_CAMPAGNES.sql`, appliquée en base le 12/09/2026, plus quelques ajustements de formulaires.*
 
-- **Motif** : aucun rapport, aucune relance ciblée, aucune attribution possible sans données
-  saisies au bon endroit. C'est le socle ; le faire tôt évite de re-travailler après.
-- **Actions** :
-  - Table `campaigns` : org_id, nom/ID campagne, plateforme (facebook/instagram/tiktok), type,
-    période (début/fin), catégorie promue, budget prévu, dépense réelle, portée, impressions, clics/messages.
-  - Colonnes : `clients.campagne_origine`, `clients.consentement`, `achats.campagne_id`,
-    `achats.quantite`, `produits_services.categorie`, `interactions.type_interaction`,
-    `interactions.statut_traitement`.
-  - RLS alignées sur les tables existantes (isolation org).
-  - Formulaire d'achat existant (fiche client) : ajouter le champ **quantité** (valeur par défaut 1) — pas de formulaire dédié, on enrichit l'existant.
-- **Livrable** : les ventes et prospects portent désormais quantité + attribution campagne. Rien
-  ne bloque plus la suite.
+- **Motif** : aucun rapport, aucune relance ciblée, aucune attribution possible sans données saisies au bon endroit. C'est le socle ; le faire tôt évite de retravailler après.
+- **Livré** : table `campaigns` complète ; colonnes `clients.campagne_origine`, `clients.consentement`, `achats.campagne_id`, `achats.quantite`, `produits_services.categorie`, `interactions.type_interaction`, `interactions.statut_traitement` ; RLS alignées sur l'isolation par espace ; champ **quantité** ajouté au formulaire d'achat existant (défaut 1), sans créer de formulaire dédié.
 
-### Étape 2 — Centre d'action : relances intelligentes + demandes en attente (~1 h) 💰 ✅ APPLIQUÉE
-*Transforme le rapport 5 du mémoire en OUTIL quotidien. Livré le 13/09/2026 dans `mayela-crm.html`.*
+### Étape 2 — Centre d'action : relances intelligentes + demandes en attente 💰 APPLIQUÉE
+*Livrée le 13/09/2026 dans `mayela-crm.html`.*
 
-- **Motif** : c'est le levier de CA le plus rapide pour une PME — récupérer les clients inactifs,
-  remercier les nouveaux, fidéliser les réguliers, et surtout **ne plus laisser une demande sans réponse**.
-- **Actions** (état réel du code) :
-  - **Centre d'action sur l'accueil** (`renderCentreAction`, remplace `relanceCandidates`) :
-    - Section **« À traiter »** : interactions `statut_traitement = en_attente` triées par
-      ancienneté, avec raccourci **WhatsApp 💬** et bouton **✓ Traité**.
-    - Section **« Segments à relancer »** : Nouveaux (< 30 j), Réguliers (ré-achat < 45 j),
-      Inactifs (> 45 j / jamais acheté, avec comptage « X consentent »), Intérêt catégorie
-      (affichée dès que des catégories sont saisies).
-    - Section **« Relances prioritaires »** : jusqu'à 6 inactifs, message WhatsApp pré-rempli
-      uniquement si `consentement !== false` (sinon mention « sans consentement »).
-  - **Fiche client** : case **« En attente »** sur le formulaire d'interaction (saisit
-    `statut_traitement = en_attente`), badge `EN ATTENTE` + « ✓ Traité » dans la liste.
-- **Livrable** : le commercial ouvre l'app le matin et voit exactement **qui répondre et qui relancer**. C'est l'usage quotidien le plus rentable.
+- **Motif** : c'est le levier de CA le plus rapide pour une PME — récupérer les clients inactifs, remercier les nouveaux, fidéliser les réguliers, et surtout ne plus laisser une demande sans réponse.
+- **Livré** : `renderCentreAction` sur l'accueil, avec trois sections :
+  - **« À traiter »** : interactions `statut_traitement = en_attente`, triées par ancienneté, avec raccourci WhatsApp et bouton « ✓ Traité ».
+  - **« Segments à relancer »** : Nouveaux (≤ 30 j), Réguliers (dernier achat ≤ 45 j), Inactifs (> 45 j ou jamais acheté, avec comptage « X consentent »), Intérêt catégorie.
+  - **« Relances prioritaires »** : jusqu'à 6 inactifs, message WhatsApp pré-rempli uniquement si le consentement n'est pas explicitement refusé.
+  - Fiche client : case **« En attente »** sur le formulaire d'interaction, badge `EN ATTENTE` et action « ✓ Traité » dans la liste.
+- **Usage** : le commercial ouvre l'application le matin et voit exactement **qui répondre et qui relancer**. C'est l'usage quotidien le plus rentable.
 
-### Étape 3 — Saisie des campagnes + rapports « Performance » & « Entonnoir » (~1–1,5 h) 📢 ✅ APPLIQUÉE
-*Livrée le 13/09/2026 dans `mayela-crm.html` (code + service worker re-versione). À tester en navigateur puis à déployer sur Vercel.*
+### Étape 3 — Saisie des campagnes + rapports « Performance » & « Entonnoir » 📢 APPLIQUÉE
+*Livrée le 13/09/2026.*
 
-- **Motif** : le responsable doit savoir **quelle campagne amène des prospects et à quel coût**
-  (coût par prospect) et où les prospects sont perdus (montrer que le problème vient de la
-  réactivité ou de la relance → relance le centre d'action de l'étape 2).
-- **Actions** (état réel du code) :
-  - **Sous-page « Campagnes »** dans l'écran « Réseaux » (`data-nav="campaigns"`) : bouton
-    « Campagnes publicitaires — saisir & succès » → liste + formulaire de création (nom,
-    plateforme facebook/instagram/tiktok, type visibilité/messages/leads/promotion produit,
-    catégorie promue, dates, budget prévu, dépense réelle, portée, impressions, clics/messages) ;
-    suppression d'une campagne conservant prospects et ventes.
-  - Associer la campagne d'origine à la création d'une fiche prospect (menu déroulant
-    « Campagne d'origine » sur l'écran Ajouter un client) → insère `clients.campagne_origine`.
-  - Rapport « Campagnes — Performance » : Campagne, Plateforme, Type, Dépense (FCFA), Portée,
-    Impressions, Clics/messages, Prospects CRM, Coût/prospect (formule §4) — sur toute la durée
-    des campagnes (période ignorée dans ces deux rapports).
-  - Rapport « Campagnes — Entonnoir de conversion » : Campagne, Prospects, Contactés, Négociation,
-    Clients/Fidèles, Acheteurs (≥ 1 achat réel, historique complet), Taux de conversion.
-  - Les deux rapports sont exportables (Google Sheets / PDF) comme les autres catégories.
-- **Livrable** : comparer objectivement les campagnes (même à portées différentes) + localiser les pertes.
+- **Motif** : le responsable doit savoir **quelle campagne amène des prospects et à quel coût**, et où les prospects sont perdus — pour montrer que le problème vient de la réactivité ou de la relance, donc de l'étape 2.
+- **Livré** : sous-page « Campagnes » dans l'écran Réseaux, avec formulaire de création (nom, plateforme, type visibilité/messages/leads/promotion produit, catégorie, dates, budget, dépense, portée, impressions, clics) ; suppression d'une campagne **conservant** prospects et ventes ; sélecteur « Campagne d'origine » sur la création d'un client ; rapports **Performance** et **Entonnoir de conversion**, exportables.
 
-### Étape 4 — Rapports « CA attribuable » & « Rentabilité (ROAS) » (~1 h) 💵 ✅ APPLIQUÉE
-*Livrée le 13/09/2026 dans `mayela-crm.html` (code + service worker re-versione `319297e171`), déployée sur Vercel.*
+### Étape 4 — Rapports « CA attribuable » & « Rentabilité (ROAS) » 💵 APPLIQUÉE
+*Livrée le 13/09/2026, déployée sur Vercel.*
 
-- **Motif** : le lien direct « publicité → ventes parapharmaceutiques » = décision budgétaire.
-  Justifier ce qu'on dépense en pub ne tient qu'à ce calcul.
-- **Actions** (état réel du code) :
-  - **Attribution des ventes** : liste déroulante « Aucune (vente sans pub) / <campagne> » dans
-    l'onglet Ventes de la fiche client → enregistre `achats.campagne_id` ; chaque vente affiche
-    sa campagne d'origine (📢 nom) dans la fiche. Ajout possible aussi à la saisie directe.
-  - Rapport « Campagnes — Ventes & CA attribués » (`caattrib`) : par campagne → ventes, CA
-    attribuable, panier moyen, clients acheteurs, catégories de produits vendues.
-  - Rapport « Campagnes — Rentabilité (ROAS) » (`roas`) : par campagne → dépense, CA attribuable,
-    ROAS (CA attribuable ÷ dépense), coût d'acquisition client (dépense ÷ acheteurs).
-  - Les deux rapports couvrent toute la durée des campagnes (période ignorée), exportables
-    (Google Sheets / PDF) comme les autres catégories.
-- **Livrable** : l'app prouve (ou non) la rentabilité des campagnes et oriente le budget.
-  Rappel d'usage : le ROAS se calcule dès qu'une vente est liée à une campagne ; les campagnes
-  à ROAS < 1 → réduire la dépense ou improver l'entonnoir (étape 2/3).
+- **Motif** : le lien direct « publicité → ventes » est ce qui justifie ou infirme une dépense publicitaire. C'est une décision budgétaire.
+- **Livré** : liste déroulante « Aucune / <campagne> » dans l'onglet Ventes de la fiche client, enregistrant `achats.campagne_id` ; rapport **Ventes & CA attribués** ; rapport **Rentabilité (ROAS)** avec dépense, CA attribuable, ROAS et coût d'acquisition client.
 
-### Étape 5 — Tableau de bord consolidé (~1 h) 📊 ✅ APPLIQUÉE
-*Livrée le 13/09/2026 dans `mayela-crm.html` (service worker `5e02a29009`), déployée sur Vercel.*
+### Étape 5 — Tableau de bord consolidé 📊 APPLIQUÉE
+*Livrée le 13/09/2026, déployée sur Vercel.*
 
-- **Motif** : la vue d'ensemble en une ouverture : ce qui se passe aujourd'hui (demandes en attente,
-  relances dues, ventes du jour) + ce qui va bien (ROAS, coût par prospect, panier moyen, réachat).
-- **Actions** (état réel du code) :
-  - Grille KPI portée à 6 cartes : Clients actifs, **À traiter** (interactions en attente),
-    Tâches en retard, **Ventes du jour**, Devis (30 j), Achats (30 j, FCFA).
-  - Nouvelle section « 📊 Performance publicitaire » (affichée seulement s'il existe des
-    campagnes) : tuiles ROAS (cumul), Coût / prospect, Panier moyen (campagnes), Réachat, +
-    graphique à barres de la répartition du CA attribué par campagne (top 5).
-  - Toutes les métriques publicitaires sont cumulées sur la durée des campagnes (cohérent
-    avec les rapports d'étape 4).
-- **Livrable** : le responsable décide en 30 secondes, tableaux/cartes/graphiques simples.
+- **Motif** : la vue d'ensemble en une ouverture — ce qui se passe aujourd'hui (demandes en attente, relances dues, ventes du jour) et ce qui va bien (ROAS, coût par prospect, panier moyen, réachat).
+- **Livré** : grille KPI portée à 6 cartes (Clients actifs, À traiter, Tâches en retard, Ventes du jour, Devis 30 j, Achats 30 j) ; section **📊 Performance publicitaire** affichée seulement s'il existe des campagnes, avec ROAS, coût/prospect, panier moyen, réachat et graphique de la répartition du CA attribué par campagne (top 5).
 
-**Chronologie cumulée estimée : ~5–7 h.**
+**Chronologie cumulée de l'exécution : ~5 à 7 h.**
 
 ---
 
-## 6. Décisions confirmées
+## 6. Saisie des campagnes : ce qui a été décidé, et ce qui a changé
 
-### Saisie des campagnes : manuel (V1) + auto-sync (V2)
+### Décision initiale : manuel d'abord, automatique ensuite
 
-- **V1 — Saisie manuelle (retenue pour le passage en prod)**
-  L'équipe saisit en 1 minute ce qu'elle lit dans Meta/TikTok Ads Manager : dépense,
-  portée, impressions, clics. Fonctionne avec une connexion limitée, aucun token API à
-  gérer, aucun risque de coupure externe. Le formulaire existe déjà via la sous-page
-  « Campagnes » de l'écran Réseaux.
+Le formulaire de campagne a été conçu pour **les deux** chemins.
 
-- **V2 — Synchronisation automatique (amélioration ultérieure, non bloquante)**
-  Meta Graph API et TikTok Marketing API exposent des endpoints (respectivement
-  `ads_insights` et `report/integrated/get`) qui retournent exactement les métriques
-  cibles (spend, reach, impressions, clicks) au niveau campagne. L'infrastructure
-  partielle existe déjà côté Edge Functions (`social-insights`). V2 consiste à :
-  quand un compte Meta/TikTok est connecté (déjà en place dans l'écran Réseaux),
-  tirer automatiquement les métriques au moment de la création de la campagne ou en
-  tâche de fond. 2–3× de travail en plus (OAuth tokens, refresh, mapping) — à
-  re-planifier une fois l'app en usage réel.
+- **V1 — saisie manuelle.** L'équipe saisit en une minute ce qu'elle lit dans Meta ou TikTok Ads Manager : dépense, portée, impressions, clics. Fonctionne sans jeton API, sans risque de coupure externe. **C'est ce qui a été livré en septembre.**
+- **V2 — synchronisation automatique.** Prévue comme une amélioration ultérieure, non bloquante.
 
-**Position officielle** : le formulaire de campagne est conçu pour les deux chemins.
-V1 est fiable jour 1. V2 s'y greffe sans changer la structure.
+### Ce que V2 est devenue
+
+**V2 a été réalisée, et va au-delà de ce qui était prévu.**
+
+| Étape | Contenu |
+|---|---|
+| V10 (15/09) | Synchronisation TikTok Marketing API : campagnes, groupes d'annonces, dépenses |
+| V10.1 | Leads et audiences TikTok, colonnes `tik_*`, campagne de source `tik` |
+| V11 (25/09) | Synchronisation Meta Ads : comptes publicitaires, campagnes, ensembles de pubs, dépenses |
+| Correction du 29/09 | Séparation des autorisations Meta **Page** et **Ads**, pour que le refus de la revue publicitaire ne bloque plus l'accès à la page |
+| V15 (29/09) | Historique de dépense **jour par jour** (`campaign_spend_daily`), qui rend le ROAS calculable sur la bonne période |
+
+**Conséquence** : la saisie manuelle n'est plus la seule voie, mais elle **reste disponible** — utile
+quand un compte publicitaire n'est pas connecté, ou pour corriger une valeur.
+
+**Deux limites introduites par cette automatisation, documentées et non tranchées :**
+- aucun sélecteur de compte : **tous** les comptes accessibles au profil qui a autorisé sont importés ;
+- aucune conversion de devise entre la dépense publicitaire (devise du compte) et les ventes (FCFA).
+
+---
+
+## 7. Décisions confirmées
 
 ### Formulaire de vente
 
-Pas de formulaire dédié séparé. La **quantité** est ajoutée comme champ existant
-dans le formulaire d'achat dans la fiche client (valeur par défaut 1). Enrichissement
-de l'existant, pas de refonte.
+Pas de formulaire dédié séparé. La **quantité** a été ajoutée comme champ dans le formulaire
+d'achat de la fiche client (défaut 1). Enrichissement de l'existant, pas de refonte.
 
 ### Écran « Campagnes »
 
-**Sous-page de l'écran Réseaux** (pas un onglet nav dédié). Un bouton « Campagnes »
-dans l'écran Réseaux ouvre la sous-page dédiée (liste + formulaire).
+**Sous-page de l'écran Réseaux** (pas un onglet de navigation dédié). Un bouton ouvre la sous-page
+dédiée (liste + formulaire).
 
 ---
 
-## 7. Notes de performance (appliquées le 13/09/2026)
+## 8. Notes de performance (appliquées le 13/09/2026)
 
-Garder l'app réactive sur mobile à mesure que le volume grossit :
+Garder l'application réactive sur mobile à mesure que le volume grossit :
 
-- **Cache partagé `achats` (TTL 60 s)** : le tableau de bord, le centre d'action et les
-  rapports lisaient chacun toute la table `achats`. Une seule lecture est désormais
-  partagée via `getAchatsAll()` ; les périodes (jour / 30 j / réachat / CA attribué) sont
-  calculées en mémoire. Invalidation après ajout/suppression d'achat.
-- **Clients allégés** : `loadClientsCache()` ne sélectionne que les colonnes réellement
-  affichées (10 champs) au lieu de `*`.
-- **Debounce 90 ms** sur la recherche clients (pas de rendu DOM à chaque frappe).
-- **Index** : `config/MIGRATION_V9_INDEXES.sql` (à exécuter dans le SQL Editor) indexe les
-  colonnes de filtrage des rapports et du tableau de bord (achats.achat_date,
-  interactions.statut_traitement, tasks.due_date, client_id, etc.).
-- **Limite honnête** : pas de pagination serveur ni de recherche SQL — les listes sont
-  chargées entièrement. Pertinent jusqu'à quelques milliers de lignes ; à reconsidérer
-  (pagination + recherche serveur) si l'app dépasse cette échelle.
+- **Cache partagé des achats (60 s)** : le tableau de bord, le centre d'action et les rapports lisaient chacun toute la table `achats`. Une seule lecture est désormais partagée via `getAchatsAll()`, les périodes étant calculées en mémoire. Invalidation après ajout ou suppression.
+- **Clients allégés** : `loadClientsCache()` ne sélectionne que les colonnes réellement affichées au lieu de `*`.
+- **Anti-rebond de 90 ms** sur la recherche clients (pas de rendu DOM à chaque frappe).
+- **Index** : `MIGRATION_V9_INDEXES.sql` — **appliquée le 29/09/2026** (elle attendait depuis
+  le 13/09, sans trace dans le runbook de déploiement). 13 index couvrent les colonnes de filtrage
+  des rapports et du tableau de bord (date d'achat, campagne, client, statut de traitement des
+  interactions, échéance des tâches, statut de publication, dates de devis et de créance).
+- **Limite honnête** : pas de pagination serveur ni de recherche SQL — les listes sont chargées entièrement. Pertinent jusqu'à quelques milliers de lignes ; à reconsidérer au-delà. C'est cette absence de pagination, plus que les index, qui pèsera sur les gros volumes.
 
 ---
 
-*Document lié : `config/SCHEMA_SUPABASE.md` (schéma actuel), `mayela-crm.html` (app), LOGIQUE CRM / modèles de données / modèles rapports (mémoire).*  
+## Documents liés
+
+| Sujet | Fichier |
+|---|---|
+| Comportement marketing expliqué | `CLASSE MARKETING/` |
+| Schéma actuel | `config/SCHEMA_SUPABASE.md` |
+| Application | `mayela-crm.html` |
+| Suivi des points en attente | `docs/suivi/EN_ATTENTE.md` |

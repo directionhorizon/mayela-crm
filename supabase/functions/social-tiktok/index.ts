@@ -97,6 +97,41 @@ async function marketingReport(accessToken: string, advertiserId: string, startD
   return out;
 }
 
+// Historique quotidien de depense, meme source que marketingReport mais avec la
+// dimension "date" : une ligne par campagne et par jour. Alimente
+// campaign_spend_daily pour que le ROAS porte sur la meme fenetre que le CA.
+// "reach" est volontairement absent : TikTok ne le restitue pas de facon fiable
+// au niveau journalier, et l'ecrire sur chaque jour gonflerait le cumul.
+async function marketingReportDaily(accessToken: string, advertiserId: string, startDate: string, endDate: string) {
+  const q = new URLSearchParams({
+    advertiser_id: advertiserId,
+    service_type: "AUCTION",
+    report_type: "BASIC",
+    data_level: "AUCTION_CAMPAIGN",
+    dimensions: JSON.stringify(["campaign_id", "campaign_name", "date"]),
+    metrics: JSON.stringify(["spend", "impressions", "clicks"]),
+    start_date: startDate,
+    end_date: endDate,
+    page_size: "1000",
+  });
+  const r = await fetch(`${BUSINESS_API}/report/integrated/get/?${q.toString()}`, {
+    headers: { "Access-Token": accessToken },
+  });
+  const out = await r.json().catch(() => null);
+  if (out?.code !== 0 && out?.code !== undefined) return [];
+  const data = out?.data ?? out;
+  return Array.isArray(data?.list) ? data.list : [];
+}
+
+// Devise du compte publicitaire. Sans elle, depense_reelle serait une valeur
+// sans unite et l'affichage "FCFA" mentirait sur les comptes en USD.
+async function tiktokCurrency(accessToken: string, advertiserId: string): Promise<string> {
+  const r = await busReq(accessToken, "GET", "/advertiser/info/", { advertiser_id: advertiserId });
+  if (!r.ok) return "";
+  const l = Array.isArray(r.data?.list) ? r.data.list : [];
+  return String(l[0]?.currency ?? "") || "";
+}
+
 // Format "YYYY-MM-DD" du jour / il y a N mois (pratique pour report/integrated/get).
 function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
@@ -443,6 +478,17 @@ Deno.serve(async (req: Request) => {
         errors.push(`Publicité ${advertiserId} : ${rep?.message || "réponse invalide"}`);
         continue;
       }
+      // Historique quotidien, indexé par nom de campagne : la boucle principale
+      // récupère ainsi son détail sans relancer le rapport pour chaque ligne.
+      const dailyByName = new Map<string, any[]>();
+      const currency = await tiktokCurrency(mkToken, advertiserId);
+      for (const d of await marketingReportDaily(mkToken, advertiserId, startDate, endDate)) {
+        const key = String(d?.dimensions?.campaign_name ?? "").trim();
+        if (!key) continue;
+        const arr = dailyByName.get(key) ?? [];
+        arr.push(d);
+        dailyByName.set(key, arr);
+      }
       const rows = Array.isArray(repData?.list) ? repData.list : [];
       for (const row of rows) {
         const dims = row?.dimensions ?? {};
@@ -457,7 +503,21 @@ Deno.serve(async (req: Request) => {
         const { data: existing } = await adminSb.from("campaigns")
           .select("id").eq("org_id", orgId).eq("plateforme", "tiktok").eq("nom", nom).maybeSingle();
 
-        if (existing?.id) {
+        // Historique journalier du meme compte publicitaire. On ne demande que
+        // les lignes de cette campagne pour eviter de retraiter tout le rapport
+        // a chaque campagne.
+        const dailyRows = (dailyByName.get(nom) || []).map((d: any) => {
+          const dm = d?.metrics ?? {};
+          return {
+            jour: String(d?.dimensions?.date ?? "").slice(0, 10),
+            depense: Number(dm?.spend ?? 0),
+            impressions: Math.round(Number(dm?.impressions ?? 0)),
+            clics: Math.round(Number(dm?.clicks ?? 0)),
+          };
+        }).filter((d: any) => /^\d{4}-\d{2}-\d{2}$/.test(d.jour));
+
+        let campaignId = existing?.id ?? null;
+        if (campaignId) {
           const { error } = await adminSb.from("campaigns").update({
             source: "tik",
             depense_reelle: depense,
@@ -466,11 +526,15 @@ Deno.serve(async (req: Request) => {
             portee,
             date_debut: startDate,
             date_fin: endDate,
-          }).eq("id", existing.id);
+            depense_devise: currency || null,
+            depense_source: "api",
+            depense_periode_debut: dailyRows.length ? dailyRows[0].jour : startDate,
+            depense_periode_fin: dailyRows.length ? dailyRows[dailyRows.length - 1].jour : endDate,
+          }).eq("id", campaignId);
           if (error) errors.push(nom + " : " + error.message);
           else updated++;
         } else {
-          const { error } = await adminSb.from("campaigns").insert({
+          const { data: ins, error } = await adminSb.from("campaigns").insert({
             org_id: orgId,
             nom,
             plateforme: "tiktok",
@@ -481,10 +545,35 @@ Deno.serve(async (req: Request) => {
             portee,
             date_debut: startDate,
             date_fin: endDate,
+            depense_devise: currency || null,
+            depense_source: "api",
+            depense_periode_debut: dailyRows.length ? dailyRows[0].jour : startDate,
+            depense_periode_fin: dailyRows.length ? dailyRows[dailyRows.length - 1].jour : endDate,
             created_by: user.id,
-          });
+          }).select("id").maybeSingle();
           if (error) errors.push(nom + " : " + error.message);
-          else inserted++;
+          else { inserted++; campaignId = ins?.id ?? null; }
+        }
+
+        // Upsert sur (campaign_id, jour) : rejouer la synchronisation corrige
+        // un jour au lieu de le dupliquer.
+        if (campaignId && dailyRows.length) {
+          const { error: de } = await adminSb.from("campaign_spend_daily").upsert(
+            dailyRows.map((d: any) => ({
+              org_id: orgId,
+              campaign_id: campaignId,
+              jour: d.jour,
+              depense: d.depense,
+              impressions: d.impressions,
+              clics: d.clics,
+              portee: 0,
+              devise: currency || null,
+              source: "api",
+              synced_at: new Date().toISOString(),
+            })),
+            { onConflict: "campaign_id,jour" },
+          );
+          if (de) errors.push(nom + " (historique) : " + de.message);
         }
       }
     }

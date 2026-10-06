@@ -2,6 +2,8 @@
 // Complète le flux OAuth Meta (Facebook Login) initié par le navigateur.
 // Appel : POST /functions/v1/social-facebook (Authorization: Bearer <access_token>)
 // Body  : { action: "exchange", code: string, redirect_uri: string }
+//       | { action: "pages_list" }
+//       | { action: "select_page", page_id: string }
 //       | { action: "refresh" }
 //       | { action: "ads_connect" }                                (V11 — Meta Ads)
 //       | { action: "ads_campaigns_get" }
@@ -11,6 +13,10 @@
 //       | { action: "ads_adgroup_status", adgroup_ids, operation_status }
 //       | { action: "ads_adgroup_update", adgroup_id, budget?, bid?, currency }
 // Retour: { ok: true, display_name, page_id } ou { error: string }
+// Si le compte connecté gère plusieurs Pages, "exchange" répond
+// { ok: true, needs_selection: true, pages: [...] } sans connecter de Page : l'appelant
+// choisit avec "select_page". Choisir automatiquement la première réponse de /me/accounts
+// reviendrait à publier sur une Page arbitraire.
 //
 // L'App ID / App Secret Meta sont stockés dans social_accounts.config
 // (platform = "facebook"). Après échange du code, la ligne reçoit un Page Access
@@ -87,6 +93,67 @@ async function myPages(userToken: string) {
   return out;
 }
 
+// Normalise /me/accounts. On ne conserve que ce qui est utile et on écarte les entrées
+// sans id ou sans jeton, pour ne jamais proposer une Page inexploitable.
+type FbPage = { id: string; name: string; category: string; token: string; ig: string | null };
+
+function slimPages(raw: unknown): FbPage[] {
+  const list = Array.isArray((raw as any)?.data) ? ((raw as any).data as any[]) : [];
+  return list
+    .map((p) => ({
+      id: String(p?.id ?? ""),
+      name: String(p?.name ?? "Page Facebook"),
+      category: String(p?.category ?? ""),
+      token: String(p?.access_token ?? ""),
+      ig: p?.instagram_business_account?.id ? String(p.instagram_business_account.id) : null,
+    }))
+    .filter((p) => p.id && p.token);
+}
+
+// Les deux familles de permissions Meta sont demandées séparément : les permissions
+// Page fonctionnent en mode Développement, les permissions Ads exigent un App Review.
+// Mélanger les deux fait échouer la fenêtre d'autorisation entière.
+const FB_PAGE_SCOPES = "pages_show_list,pages_manage_posts,pages_read_engagement,read_insights";
+const FB_ADS_SCOPES = "ads_read,ads_management,business_management";
+
+// Permissions Ads accordées par Meta sur le token courant (pour détecter un refus).
+async function grantedAdsScopes(userToken: string): Promise<string[]> {
+  const r = await fetch(`${GRAPH}/debug_token?input_token=${encodeURIComponent(userToken)}&access_token=${encodeURIComponent(userToken)}`);
+  const out = await r.json().catch(() => null);
+  const scopes = out?.data?.scopes;
+  return Array.isArray(scopes) ? scopes.map(String) : [];
+}
+
+// Comptes publicitaires accessibles avec ce user token : /me/adaccounts, puis les
+// Business Managers en repli (comptes possédés via business_management).
+async function listAdAccounts(userToken: string): Promise<{ list: { id: string; name: string; currency: string }[]; error: string }> {
+  const list: { id: string; name: string; currency: string }[] = [];
+  const seen = new Set<string>();
+  const addAccounts = (out: any) => {
+    for (const a of (Array.isArray(out?.data) ? out.data : [])) {
+      const id = String(a?.id ?? "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      list.push({ id, name: String(a?.name ?? "Compte " + id), currency: String(a?.currency ?? "") });
+    }
+  };
+
+  const r1 = await fbGraph("/me/adaccounts?fields=id,name,currency&limit=100", userToken);
+  if (r1?.error) {
+    return { list, error: "Impossible de lister les comptes publicitaires : " + fbErr(r1) +
+      " — l'app n'a pas les permissions ads accordées. Demandez « App Review » pour ads_management et ads_read, puis réautorisez." };
+  }
+  addAccounts(r1);
+  if (!list.length) {
+    const r2 = await fbGraph("/me/businesses?fields=id,name&limit=100", userToken);
+    for (const b of (Array.isArray(r2?.data) ? r2.data : [])) {
+      const r3 = await fbGraph(`/${b.id}/owned_ad_accounts?fields=id,name,currency&limit=100`, userToken);
+      addAccounts(r3);
+    }
+  }
+  return { list, error: "" };
+}
+
 // ---------------------------------------------------------------------------
 // Marketing API (Meta Ads) — Graph API (V11)
 // ---------------------------------------------------------------------------
@@ -109,6 +176,30 @@ async function fbGraph(path: string, token: string) {
   const sep = path.includes("?") ? "&" : "?";
   const r = await fetch(`${GRAPH}${path}${sep}access_token=${encodeURIComponent(token)}`);
   return r.json().catch(() => null);
+}
+
+// Historique quotidien de depense par campagne.
+// date_preset=maximum + time_increment=1 renvoie une ligne par campagne et par
+// jour depuis la creation du compte publicitaire. La pagination est
+// indispensable : une seule reponse est plafonnee a 500 lignes, ce qui
+// tronquerait silencieusement l'historique des campagnes anciennes.
+async function dailyInsightsAll(accId: string, token: string, errors: string[], maxPages = 200) {
+  const fields = "campaign_id,spend,impressions,clicks,reach,date_start";
+  const out: any[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < maxPages; page++) {
+    const cursor = after ? `&after=${encodeURIComponent(after)}` : "";
+    const url =
+      `/${accId}/insights?fields=${fields}&level=campaign` +
+      `&date_preset=maximum&time_increment=1&limit=500${cursor}`;
+    const res = await fbGraph(url, token);
+    if (res?.error) { errors.push(`Insights journalier compte ${accId} : ${fbErr(res)}`); break; }
+    const rows = Array.isArray(res?.data) ? res.data : [];
+    out.push(...rows);
+    after = res?.paging?.cursors?.after ?? null;
+    if (!after) break;
+  }
+  return out;
 }
 
 // Requête POST Graph API (form-url-encoded) sur un nœud (campagne, ad set…).
@@ -213,6 +304,31 @@ Deno.serve(async (req: Request) => {
   const appId = cfg?.client_id as string | undefined;
   const appSecret = cfg?.client_secret as string | undefined;
 
+  // ---- Enregistrer l'App ID / App Secret (fusion : ne doit rien écraser) ----
+  if (action === "save_app") {
+    const newId = String(params?.client_id ?? "").trim();
+    const newSecret = String(params?.client_secret ?? "").trim();
+    if (!newId || !newSecret) {
+      return json({ error: "Renseignez l'App ID et l'App Secret." }, 400);
+    }
+    if (acc) {
+      const { error } = await adminSb.from("social_accounts").update({
+        config: { ...cfg, client_id: newId, client_secret: newSecret },
+      }).eq("id", acc.id);
+      if (error) return json({ error: error.message }, 500);
+    } else {
+      const { error } = await adminSb.from("social_accounts").insert({
+        org_id: orgId,
+        platform: "facebook",
+        display_name: "Page Facebook",
+        config: { client_id: newId, client_secret: newSecret },
+        connected_by: user.id,
+      });
+      if (error) return json({ error: error.message }, 500);
+    }
+    return json({ ok: true });
+  }
+
   // ---- Échange du code contre le Page Access Token (connexion) ----
   if (action === "exchange") {
     if (!appId || !appSecret) {
@@ -233,58 +349,120 @@ Deno.serve(async (req: Request) => {
     const userExpiresAt = Date.now() + Number(long?.expires_in ?? 5184000) * 1000 - 60_000;
 
     const pages = await myPages(userToken);
-    const pageList = Array.isArray(pages?.data) ? pages.data : [];
+    const pageList = slimPages(pages);
     if (!pageList.length) {
-      return json({ error: "Aucune Page gérée par ce compte. Utilisez un compte admin d'une Page Facebook." }, 400);
+      return json({ error: "Aucune Page gérée par ce compte. Utilisez un compte qui a le contrôle total sur une Page Facebook." }, 400);
+    }
+
+    const baseConfig = {
+      ...cfg,
+      user_access_token: userToken,
+      user_access_token_expires_at: userExpiresAt,
+      pages: pageList.map((p) => ({ id: p.id, name: p.name, category: p.category })),
+    };
+
+    // Persiste le user token + la liste des Pages, sans jeton de Page tant que le choix
+    // n'est pas fait. Permet aussi de re-choisir plus tard sans repasser par Meta.
+    const persist = async (config: Record<string, unknown>, displayName: string) => {
+      if (acc) {
+        const { error } = await adminSb.from("social_accounts").update({ config, display_name: displayName }).eq("id", acc.id);
+        if (error) return json({ error: error.message }, 500);
+      } else {
+        const { data: prof } = await sb.from("profiles").select("org_id, active_org_id").eq("id", user.id).single();
+        const oid = prof?.active_org_id ?? prof?.org_id;
+        const { error } = await sb.from("social_accounts").insert({
+          org_id: oid,
+          platform: "facebook",
+          display_name: displayName,
+          config,
+          connected_by: user.id,
+        });
+        if (error) return json({ error: error.message }, 500);
+      }
+      return null;
+    };
+
+    // Plusieurs Pages gérées par ce compte : on ne choisit plus à l'aveugle. La première
+    // réponse de /me/accounts n'est pas ordonnée de façon fiable, et publier sur la
+    // mauvaise Page est irréversible. L'appelant doit trancher (action select_page).
+    if (pageList.length > 1) {
+      const err = await persist({ ...baseConfig, page_id: null, access_token: null }, "Page Facebook — à choisir");
+      if (err) return err;
+      return json({
+        ok: true,
+        needs_selection: true,
+        pages: pageList.map((p) => ({ id: p.id, name: p.name, category: p.category })),
+      });
     }
 
     const page = pageList[0];
-    const pageId = String(page.id ?? "");
-    const pageToken = String(page.access_token ?? "");
-    if (!pageId || !pageToken) {
-      return json({ error: "Meta n'a pas renvoyé de Page Access Token." }, 502);
-    }
-    const pageName = String(page.name ?? "Page Facebook");
-
     const newConfig = {
-      ...cfg,
-      page_id: pageId,
-      access_token: pageToken,
-      page_name: pageName,
-      user_access_token: userToken,
-      user_access_token_expires_at: userExpiresAt,
-      pages: pageList.map((p: any) => ({
-        id: String(p.id ?? ""),
-        name: String(p.name ?? ""),
-        category: String(p.category ?? ""),
-      })),
-      instagram_business_account_id: page.instagram_business_account?.id
-        ? String(page.instagram_business_account.id)
-        : null,
-      scopes: "pages_show_list,pages_manage_posts,pages_read_engagement,read_insights,ads_management,ads_read,business_management",
+      ...baseConfig,
+      page_id: page.id,
+      access_token: page.token,
+      page_name: page.name,
+      instagram_business_account_id: page.ig,
+      // Scopes réellement accordés pour la Page uniquement. Les permissions Ads
+      // (ads_management, business_management) exigent un App Review : les demander ici
+      // ferait rejeter toute la fenêtre d'autorisation et la Page ne se connecterait jamais.
+      scopes: FB_PAGE_SCOPES,
       connected_at: Date.now(),
     };
 
-    if (acc) {
-      const { error } = await sb.from("social_accounts").update({
-        config: newConfig,
-        display_name: pageName,
-      }).eq("id", acc.id);
-      if (error) return json({ error: error.message }, 500);
-    } else {
-      const { data: prof } = await sb.from("profiles").select("org_id, active_org_id").eq("id", user.id).single();
-      const oid = prof?.active_org_id ?? prof?.org_id;
-      const { error } = await sb.from("social_accounts").insert({
-        org_id: oid,
-        platform: "facebook",
-        display_name: pageName,
-        config: newConfig,
-        connected_by: user.id,
-      });
-      if (error) return json({ error: error.message }, 500);
-    }
+    const err = await persist(newConfig, page.name);
+    if (err) return err;
+    return json({ ok: true, display_name: page.name, page_id: page.id });
+  }
 
-    return json({ ok: true, display_name: pageName, page_id: pageId });
+  // ---- Lister les Pages gérées par le compte connecté (choix ou changement) ----
+  if (action === "pages_list") {
+    if (!acc) return json({ error: "compte non connecté" }, 404);
+    const userToken = cfg?.user_access_token as string | undefined;
+    if (!userToken) return json({ error: "Aucun user token : reconnectez le compte." }, 400);
+    if (cfg?.user_access_token_expires_at && Date.now() > Number(cfg.user_access_token_expires_at)) {
+      return json({ error: "Session Meta expirée : reconnectez le compte." }, 401);
+    }
+    const pages = slimPages(await myPages(userToken));
+    if (!pages.length) return json({ error: "Aucune Page gérée par ce compte." }, 400);
+    return json({
+      ok: true,
+      current_page_id: String(cfg?.page_id ?? ""),
+      pages: pages.map((p) => ({ id: p.id, name: p.name, category: p.category })),
+    });
+  }
+
+  // ---- Choisir la Page à connecter ----
+  if (action === "select_page") {
+    if (!acc) return json({ error: "compte non connecté" }, 404);
+    const wanted = String(params?.page_id ?? "").trim();
+    if (!wanted) return json({ error: "Aucune Page sélectionnée." }, 400);
+    const userToken = cfg?.user_access_token as string | undefined;
+    if (!userToken) return json({ error: "Aucun user token : reconnectez le compte." }, 400);
+    if (cfg?.user_access_token_expires_at && Date.now() > Number(cfg.user_access_token_expires_at)) {
+      return json({ error: "Session Meta expirée : reconnectez le compte." }, 401);
+    }
+    // On relit /me/accounts plutôt que de faire confiance à un id envoyé par le client :
+    // la Page doit réellement être gérée par ce compte, et son jeton vient de Meta.
+    const pageList = slimPages(await myPages(userToken));
+    const page = pageList.find((p) => p.id === wanted);
+    if (!page) {
+      return json({ error: "Cette Page n'est plus gérée par ce compte. Rechargez la liste." }, 400);
+    }
+    const { error } = await adminSb.from("social_accounts").update({
+      config: {
+        ...cfg,
+        page_id: page.id,
+        access_token: page.token,
+        page_name: page.name,
+        pages: pageList.map((p) => ({ id: p.id, name: p.name, category: p.category })),
+        instagram_business_account_id: page.ig,
+        scopes: FB_PAGE_SCOPES,
+        connected_at: Date.now(),
+      },
+      display_name: page.name,
+    }).eq("id", acc.id);
+    if (error) return json({ error: error.message }, 500);
+    return json({ ok: true, display_name: page.name, page_id: page.id });
   }
 
   // ---- Rafraîchissement : re-cur les Pages avec le user token longue durée ----
@@ -300,34 +478,37 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Session Meta expirée : reconnectez le compte (bouton Autoriser)." }, 401);
     }
 
-    const pages = await myPages(userToken);
-    const pageList = Array.isArray(pages?.data) ? pages.data : [];
+    const pageList = slimPages(await myPages(userToken));
     const currentPageId = String(cfg?.page_id ?? "");
+    // Jamais de repli sur « la première Page » : si aucune Page n'a été choisie et que le
+    // compte en gère plusieurs, on exige un choix explicite.
     const page = currentPageId
-      ? pageList.find((p: any) => String(p.id ?? "") === currentPageId)
-      : pageList[0];
-    if (!page) return json({ error: "Cette Page n'est plus gérée par le compte : reconnectez la Page." }, 400);
-    const pageToken = String(page.access_token ?? "");
+      ? pageList.find((p) => p.id === currentPageId)
+      : (pageList.length === 1 ? pageList[0] : null);
+    if (!page) {
+      return json({
+        error: currentPageId
+          ? "Cette Page n'est plus gérée par le compte : reconnectez la Page."
+          : "Ce compte gère plusieurs Pages : choisissez laquelle connecter.",
+      }, 400);
+    }
+    const pageToken = page.token;
     if (!pageToken) return json({ error: "Meta n'a pas renvoyé de Page Access Token." }, 502);
 
     const { error } = await adminSb.from("social_accounts").update({
       config: {
         ...cfg,
-        page_id: String(page.id),
+        page_id: page.id,
         access_token: pageToken,
-        page_name: String(page.name ?? cfg.page_name ?? "Page Facebook"),
-        pages: pageList.map((p: any) => ({
-          id: String(p.id ?? ""),
-          name: String(p.name ?? ""),
-          category: String(p.category ?? ""),
-        })),
+        page_name: page.name || String(cfg.page_name ?? "Page Facebook"),
+        pages: pageList.map((p) => ({ id: p.id, name: p.name, category: p.category })),
         connected_at: Date.now(),
       },
-      display_name: String(page.name ?? cfg.page_name ?? "Page Facebook"),
+      display_name: page.name || String(cfg.page_name ?? "Page Facebook"),
     }).eq("id", acc.id);
     if (error) return json({ error: error.message }, 500);
 
-    return json({ ok: true, display_name: String(page.name ?? cfg.page_name ?? "Page Facebook") });
+    return json({ ok: true, display_name: page.name || String(cfg.page_name ?? "Page Facebook") });
   }
 
   // ---------------------------------------------------------------------------
@@ -337,37 +518,18 @@ Deno.serve(async (req: Request) => {
   // ---- 1) Connecter l'analyse publicitaire : lister les comptes publicitaires ----
   if (action === "ads_connect") {
     if (!acc) return json({ error: "compte non connecté" }, 404);
-    const userToken = cfg?.user_access_token as string | undefined;
-    if (!userToken) return json({ error: "Aucun user token : reconnectez la Page (bouton Autoriser)." }, 400);
-    if (cfg?.user_access_token_expires_at && Date.now() > Number(cfg.user_access_token_expires_at)) {
-      return json({ error: "Session Meta expirée : reconnectez le compte (bouton Autoriser) avec les permissions ads." }, 401);
+    // Le token marketing est celui accordé par l'autorisation Ads séparée. On retombe sur
+    // le token Page pour les comptes déjà connectés avant la séparation des scopes.
+    const userToken = (cfg?.marketing_access_token as string | undefined)
+      || (cfg?.user_access_token as string | undefined);
+    if (!userToken) return json({ error: "Aucun token publicitaire : cliquez sur « Autoriser l'analyse publicitaire »." }, 400);
+    const expiresAt = Number(cfg?.marketing_access_token_expires_at ?? cfg?.user_access_token_expires_at ?? 0);
+    if (expiresAt && Date.now() > expiresAt) {
+      return json({ error: "Session Meta expirée : réautorisez l'analyse publicitaire." }, 401);
     }
 
-    const list: { id: string; name: string; currency: string }[] = [];
-    const seen = new Set<string>();
-    const addAccounts = (out: any) => {
-      for (const a of (Array.isArray(out?.data) ? out.data : [])) {
-        const id = String(a?.id ?? "");
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-        list.push({ id, name: String(a?.name ?? "Compte " + id), currency: String(a?.currency ?? "") });
-      }
-    };
-
-    const r1 = await fbGraph("/me/adaccounts?fields=id,name,currency&limit=100", userToken);
-    if (r1?.error) {
-      return json({ error: "Impossible de lister les comptes publicitaires : " + fbErr(r1) +
-        " — vérifiez que l'app a les permissions ads (ads_management / business_management), puis réautorisez (bouton « Autoriser »)." }, 502);
-    }
-    addAccounts(r1);
-    // Repli : comptes publicitaires possédés via les Business Managers (business_management).
-    if (!list.length) {
-      const r2 = await fbGraph("/me/businesses?fields=id,name&limit=100", userToken);
-      for (const b of (Array.isArray(r2?.data) ? r2.data : [])) {
-        const r3 = await fbGraph(`/${b.id}/owned_ad_accounts?fields=id,name,currency&limit=100`, userToken);
-        addAccounts(r3);
-      }
-    }
+    const { list, error: listErr } = await listAdAccounts(userToken);
+    if (listErr) return json({ error: listErr }, 502);
     if (!list.length) {
       return json({ error: "Aucun compte publicitaire accessible avec ce compte. Utilisez un profil ayant un rôle dans Meta Ads Manager, puis réautorisez l'app (permissions ads)." }, 400);
     }
@@ -385,6 +547,56 @@ Deno.serve(async (req: Request) => {
     if (error) return json({ error: error.message }, 500);
 
     return json({ ok: true, ad_accounts: list, display_name: list[0]?.name || "Meta Ads" });
+  }
+
+  // ---- 0bis) Échange du code OAuth Ads contre un token marketing (autorisation séparée) ----
+  // Indépendant de la Page : si Meta refuse les permissions Ads, la Page reste connectée.
+  if (action === "exchange_ads") {
+    if (!acc) return json({ error: "Enregistrez d'abord l'App ID et l'App Secret." }, 404);
+    if (!appId || !appSecret) {
+      return json({ error: "App Meta non enregistrée : entrez d'abord l'App ID et l'App Secret." }, 400);
+    }
+    if (!code || !redirectUri) return json({ error: "code/redirect_uri manquants" }, 400);
+
+    const short = await exchangeCode(appId, appSecret, code, redirectUri);
+    if (!short?.access_token) {
+      return json({ error: "Meta a refusé le code : " + (short?.error?.message || short?.error || "réponse invalide") }, 502);
+    }
+    const long = await longLived(appId, appSecret, String(short.access_token));
+    const adsToken = String(long?.access_token ?? short.access_token ?? "");
+    if (!adsToken) {
+      return json({ error: "Meta a refusé l'échange du token ads : " + (long?.error?.message || "réponse invalide") }, 502);
+    }
+
+    // Meta peut accorder le token tout en refusant les permissions Ads : on le dit clairement.
+    const granted = await grantedAdsScopes(adsToken);
+    const hasAds = granted.includes("ads_management") || granted.includes("ads_read");
+    if (!hasAds && !granted.length) {
+      return json({ error: "Meta n'a accordé aucune permission publicitaire. L'app doit être en/App Review pour ads_management et ads_read. La Page reste utilisable." }, 403);
+    }
+
+    const { list, error: listErr } = await listAdAccounts(adsToken);
+    if (listErr) return json({ error: listErr }, 502);
+    if (!list.length) {
+      return json({ error: "Aucun compte publicitaire accessible avec ce profil. Utilisez un profil ayant un rôle dans Meta Ads Manager." }, 400);
+    }
+
+    const adsExpiresAt = Date.now() + Number(long?.expires_in ?? 5184000) * 1000 - 60_000;
+    const { error } = await adminSb.from("social_accounts").update({
+      config: {
+        ...cfg,
+        marketing_access_token: adsToken,
+        marketing_access_token_expires_at: adsExpiresAt,
+        marketing_scopes: granted.join(",") || FB_ADS_SCOPES,
+        marketing_ad_account_ids: list.map((a) => a.id),
+        marketing_ad_account_names: list.map((a) => a.name),
+        marketing_ad_account_currencies: list.map((a) => a.currency),
+        marketing_connected_at: Date.now(),
+      },
+    }).eq("id", acc.id);
+    if (error) return json({ error: error.message }, 500);
+
+    return json({ ok: true, ad_accounts: list, granted_scopes: granted, display_name: list[0]?.name || "Meta Ads" });
   }
 
   // ---- 2) Synchroniser campagnes + ad sets + métriques sur 30 jours ----
@@ -405,11 +617,34 @@ Deno.serve(async (req: Request) => {
       const metricByCid: Record<string, any> = {};
       for (const row of (Array.isArray(ins?.data) ? ins.data : [])) metricByCid[String(row?.campaign_id)] = row;
 
+      // Historique journalier : time_increment=1 sur la duree de vie de la
+      // campagne. Alimente campaign_spend_daily pour que le ROAS se calcule sur
+      // la meme fenetre que le CA, au lieu d'une fenetre glissante de 30 jours.
+      const dailyByCid: Record<string, any[]> = {};
+      for (const accDaily of await dailyInsightsAll(accId, ctx.token, errors)) {
+        (dailyByCid[String(accDaily.campaign_id)] ||= []).push(accDaily);
+      }
+
       for (const c of (Array.isArray(cm?.data) ? cm.data : [])) {
         const cid = String(c?.id ?? "");
         const nom = String(c?.name ?? "").trim();
         if (!cid || !nom) continue;
+        const daily = dailyByCid[cid] || [];
+        // Repli 30 jours quand l'historique journalier est vide (campagne lancee aujourd'hui,
+        // campagne qui n'a pas encore ete relevee, etc.).
         const m = metricByCid[cid] || {};
+        // L'historique remplace la fenetre glissante : depense_reelle devient
+        // le cumul de l'historique, et la periode reellement couverte est
+        // ecrite dans depense_periode_debut/fin pour que le calcul de ROAS
+        // puisse l'utiliser au lieu de supposer 30 jours.
+        const dailySpend = daily.reduce((s, d) => s + Number(d?.spend ?? 0), 0);
+        const dailyImpr = daily.reduce((s, d) => s + Number(d?.impressions ?? 0), 0);
+        const dailyClics = daily.reduce((s, d) => s + Number(d?.clicks ?? 0), 0);
+        const dailyDates = daily.map((d) => String(d?.date_start ?? "")).filter(Boolean).sort();
+        const histoOk = daily.length > 0;
+        const spend = histoOk ? dailySpend : Number(m?.spend ?? 0);
+        const impr = histoOk ? dailyImpr : Number(m?.impressions ?? 0);
+        const clics = histoOk ? dailyClics : Number(m?.clicks ?? 0);
         const isLifetime = c?.daily_budget == null && c?.lifetime_budget != null;
         const budget = c?.daily_budget != null ? Number(c.daily_budget) : (c?.lifetime_budget != null ? Number(c.lifetime_budget) : null);
         const sync = {
@@ -422,30 +657,69 @@ Deno.serve(async (req: Request) => {
           meta_budget_mode: budget != null && isLifetime ? "lifetime_budget" : budget != null ? "daily_budget" : null,
           meta_budget: budget != null ? fbMajor(budget, currency) : null,
           meta_synced_at: new Date().toISOString(),
-          depense_reelle: Number(m?.spend ?? 0),
-          impressions: Number(m?.impressions ?? 0),
-          clics: Number(m?.clicks ?? 0),
+          depense_reelle: spend,
+          impressions: impr,
+          clics,
           portee: Number(m?.reach ?? 0),
-          date_debut: isoDaysAgo(30),
-          date_fin: isoDaysAgo(0),
+          // spend arrive des Insights en unites majeures de la devise du compte
+          // publicitaire (contrairement aux budgets, en centimes). On memorise la
+          // devise au lieu de supposer FCFA.
+          depense_devise: currency || null,
+          depense_source: "api",
+          depense_periode_debut: histoOk ? dailyDates[0] : null,
+          depense_periode_fin: histoOk ? dailyDates[dailyDates.length - 1] : null,
+          date_debut: histoOk ? dailyDates[0] : isoDaysAgo(30),
+          date_fin: histoOk ? dailyDates[dailyDates.length - 1] : isoDaysAgo(0),
         };
         const { data: existing } = await adminSb.from("campaigns")
           .select("id").eq("org_id", orgId).eq("source", "meta").eq("meta_campaign_id", cid).maybeSingle();
-        if (existing?.id) {
-          const { error: ue } = await adminSb.from("campaigns").update({ ...sync, nom }).eq("id", existing.id);
+        let campaignId = existing?.id ?? null;
+        if (campaignId) {
+          const { error: ue } = await adminSb.from("campaigns").update({ ...sync, nom }).eq("id", campaignId);
           if (ue) errors.push(nom + " : " + ue.message); else updated++;
         } else {
           // rattrapage : une ligne déjà créée par marketing_sync (par nom) → on l'enrichit.
+          // Le filtre plateforme est indispensable : sans lui, une campagne Meta
+          // portant le même nom qu'une campagne TikTok réécrit la ligne TikTok
+          // et lui vole sa dépense. TikTok filtre déjà par plateforme.
           const { data: byName } = await adminSb.from("campaigns")
-            .select("id").eq("org_id", orgId).eq("source", "meta").eq("nom", nom).maybeSingle();
+            .select("id").eq("org_id", orgId).eq("source", "meta").eq("plateforme", "facebook").eq("nom", nom).maybeSingle();
           if (byName?.id) {
-            const { error: ue } = await adminSb.from("campaigns").update(sync).eq("id", byName.id);
+            campaignId = byName.id;
+            const { error: ue } = await adminSb.from("campaigns").update(sync).eq("id", campaignId);
             if (ue) errors.push(nom + " : " + ue.message); else updated++;
           } else {
-            const { error: ie } = await adminSb.from("campaigns").insert({
+            const { data: ins, error: ie } = await adminSb.from("campaigns").insert({
               org_id: orgId, nom, plateforme: "facebook", created_by: user.id, ...sync,
-            });
-            if (ie) errors.push(nom + " : " + ie.message); else inserted++;
+            }).select("id").maybeSingle();
+            if (ie) errors.push(nom + " : " + ie.message); else { inserted++; campaignId = ins?.id ?? null; }
+          }
+        }
+
+        // Historique journalier (source API). Upsert sur (campaign_id, jour) :
+        // rejouer la synchronisation corrige un jour au lieu de le dupliquer.
+        if (campaignId && daily.length) {
+          const rows = daily
+            .filter((d) => String(d?.date_start ?? ""))
+            .map((d) => ({
+              org_id: orgId,
+              campaign_id: campaignId,
+              jour: String(d.date_start),
+              depense: Number(d?.spend ?? 0),
+              impressions: Math.round(Number(d?.impressions ?? 0)),
+              clics: Math.round(Number(d?.clicks ?? 0)),
+              // reach n'est pas restitue au niveau journalier par Meta : on
+              // laisse 0 plutot que d'ecrire un total 30 jours comme s'il etait
+              // quotidien, ce qui rendrait la somme de la colonne sans sens.
+              portee: 0,
+              devise: currency || null,
+              source: "api",
+              synced_at: new Date().toISOString(),
+            }));
+          for (let i = 0; i < rows.length; i += 500) {
+            const { error: de } = await adminSb.from("campaign_spend_daily")
+              .upsert(rows.slice(i, i + 500), { onConflict: "campaign_id,jour" });
+            if (de) errors.push(nom + " (historique) : " + de.message);
           }
         }
       }

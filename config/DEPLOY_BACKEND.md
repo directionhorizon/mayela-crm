@@ -224,6 +224,28 @@ Cela ajoute :
 ⚠️ **Après cette migration, REDÉPLOYER la fonction `social-facebook`** (elle référence les
 nouvelles colonnes/table — voir Étape 3).
 
+### 1h — Migration V9 (index de performances) — APPLIQUÉE le 29/09/2026
+> ✔️ **Statut : déjà appliquée en base.** 13 index vérifiés par introspection `pg_indexes`.
+> Cette section est conservée pour tracer la migration : elle manquait dans ce runbook, ce qui
+> explique qu'un fichier écrit le 13/09 soit resté non exécuté pendant seize jours.
+
+1. Dashboard Supabase → **SQL Editor** → **New query**
+2. Copiez-collez TOUT le contenu du fichier `MIGRATION_V9_INDEXES.sql`
+3. Cliquez **Run** — la migration est idempotente, la réexécuter ne fait rien de plus
+
+Index posés : `achats(achat_date)`, `achats(campagne_id)`, `achats(client_id)`,
+`clients(created_at)`, `clients(campagne_origine)`, `clients(updated_at)`,
+`interactions(statut_traitement)`, `tasks(due_date)`, `tasks(client_id)`,
+`devis(devis_date)`, `devis(client_id)`, `creances(client_id)`, `social_posts(status)`.
+
+> **Deux lignes ont été retirées du fichier** le 29/09, avant la première application :
+> `idx_interactions_client` doublonnait `idx_interactions_client_id`, et `idx_campaigns_org_id`
+> était déjà couvert par `campaigns_org_id_idx(org_id, created_at DESC)`. Un index redondant coûte
+> du stockage et ralentit les écritures sans rien accélérer en lecture.
+
+> **Migrations appliquées mais absentes de ce runbook** : V12, V13, V14 et V15. Leur état est
+> tenu à jour dans `config/SCHEMA_SUPABASE.md` (en-tête « Statut à jour »).
+
 Vérification :
 - `select column_name from information_schema.columns where table_schema='public' and table_name='campaigns' and column_name like 'meta%' order by 1;`
 - `select tablename from pg_tables where schemaname='public' and tablename='meta_adsets';`

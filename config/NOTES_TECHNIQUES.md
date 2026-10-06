@@ -19,11 +19,52 @@ Décision volontaire : présentation dans 9 jours, une seule personne dessus. Un
 
 3. **RLS = la vraie sécurité, pas le frontend** : toute la logique d'isolation des données entre entreprises clientes vit dans les policies Postgres (`current_org_id()`), pas dans le JS. Ne jamais faire confiance à un filtre côté client pour la sécurité.
 
+   **Deux pièges RLS à connaître (Voir aussi `config/MIGRATION_V13_ISOLATION_ESPACE.sql`)** :
+   - **Deux politiques permissives sur la même commande se combinent par OU.** Elles s'annulent
+     au lieu de se restreindre. Une politique « deny » *permissive* (`using (auth.role() <> 'anon')`)
+     laisse passer toute ligne d'un compte connecté et neutralise toutes les autres → Plus aucune
+     isolation. Correctif : bloquer le rôle par absence de politique, ou par un
+     `to anon using (false)`. Règle : **une seule politique par table et par commande**, ciblée
+     `TO authenticated`.
+   - **`NULL = NULL` vaut `NULL`, pas `true`.** Une politique `org_id = current_org_id()` refuse
+     donc silencieusement l'accès à toute ligne sans espace (`org_id IS NULL`) pour un compte
+     lui-même sans espace (`current_org_id()` → `NULL`). Résultat : l'utilisateur voit une liste
+     vide, ou reçoit un 403 sur ses propres écritures. Ajouter explicitement la branche
+     `(org_id is null and owner_user_id = auth.uid())` — cf. V13 → V14.
+   - Après **toute** migration RLS, rejouer `node config/verify_v13_isolation.mjs` (isolation
+     entre espaces) **et** `node config/verify_v14_solo.mjs` (mode sans espace + non-régression
+     inter-espace). Le second est indispensable : ouvrir le mode solo ne doit pas rouvrir la fuite.
+
 4. **`profiles` peut ne pas exister au premier login** : normalement un trigger Supabase crée la ligne `profiles` à l'inscription. Le frontend a un filet de sécurité (insert si absent) — si ça se déclenche souvent, vérifier que le trigger `on_auth_user_created` est bien actif.
 
 5. **`Schema privé`** : schéma Postgres séparé (nommé avec accent, à échapper en SQL : `"Schema privé"`), alimenté par un pipeline Make.com externe (sync Google Sheets → Supabase). Ne pas confondre avec le schéma `public`. Hors périmètre du produit MAYELA CRM — sert la prospection interne HORIZON.
 
 6. **Tables `horizon_*`** : réservées à l'équipe HORIZON (`is_horizon_staff = true`), ne doivent jamais apparaître dans l'UI produit destinée aux clients CRM.
+
+## Principe : compte / adresse e-mail / espace sont indissociables
+
+**Règle (29/09/2026) :** un compte ne peut pas être dissocié de son adresse e-mail, et une adresse
+e-mail ne peut pas être dissociée de son espace. Si l'espace lié à une adresse est supprimé, le
+compte correspondant **n'a plus d'objet** : il ne reste qu'un accès vide affichant l'écran
+d'onboarding, et il n'y a rien à migrer ni à rattacher ailleurs.
+
+Conséquences pratiques :
+
+- **Un compte sans espace n'est pas un bug** — c'est le résultat normal d'un espace supprimé.
+  `afterPinOk()` masque le shell et affiche l'onboarding, ce qui est le comportement correct.
+  Ne pas chercher à « réparer » ces comptes en rattachant leur profil à un autre espace.
+- **Avant de migrer quoi que ce soit**, vérifier qu'il existe réellement des lignes dans
+  `clients`, `achats`, `devis`, `tasks`, `interactions`, `creances`, `produits_services`,
+  `ia_messages`, `org_members` et `social_accounts` pour le compte concerné. Sur les 4 comptes
+  concernés au 29/09/2026, le compte était **zéro sur chaque table** : rien à récupérer.
+- **Le mode solo existe quand même** (`clients`/`produits_services` avec `owner_user_id` et
+  `org_id IS NULL`) : c'est le cas d'un client créé avant le rattachement à un espace, pas celui
+  d'un compte sans espace. Voir §3 sur les politiques RLS.
+- **Attention aux résidus de test** : mes scripts de vérification créent et suppriment des
+  comptes via l'API admin. Si un script plante avant son bloc `finally`, les lignes métier
+  peuvent survivre à la suppression du compte (ex. un « Produit solo » resté le 28/09/2026
+  alors que son compte avait été supprimé). Les blocs `finally` doivent toujours être écrits,
+  et il faut auditer `owner_user_id` orphelins après chaque exécution.
 
 ## Flux « Espace dédié = reconnexion gmail » (création & bascule)
 
@@ -49,6 +90,9 @@ La bascule d'espace se reconnecte avec le gmail propriétaire de l'espace (`my_s
 | 16/07 | Nettoyage tables orphelines `public.leads/api_configs/strategy_logs` | Reliquats vides d'avant renommage `horizon_*` |
 | 14/09/2026 | Création d'espace avec gmail propriétaire (champ optionnel + reconnexion) | Cohérence TikTok : chaque espace piloté par son compte gmail (`pendingCreateOrg` calqué sur `pendingSwitchOrg`) |
 | 15/09/2026 | TikTok Marketing API (pub) : `exchange_marketing` + `marketing_sync` dans `social-tiktok`, section « Analyse publicitaire » dans l'UI, migration V10 (`has_marketing` dans `social_accounts_safe`) | Lire automatiquement les campagnes publicitaires TikTok (item #8 du plan) sans exposer les tokens (`marketing_access_token` purgé de la vue) |
+| 28/09/2026 | **V13 — cloisonnement strict par espace** : les politiques `*_deny_anonymous` étaient *permissives* et se combinaient par OU avec les autres, annulant l'isolation (transposition de données entre espaces). Remplacées par un blocage `TO anon using (false)` + une seule politique `TO authenticated` par table | La sécurité multi-tenant ne repose pas sur le nombre de politiques mais sur leur **forme** : une politique permissive est une porte ouverte, pas un verrou |
+| 28/09/2026 | **V12 — `profiles.top_clients_limit`** (défaut 15) au lieu d'une valeur locale à l'appareil | Le réglage ne se réinitialisait plus selon le navigateur |
+| 29/09/2026 | **V14 — mode « sans espace » (solo) étendu aux tables enfants + `ia_messages`** | V13 avait couvert `clients`/`produits_services` mais pas les 5 tables enfants : le propriétaire d'un client solo pouvait le créer et le lire, mais toute écriture renvoyait 403 (`NULL = NULL` n'est pas `true`) |
 
 ## TikTok Marketing API (pub) — rappel protocolaire
 
