@@ -3721,20 +3721,22 @@ document.body.addEventListener('click', async (e)=>{
     if(authBtn.dataset.authSocial === 'facebook') startFbAuth();
     return;
   }
-  // Toute la carte est cliquable, pas seulement le lien texte. Les liens
-  // specifiques (deconnexion, Ads, info) gardent la priorite et remontent au
-  // delegate plus bas : on les laisse donc passer.
-  if(e.target.closest('[data-conn-social],[data-disc-social],[data-man-social],[data-info-social]')) return;
-  const card = e.target.closest('[data-card-social]');
-  if(card){
-    const pl = card.dataset.cardSocial;
-    const acc = socialCache.find(a=>a.platform===pl);
-    if(acc && acc.connected){ if(confirm("D\u00e9connecter ce compte ?")) disconnectSocial(pl); }
-    else if(acc){ if(pl==='facebook') startFbAuth(); else if(pl==='tiktok') startTikTokAuth(); }
-    else if(pl==='tiktok'){ openTikTokSetup(); }
-    else if(pl==='facebook'){ openFacebookSetup(); }
-    else toast(PLATFORM_META[pl].hint);
-    return;
+  // Toute la carte est cliquable, pas seulement le lien texte. Un lien
+  // specifique (Connecter / Deconnecter) garde la priorite : on saute alors le
+  // traitement de la carte. On ne sort surtout pas du listener ici, sinon les
+  // handlers dedies plus bas (conn, disc) deviennent inatteignables.
+  if(!e.target.closest('[data-conn-social],[data-disc-social]')){
+    const card = e.target.closest('[data-card-social]');
+    if(card){
+      const pl = card.dataset.cardSocial;
+      const acc = socialCache.find(a=>a.platform===pl);
+      if(acc && acc.connected){ if(confirm("D\u00e9connecter ce compte ?")) disconnectSocial(pl); }
+      else if(acc){ if(pl==='facebook') startFbAuth(); else if(pl==='tiktok') startTikTokAuth(); }
+      else if(pl==='tiktok'){ openTikTokSetup(); }
+      else if(pl==='facebook'){ openFacebookSetup(); }
+      else toast(PLATFORM_META[pl].hint);
+      return;
+    }
   }
   const conn = e.target.closest('[data-conn-social]');
   if(conn){
@@ -4284,7 +4286,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-d062b1a5e5';
+const APP_VERSION = 'mayela-crm-45482c6786';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
