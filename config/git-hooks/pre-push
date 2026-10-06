@@ -1,0 +1,25 @@
+#!/bin/sh
+# Crochet pre-push : delegue a l'orchestrateur.
+#
+# Installe via : node config/scripts/install-git-hooks.mjs
+#
+# L'orchestrateur decide lui-meme quels controles sont pertinents pour le push
+# en cours : un push qui ne touche que de la documentation ne declenche rien, un
+# push qui touche une migration ou du code lance la verification complete, y
+# compris les controles reseau.
+
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push : node introuvable, verification ignoree."
+  exit 0
+fi
+
+if [ ! -f config/scripts/orchestrator.mjs ]; then
+  exit 0
+fi
+
+exec node config/scripts/orchestrator.mjs precheck "$@"

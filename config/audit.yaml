@@ -1,0 +1,105 @@
+# Configuration de l'audit documentaire (config/scripts/audit_docs.py)
+#
+# L'audit croise trois sources de verite du depot MAYELA CRM :
+#   1. les migrations SQL   (config/MIGRATION_*.sql)  -> etat du schema attendu
+#   2. la doc de schema     (config/SCHEMA_SUPABASE.md) -> etat documente
+#   3. le code applicatif   (supabase/functions/**, src/**) -> etat utilise
+#
+# Toute divergence entre ces trois sources est signalee. Ce fichier est la seule
+# entree a modifier pour ajuster le perimetre de l'audit.
+
+version: 1
+
+project: mayela-crm
+
+# Chemins relatif a la racine du depot.
+paths:
+  migrations_dir: config
+  migration_glob: "MIGRATION_*.sql"
+  schema_doc: config/SCHEMA_SUPABASE.md
+  code_dirs:
+    - supabase/functions
+    - src
+  code_glob: "*.{ts,tsx,js,mjs,jsx,html}"
+
+  # Dossiers de documentation scrutes par les regles editoriales (fautes,
+  # marqueurs perimes) en plus de schema_doc.
+  prose_dirs:
+    - docs
+    - CLASSE MARKETING
+  prose_glob: "*.md"
+
+  # Rapports produits par le script.
+  report_dir: config/reports
+  report_basename: audit-docs
+
+# Regles de coherence schema <-> documentation.
+schema:
+  # Sections du fichier de doc dont le titre n'est pas une table (listees pour
+  # memoire ; le script ignore toute section sans bloc de colonnes).
+  ignore_tables:
+    # Tables internes hors perimetre produit, non documentees volontairement.
+    - horizon_leads
+    # Vue de securite : exposee par la doc dans la section RLS, pas comme table.
+    - social_accounts_safe
+
+  # Colonnes ajoutees ou creees par migration mais non documentees
+  # individuellement.
+  ignore_columns:
+    - created_at
+    - updated_at
+    - synced_at
+
+  # Colonnes d'audit recurrentes, ajoutees par `alter table ... add column`
+  # a plusieurs tables : signalees une seule fois au total.
+  report_common_columns: false
+
+# Verifie que chaque table appelee par le code est bien documentee.
+code_usage:
+  # Motifs de selection PostgREST / Supabase dans le code applicatif.
+  patterns:
+    - "\\.from\\(\\s*['\"]([a-z_][a-z0-9_]*)['\"]"
+    - "\\.rpc\\(\\s*['\"]([a-z_][a-z0-9_]*)['\"]"
+  # Tables appelees en RPC : leur source de verite est la section
+  # "Fonctions RPC utilisees par le frontend" de la doc, pas les migrations.
+  rpc_check: true
+
+# Regles editoriales francaises. Heuristique volontairement etroite : on ne
+# liste que des fautes reellement observees dans le depot, pour éviter les faux
+# positifs sur du francais correct.
+editorial:
+  enabled: true
+
+  # [mot incorrect, correction attendue]
+  typos:
+    - [rugat, "de la"]
+    - [deserves, "doivent"]
+    - [doubts, "incertitudes"]
+    - [silently, "silencieusement"]
+    - [lePendant, "le pendant de"]
+    - [despense, "depense"]
+    - [depense_api, "depense"]
+    - ["ROAS  global", "ROAS global"]
+
+  # marqueurs = identifiant interne, pattern = regex, message = explication.
+  stale_markers:
+    - marker: frozen_date
+      pattern: "Fichier fige au"
+      message: 'mention "Fichier fige au" : la date de congel est obsolete'
+    - marker: line_ref
+      pattern: "^\\s*\\*\\*Ref\\.\\*\\*\\s*:\\s*.*l\\.\\d+"
+      message: 'reference "Ref. : l.NNNN" : numero de ligne perime, utiliser le nom de la fonction'
+    - marker: line_number
+      pattern: "\\bl\\.\\d{3,5}\\b"
+      message: 'numero de ligne "l.NNNN" : perime, citer le nom de la fonction'
+    - marker: pending_delay
+      pattern: "a (?:\\+|moins de )?\\d+ jours? (?:de retard|avant)"
+      message: 'formulation "X jours de retard" : a recontextualiser'
+
+# Codes de sortie.
+#   0 = aucun probleme
+#   1 = divergence de schema (table/colonne non documentee)
+#   2 = probleme editorial uniquement
+exit:
+  fail_on_schema: true
+  fail_on_editorial: false
