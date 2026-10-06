@@ -2677,19 +2677,33 @@ function startFbAdsAuth(){
   openExternalAuth('https://www.facebook.com/v21.0/dialog/oauth/?' + qs.toString());
 }
 async function completeFbAuth(code, redirectUri){
+  // Retour de Meta : sans ce message, l'ecran reste fige pendant tout l'echange
+  // (edge function lente ou en demarrage a froid) sans le moindre retour visuel.
+  toast('Connexion a Facebook en cours...');
   try{
     const { data:{ session } } = await sb.auth.getSession();
+    if(!session) throw new Error("Session expiree : reconnectez-vous, puis reessayez.");
+    // Delai maximum : sans lui, une edge function qui ne repond jamais laisse
+    // l'ecran fige sur « en cours... » jusqu'a ce que l'utilisateur force-quitte.
+    const ac = new AbortController();
+    const delai = setTimeout(()=>ac.abort(), 20000);
     const r = await fetch(SUPABASE_URL + '/functions/v1/social-facebook', {
       method:'POST',
       headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + session.access_token },
-      body: JSON.stringify({ action:'exchange', code, redirect_uri: redirectUri || facebookRedirectUri() })
+      body: JSON.stringify({ action:'exchange', code, redirect_uri: redirectUri || facebookRedirectUri() }),
+      signal: ac.signal
     });
+    clearTimeout(delai);
     const out = await r.json();
     if(!r.ok) throw new Error(out.error || "Échec de la connexion Facebook.");
     // Plusieurs Pages gérées par le compte connecté : on ne devine pas laquelle.
     if(out.needs_selection){ openFacebookSetup(); showFbPagePicker(out.pages); return; }
     toast('Page Facebook connectée : ' + (out.display_name || 'PHARMAZEN'));
-  }catch(ex){ toast(ex.message, true); }
+  }catch(ex){
+    toast(ex.name === 'AbortError'
+      ? "Facebook n'a pas répondu à temps : vérifiez la connexion puis réessayez."
+      : ex.message, true);
+  }
   insightsData = null; insightsOrg = null;
   loadSocial();
 }
@@ -3707,7 +3721,16 @@ const _origLoadSocial = window.__gs_hook;
     setTimeout(()=>completeFbAuth(code, fbRedirect), 300);
     return;
   }
-  if(state !== oauthGet('tt_state')) return;
+  if(state !== oauthGet('tt_state')){
+    // Retour OAuth sans state connu (localStorage purgé pendant l'aller vers
+    // Meta, ou onglet différent) : sans ce message, l'utilisateur revenait
+    // ici sans le moindre retour visuel — exactement « rien ne s'affiche ».
+    if(q.get('code') || q.get('error')){
+      history.replaceState(null,'', location.pathname);
+      toast("Connexion interrompue : recliquez sur Connecter pour recommencer.", true);
+    }
+    return;
+  }
   oauthDel('tt_state');
   history.replaceState(null,'', oauthGet('tt_redirect') || tiktokRedirectUri());
   const code = q.get('code'), err = q.get('error');
@@ -4286,7 +4309,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-45482c6786';
+const APP_VERSION = 'mayela-crm-099ef7558d';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
