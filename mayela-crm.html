@@ -2527,7 +2527,38 @@ function oauthDel(k){ OAUTH_STORE.removeItem(k); sessionStorage.removeItem(k); }
 // Le retour arrive dans le meme onglet (ou, depuis une PWA installee, dans un
 // onglet du navigateur systeme) : dans les deux cas OAUTH_STORE reste lisible.
 function openExternalAuth(url){
-  location.href = url;
+  // Retour visuel garanti : sur PWA installee (Android), la navigation vers Meta/TikTok
+  // peut etre ignoree par le systeme et l'ecran restait fige, sans aucun signe. On tente
+  // la navigation directe (meme onglet, comme avant) ; si l'onglet n'a pas quitte la page
+  // au bout de 1,5 s, on affiche un lien reel que l'utilisateur peut toucher. Un clic sur
+  // un lien est toujours honore, meme depuis une app installee (navigation hors perimetre).
+  let left = false;
+  const markLeft = ()=>{ left = true; };
+  addEventListener('pagehide', markLeft, { once:true });
+  addEventListener('beforeunload', markLeft, { once:true });
+  try{ toast('Ouverture de la page d\'autorisation…'); }catch(_e){}
+  try{ location.assign(url); }catch(_e){}
+  setTimeout(()=>{ if(!left) showAuthFallback(url); }, 1500);
+}
+function showAuthFallback(url){
+  if(document.getElementById('authFallbackPanel')) return;
+  const box = document.createElement('div');
+  box.id = 'authFallbackPanel';
+  box.setAttribute('role','alert');
+  box.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:100000;width:min(92vw,360px);background:#1D3B33;border:1px solid rgba(217,164,65,.55);color:#F3EDE0;font-family:"Work Sans",sans-serif;font-size:13px;padding:12px 14px;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;';
+  box.innerHTML = '<span>La page Facebook ne s\'est pas ouverte automatiquement.</span>';
+  const link = document.createElement('a');
+  link.href = url;
+  link.textContent = 'Touchez ici pour autoriser';
+  link.style.cssText = 'display:block;text-align:center;background:#D9A441;color:#0D1F17;border-radius:8px;padding:11px 12px;font-weight:700;text-decoration:none;';
+  box.appendChild(link);
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = 'Annuler';
+  cancel.style.cssText = 'background:transparent;border:none;color:#F3EDE0;opacity:.7;cursor:pointer;font-size:12px;';
+  cancel.addEventListener('click', ()=>box.remove());
+  box.appendChild(cancel);
+  document.body.appendChild(box);
 }
 
 // ---- Connexion TikTok (OAuth Login Kit) ----
@@ -2632,14 +2663,22 @@ function facebookRedirectUri(){
 }
 async function startFbAuth(){
   const acc = socialCache.find(a=>a.platform==='facebook');
-  const appId = (acc && acc.config && acc.config.client_id) || document.getElementById('fbClientId').value.trim();
-  if(!appId){ toast("Enregistrez d'abord l'App ID de votre app Meta.", true); openFacebookSetup(); return; }
+  const appId = (acc && acc.config && acc.config.client_id) || ((document.getElementById('fbClientId')||{}).value || '').trim();
+  if(!appId){
+    openFacebookSetup();
+    const e1 = document.getElementById('fbSetupErr');
+    if(e1) e1.textContent = "App ID manquant : renseignez-le ci-dessous, puis cliquez sur « Se connecter à Facebook ».";
+    toast("App ID manquant : renseignez-le dans le panneau qui vient de s'ouvrir.", true);
+    return;
+  }
   // L'App Secret ne transite jamais par le navigateur (vue social_accounts_safe le retire),
   // seule sa présence est exposée. Sans lui, l'échange de code est refusé par le serveur :
   // inutile d'ouvrir la fenêtre Meta pour y revenir en erreur.
   if(acc && acc.has_app_secret === false){
-    toast("App Secret manquant : renseignez-le pour pouvoir connecter la Page.", true);
     openFacebookSetup();
+    const e2 = document.getElementById('fbSetupErr');
+    if(e2) e2.textContent = "App Secret manquant : renseignez-le ci-dessous, puis cliquez sur « Se connecter à Facebook ».";
+    toast("App Secret manquant : renseignez-le dans le panneau qui vient de s'ouvrir.", true);
     return;
   }
   const redirectUri = facebookRedirectUri();
@@ -3740,8 +3779,8 @@ const _origLoadSocial = window.__gs_hook;
 document.body.addEventListener('click', async (e)=>{
   const authBtn = e.target.closest('[data-auth-social]');
   if(authBtn){
-    if(authBtn.dataset.authSocial === 'tiktok') startTikTokAuth();
-    if(authBtn.dataset.authSocial === 'facebook') startFbAuth();
+    if(authBtn.dataset.authSocial === 'tiktok') Promise.resolve(startTikTokAuth()).catch(ex=>toast('Connexion TikTok impossible : '+(ex&&ex.message||ex), true));
+    if(authBtn.dataset.authSocial === 'facebook') startFbAuth().catch(ex=>toast('Connexion Facebook impossible : '+(ex&&ex.message||ex), true));
     return;
   }
   // Toute la carte est cliquable, pas seulement le lien texte. Un lien
@@ -3754,7 +3793,7 @@ document.body.addEventListener('click', async (e)=>{
       const pl = card.dataset.cardSocial;
       const acc = socialCache.find(a=>a.platform===pl);
       if(acc && acc.connected){ if(confirm("D\u00e9connecter ce compte ?")) disconnectSocial(pl); }
-      else if(acc){ if(pl==='facebook') startFbAuth(); else if(pl==='tiktok') startTikTokAuth(); }
+      else if(acc){ if(pl==='facebook') startFbAuth().catch(ex=>toast('Connexion Facebook impossible : '+(ex&&ex.message||ex), true)); else if(pl==='tiktok') Promise.resolve(startTikTokAuth()).catch(ex=>toast('Connexion TikTok impossible : '+(ex&&ex.message||ex), true)); }
       else if(pl==='tiktok'){ openTikTokSetup(); }
       else if(pl==='facebook'){ openFacebookSetup(); }
       else toast(PLATFORM_META[pl].hint);
@@ -4309,7 +4348,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-099ef7558d';
+const APP_VERSION = 'mayela-crm-ec122c0580';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
