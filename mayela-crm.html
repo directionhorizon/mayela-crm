@@ -1048,6 +1048,7 @@
           <div class="meta" style="color:var(--sage); line-height:1.5;">Mettez en pause et ajustez le budget de vos campagnes et ensembles de pubs directement depuis Meta Ads Manager. Les coûts sont dans la devise du compte publicitaire (pas en FCFA).</div>
           <div class="meta" id="fmMkStatus" style="color:var(--gold); min-height:1.2em;"></div>
         </div>
+        <button class="btn-ghost hidden" id="fmConnectBtn" style="margin:12px 20px 0;">📊 Autoriser l'analyse publicitaire</button>
         <button class="btn-ghost" id="fmRefreshBtn" style="margin:12px 20px 0;">🔄 Synchroniser les campagnes</button>
         <div class="err-msg" id="fmErr"></div>
         <div class="section-title">Campagnes Meta Ads</div>
@@ -2115,6 +2116,10 @@ async function loadSocial(){
     if(acc && acc.connected) action = `<span class="link-sm" data-disc-social="${pl}">Déconnecter</span>`;
     else if(acc) action = `<span class="link-sm" data-auth-social="${pl}">Autoriser</span>`;
     else action = `<span class="link-sm" data-conn-social="${pl}">Connecter</span>`;
+    // Le panneau de configuration Facebook (App ID, « Changer de Page », autorisation
+    // de l'analyse publicitaire Meta) n'était atteignable qu'avant la connexion de la
+    // Page : une fois connecté, il devenait inaccessible. Cette roue dentée le rouvre.
+    if(pl === 'facebook') action += ` <span class="link-sm" data-fb-setup="1" title="Configuration Facebook (Page &amp; analyse publicitaire Meta)">⚙️</span>`;
     const connected = !!(acc && acc.connected);
     const accent = { facebook:'#1877F2', whatsapp:'#25D366', tiktok:'#27E1E8' }[pl] || 'var(--gold)';
     const st = `<span class="sc-status ${connected ? 'ok' : 'no'}">${connected ? 'Connecté' : 'Non connecté'}</span>`;
@@ -3137,7 +3142,7 @@ function fbAdsStatusLines(){
       (names.length ? `<div class="meta">Compte(s) : ${esc(names.join(', '))}</div>` : '') +
       (ids.length ? `<div class="meta" style="color:var(--sage);">Ad account ID : ${esc(ids.join(', '))}</div>` : '');
   }
-  return `<span class="sc-status no">Analyse publicitaire non connectée — Réseaux → « Se connecter à l'analyse publicitaire »</span>`;
+  return `<span class="sc-status no">Analyse publicitaire non connectée — utilisez « 📊 Autoriser l'analyse publicitaire »</span>`;
 }
 function renderFbMarketingStatus(){
   const el = document.getElementById('fbMarketingStatus');
@@ -3147,6 +3152,9 @@ function renderFbMarketingStatus(){
 function fillFbAdsStatus(){
   const el = document.getElementById('fmMkStatus');
   if(el) el.innerHTML = fbAdsStatusLines();
+  // Le bouton d'autorisation ne sert que tant que l'analyse n'est pas connectée.
+  const cbtn = document.getElementById('fmConnectBtn');
+  if(cbtn) cbtn.classList.toggle('hidden', fbAdsConnected());
 }
 function fbAdAccount(){
   const acc = socialCache.find(a=>a.platform==='facebook');
@@ -3307,11 +3315,15 @@ async function fbAdsetBid(id, accId, cur){
   }catch(ex){ toast(ex.message, true); }
 }
 // ---- Connexion / relève des campagnes Meta (panneau Réseaux) ----
-async function startFbMarketingConnect(){
-  const errEl = document.getElementById('fbMarketingErr');
+// errId permet de réutiliser cette action depuis l'écran « Gérer mes campagnes
+// Meta Ads » (#fmErr) comme depuis le panneau Facebook (#fbMarketingErr).
+async function startFbMarketingConnect(errId){
+  const errEl = document.getElementById(errId || 'fbMarketingErr');
   const btn = document.getElementById('fbMarketingConnectBtn');
+  const fmBtn = document.getElementById('fmConnectBtn');
   if(errEl) errEl.textContent = '';
   if(btn) btn.disabled = true;
+  if(fmBtn) fmBtn.disabled = true;
   try{
     // Sans token publicitaire, il faut d'abord obtenir l'autorisation Meta Ads.
     // Elle est séparée de celle de la Page : les permissions Ads exigent un App Review.
@@ -3324,7 +3336,7 @@ async function startFbMarketingConnect(){
     loadSocial();
     fbLoadCampaigns();
   }catch(ex){ if(errEl) errEl.textContent = ex.message; toast(ex.message, true); }
-  finally{ if(btn) btn.disabled = false; }
+  finally{ if(btn) btn.disabled = false; if(fmBtn) fmBtn.disabled = false; }
 }
 
 async function syncFbMarketingCampaigns(){
@@ -3332,8 +3344,9 @@ async function syncFbMarketingCampaigns(){
   if(errEl) errEl.textContent = '';
   await fbLoadCampaigns();
 }
-document.getElementById('fbMarketingConnectBtn').addEventListener('click', startFbMarketingConnect);
+document.getElementById('fbMarketingConnectBtn').addEventListener('click', ()=>startFbMarketingConnect());
 document.getElementById('fbMarketingSyncBtn').addEventListener('click', syncFbMarketingCampaigns);
+document.getElementById('fmConnectBtn').addEventListener('click', ()=>startFbMarketingConnect('fmErr'));
 document.getElementById('fmRefreshBtn').addEventListener('click', fbLoadCampaigns);
 
 // ---- Audiences ----
@@ -3777,6 +3790,8 @@ const _origLoadSocial = window.__gs_hook;
   setTimeout(()=>completeTikTokAuth(code), 300);
 })();
 document.body.addEventListener('click', async (e)=>{
+  const fbSetupBtn = e.target.closest('[data-fb-setup]');
+  if(fbSetupBtn){ openFacebookSetup(); return; }
   const authBtn = e.target.closest('[data-auth-social]');
   if(authBtn){
     if(authBtn.dataset.authSocial === 'tiktok') Promise.resolve(startTikTokAuth()).catch(ex=>toast('Connexion TikTok impossible : '+(ex&&ex.message||ex), true));
@@ -4348,7 +4363,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
 
 // Version embarquée par config/bump-sw.mjs à chaque déploiement (même valeur que le cache du
 // service worker). Sert d'affichage fiable de « Version installée », même sans cache PWA.
-const APP_VERSION = 'mayela-crm-ec122c0580';
+const APP_VERSION = 'mayela-crm-7805ae7a97';
 
 // Comparaison version installée (APP_VERSION) vs version publiée (sw.js servi par Vercel).
 // Affiche toujours les deux numéros ; met à jour la ligne d'état et le bouton « Mettre à jour ».
