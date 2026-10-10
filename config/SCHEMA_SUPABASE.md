@@ -500,8 +500,15 @@ sécurisées :
 - **Secrets** (V7) : la colonne `config` de `social_accounts` et `integrations_oauth` n'est
   plus `SELECT`able par `anon`/`authenticated` (`revoke`). Seules les Edge Functions la
   lisent, via `service_role`. La vue `social_accounts_safe` (lue par le navigateur) est en
-  `security_invoker = false` + `FORCE ROW LEVEL SECURITY` pour conserver le filtrage par
-  espace tout en purgeant les secrets.
+  `security_invoker = false` (indispensable pour lire `config` en tant que propriétaire) et
+  filtre désormais explicitement `org_id = current_org_id()` (V18).
+- **Incident sécurité / résolution (V18, 09/10/2026)** : `social_accounts_safe` appartient à
+  `postgres`, qui a `rolbypassrls = true`. En `security_invoker = false`, la vue s'exécutait
+  donc en tant que `postgres` et contournait **intégralement** la RLS de `social_accounts`
+  (`FORCE ROW LEVEL SECURITY` inopérant face à un rôle BYPASSRLS) : elle exposait toutes les
+  lignes à **`anon`** (clé publique). Corrigé par un filtre de ligne explicite
+  (`org_id = current_org_id() OR service_role`) + `revoke ... from anon`. Vérifié : anon → 401,
+  membre → 1 ligne, service_role → 1 ligne.
 - **Vue `social_accounts_safe`** : expose les champs publics (client_key, pixel_id, etc.) +
   les booléens `has_marketing` (Marketing API TikTok connecté) et `connected`/`has_pixel_token`,
   sans jamais exposer `marketing_access_token` ni les autres secrets (ajouté en V10).
